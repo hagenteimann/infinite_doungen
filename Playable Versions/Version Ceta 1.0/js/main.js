@@ -1,0 +1,1734 @@
+/* ==========================================
+   4. PURE UTILITIES (No Side Effects)
+   ========================================== */
+const Utils = {
+    generateId: function () {
+        return (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2);
+    },
+    splitByCommaOutsideBrackets: function (str) {
+        let res = [];
+        let current = '';
+        let depth = 0;
+        for (let i = 0; i < str.length; i++) {
+            const c = str[i];
+            if (c === '(' || c === '[' || c === '{') depth++;
+            else if (c === ')' || c === ']' || c === '}') depth = Math.max(0, depth - 1);
+            else if (c === ',' && depth === 0) {
+                res.push(current.trim());
+                current = '';
+                continue;
+            }
+            current += c;
+        }
+        if (current.trim()) res.push(current.trim());
+        return res;
+    },
+    parseItemQuantity: function (str) {
+        let amt = 1, name = str.trim();
+        const prefixMatch = name.match(/^(\d+)x?\s+(.*)$/i);
+        const suffixMatch = name.match(/^(.*?)\s*\(?x(\d+)\)?$/i);
+        if (prefixMatch) { amt = parseInt(prefixMatch[1]); name = prefixMatch[2].trim(); }
+        else if (suffixMatch) { amt = parseInt(suffixMatch[2]); name = suffixMatch[1].trim(); }
+
+        name = name.charAt(0).toUpperCase() + name.slice(1); // Fix für sauberes Stacking
+        return { amt, name };
+    },
+    sanitizeCharacter: function (c) {
+        c.level = c.level || 1; c.xp = c.xp || 0; c.statPoints = c.statPoints || 0;
+        c.attributes = c.attributes || { STR: 10, DEX: 10, INT: 10, CON: 10 };
+        c.imagePrompt = c.imagePrompt || ""; c.isSummon = c.isSummon || false; c.ability = c.ability || null;
+        c.talents = c.talents || []; c.pendingTalentPoints = c.pendingTalentPoints || 0;
+        if (!c.id) c.id = this.generateId();
+
+        c.equipment = c.equipment || [];
+
+        if (c.inventory && c.inventory.length > 0) {
+            let newInv = [];
+            c.inventory.forEach(item => {
+                const { amt, name } = this.parseItemQuantity(item);
+                for (let i = 0; i < amt; i++) newInv.push(name);
+            });
+            c.inventory = newInv;
+        } else {
+            c.inventory = [];
+        }
+        return c;
+    },
+    findTarget: function (list, name) {
+        if (!name) return null;
+        const n = name.toLowerCase().trim();
+        return list.find(x => x.name.toLowerCase() === n) || list.find(x => x.name.toLowerCase().includes(n)) || list.find(x => n.includes(x.name.toLowerCase()));
+    }
+};
+
+/* ==========================================
+   5. API ADAPTER
+   ========================================== */
+const API = {
+    getProvider: function () {
+        return localStorage.getItem("api_provider") || "gemini";
+    },
+    getKey: function (providerStr) {
+        const prov = providerStr || this.getProvider();
+        return localStorage.getItem(`api_key_${prov}`) || "";
+    },
+    getOrModelText: function () {
+        return localStorage.getItem("api_model_or_text") || "google/gemini-2.5-flash";
+    },
+    getOrModelImage: function () {
+        return localStorage.getItem("api_model_or_image") || "";
+    },
+
+    generateText: async function (prompt, systemInstruction = CONFIG.systemPrompt) {
+        const provider = this.getProvider();
+        const apiKey = this.getKey(provider);
+
+        // Fail fast if no key
+        if (!apiKey) throw new Error(`Kein API Key für ${provider} hinterlegt. Bitte in den Einstellungen eintragen.`);
+
+        let lastError = "Netzwerkfehler";
+        for (let i = 0; i < 5; i++) {
+            try {
+                if (provider === "gemini") {
+                    const payload = { contents: [{ parts: [{ text: prompt }] }], systemInstruction: { parts: [{ text: systemInstruction }] } };
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.models.text}:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!res.ok) {
+                        if (res.status === 401) { lastError = "HTTP 401: Zugriff verweigert. API-Key ungültig."; break; }
+                        const errorText = await res.text();
+                        throw new Error(`HTTP ${res.status}: ${errorText || 'Unbekannter API Fehler'}`);
+                    }
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error.message);
+                    if (!data.candidates || data.candidates.length === 0) throw new Error("Sicherheitsfilter: Blockiert.");
+                    return data.candidates[0].content.parts[0].text;
+                }
+                else if (provider === "chatgpt") {
+                    const payload = {
+                        model: "gpt-4o-mini", // Cost effective default for ChatGPT
+                        messages: [
+                            { role: "system", content: systemInstruction },
+                            { role: "user", content: prompt }
+                        ]
+                    };
+                    const res = await fetch(`https://api.openai.com/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) {
+                        if (res.status === 401) { lastError = "HTTP 401: OpenAI API-Key ungültig."; break; }
+                        const errorText = await res.text();
+                        throw new Error(`HTTP ${res.status}: ${errorText}`);
+                    }
+                    const data = await res.json();
+                    return data.choices[0].message.content;
+                }
+                else if (provider === "openrouter") {
+                    const modelText = this.getOrModelText();
+                    const payload = {
+                        model: modelText,
+                        messages: [
+                            { role: "system", content: systemInstruction },
+                            { role: "user", content: prompt }
+                        ]
+                    };
+                    const res = await fetch(`https://openrouter.ai/api/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`,
+                            'HTTP-Referer': window.location.href, // Recommended by OR
+                            'X-Title': 'Infinite Dungeons'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) {
+                        if (res.status === 401) { lastError = "HTTP 401: OpenRouter API-Key ungültig."; break; }
+                        const errorText = await res.text();
+                        throw new Error(`HTTP ${res.status}: ${errorText}`);
+                    }
+                    const data = await res.json();
+                    return data.choices[0].message.content;
+                }
+            } catch (e) {
+                lastError = e.message;
+                if (lastError.includes("401") || lastError.includes("ungültig") || lastError.includes("fehlt")) break;
+                await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+            }
+        }
+        throw new Error(lastError);
+    },
+    generateImageWithFallbacks: async function (prompts) {
+        if (State.imageQuotaExceeded) return "";
+
+        const provider = this.getProvider();
+        const apiKey = this.getKey(provider);
+        if (!apiKey) return ""; // Fail silently
+
+        let pUrl = "";
+        for (const prompt of prompts) {
+            try {
+                if (provider === "gemini") {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.models.image}:predict?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ instances: [{ prompt: prompt.substring(0, 400) }], parameters: { sampleCount: 1 } })
+                    });
+                    if (!res.ok) {
+                        if (res.status === 429) {
+                            State.imageQuotaExceeded = true;
+                            UI.addChatLog("System", "⚠️ Das Limit für die Bildgenerierung (Gemini) wurde erreicht.");
+                            return "";
+                        }
+                        continue;
+                    }
+                    const data = await res.json();
+                    if (data.predictions?.[0]) return `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
+                }
+                else if (provider === "chatgpt") {
+                    const res = await fetch(`https://api.openai.com/v1/images/generations`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify({
+                            model: "dall-e-3",
+                            prompt: prompt.substring(0, 1000),
+                            n: 1,
+                            size: "1024x1024",
+                            response_format: "b64_json"
+                        })
+                    });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    if (data.data?.[0]?.b64_json) return `data:image/png;base64,${data.data[0].b64_json}`;
+                }
+                else if (provider === "openrouter") {
+                    const imageModel = this.getOrModelImage();
+                    if (!imageModel) return ""; // Option to skip image generation for OR if no model is defined.
+
+                    // VERY experimental/non-standard OpenRouter image support
+                    // Usually requires specific models that support it and specific prompt formats.
+                    // Treating it like text generation for some multimodal capable ones here.
+                    // If not properly supported by user's OR setup, it'll fail over to text placeholders seamlessly.
+                    const res = await fetch(`https://openrouter.ai/api/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify({
+                            model: imageModel,
+                            messages: [{ role: "user", content: "GENERATE IMAGE ONLY: " + prompt.substring(0, 400) }]
+                        })
+                    });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+
+                    // OR usually returns markdown image links if it generates an image via a provider's tool
+                    const msg = data.choices[0]?.message?.content || "";
+                    const urlMatch = msg.match(/\]\((https:\/\/[^\)]+)\)/); // try to extract markdown URL
+                    if (urlMatch) return urlMatch[1];
+                }
+            } catch (e) {
+                console.error(`Image Exception (${provider}):`, e);
+            }
+        }
+        if (!pUrl && !State.imageQuotaExceeded && provider === "gemini") {
+            UI.addChatLog("System", `⚠️ **Bildgenerierung fehlgeschlagen:** Das Bild konnte nicht erstellt werden.`);
+        }
+        return "";
+    }
+};
+
+const Sound = {
+    ctx: null,
+    getCtx: function () {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        return this.ctx;
+    },
+    play: function (type) {
+        if (!State.soundEnabled) return;
+        try {
+            const ctx = this.getCtx();
+            if (ctx.state === 'suspended') ctx.resume();
+            const t = ctx.currentTime;
+            switch (type) {
+                case 'dice': {
+                    // Dice roll: quick rattling noise
+                    for (let i = 0; i < 5; i++) {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination);
+                        o.type = 'square';
+                        o.frequency.setValueAtTime(200 + Math.random() * 400, t + i * 0.06);
+                        g.gain.setValueAtTime(0.06, t + i * 0.06);
+                        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.05);
+                        o.start(t + i * 0.06);
+                        o.stop(t + i * 0.06 + 0.05);
+                    }
+                    break;
+                }
+                case 'crit': {
+                    // Critical: triumphant chord
+                    [523, 659, 784].forEach((freq, i) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination);
+                        o.type = 'triangle';
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0, t + i * 0.05);
+                        g.gain.linearRampToValueAtTime(0.1, t + i * 0.05 + 0.05);
+                        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.05 + 0.5);
+                        o.start(t + i * 0.05);
+                        o.stop(t + i * 0.05 + 0.5);
+                    });
+                    break;
+                }
+                case 'fail': {
+                    // Fail: descending tone
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = 'sawtooth';
+                    o.frequency.setValueAtTime(300, t);
+                    o.frequency.linearRampToValueAtTime(100, t + 0.4);
+                    g.gain.setValueAtTime(0.08, t);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+                    o.start(t); o.stop(t + 0.4);
+                    break;
+                }
+                case 'hit': {
+                    // Hit: short thud
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = 'sine';
+                    o.frequency.setValueAtTime(80, t);
+                    o.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+                    g.gain.setValueAtTime(0.2, t);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                    o.start(t); o.stop(t + 0.15);
+                    break;
+                }
+                case 'heal': {
+                    // Heal: gentle ascending
+                    [523, 659, 784, 1047].forEach((freq, i) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination);
+                        o.type = 'sine';
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.0, t + i * 0.07);
+                        g.gain.linearRampToValueAtTime(0.07, t + i * 0.07 + 0.04);
+                        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.25);
+                        o.start(t + i * 0.07);
+                        o.stop(t + i * 0.07 + 0.25);
+                    });
+                    break;
+                }
+                case 'levelup': {
+                    // Level up: fanfare
+                    const notes = [523, 659, 784, 1047, 1319];
+                    notes.forEach((freq, i) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination);
+                        o.type = 'triangle';
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.12, t + i * 0.08);
+                        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.3);
+                        o.start(t + i * 0.08);
+                        o.stop(t + i * 0.08 + 0.3);
+                    });
+                    break;
+                }
+                case 'click': {
+                    // UI Click: short high-pitched pop
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = 'sine';
+                    o.frequency.setValueAtTime(800, t);
+                    o.frequency.exponentialRampToValueAtTime(400, t + 0.05);
+                    g.gain.setValueAtTime(0.1, t);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                    o.start(t); o.stop(t + 0.05);
+                    break;
+                }
+            }
+        } catch (e) { }
+    }
+};
+
+/* ==========================================
+   6. CORE LOGIC (Party & Combat Modules)
+   ========================================== */
+
+// Floating Damage Number helper
+function showFloatingNumber(targetName, amount, type) {
+    const cards = document.querySelectorAll('[onclick*="handleEntityClick"]');
+    let targetCard = null;
+    cards.forEach(card => {
+        if (card.textContent.includes(targetName)) targetCard = card;
+    });
+    if (!targetCard) return;
+    const float = document.createElement('div');
+    float.className = 'damage-float ' + type;
+    float.textContent = type === 'heal' ? '+' + amount : (type === 'xp' ? '+' + amount + ' XP' : '-' + amount);
+    float.style.left = (targetCard.offsetWidth / 2 - 15) + 'px';
+    float.style.top = '0px';
+    targetCard.style.position = 'relative';
+    targetCard.appendChild(float);
+    setTimeout(() => float.remove(), 1300);
+}
+const PartyManager = {
+    getEffectiveAttributes: function (char) {
+        let effAttrs = { ...char.attributes };
+        (char.equipment || []).forEach(item => {
+            const regex1 = /(STR|DEX|INT|CON)\s*([+-]\s*\d+)/gi;
+            let match;
+            while ((match = regex1.exec(item)) !== null) {
+                const stat = match[1].toUpperCase();
+                const val = parseInt(match[2].replace(/\s+/g, ''));
+                if (effAttrs[stat] !== undefined) effAttrs[stat] += val;
+            }
+            const regex2 = /([+-]\s*\d+)\s*(STR|DEX|INT|CON)/gi;
+            while ((match = regex2.exec(item)) !== null) {
+                const stat = match[2].toUpperCase();
+                const val = parseInt(match[1].replace(/\s+/g, ''));
+                if (effAttrs[stat] !== undefined) effAttrs[stat] += val;
+            }
+        });
+
+        // Feature 5: Ausrüstungs-Sets (Relikte)
+        if (char.equipment && char.equipment.length > 0) {
+            EQUIPMENT_SETS.forEach(set => {
+                const equippedPieces = set.pieces.filter(p => char.equipment.some(e => e.includes(p)));
+                if (equippedPieces.length >= 2) { // 2 parts needed for set bonus
+                    for (const stat in set.bonus) {
+                        if (effAttrs[stat] !== undefined) effAttrs[stat] += set.bonus[stat];
+                    }
+                }
+            });
+        }
+
+        return effAttrs;
+    },
+    // Returns all non-stat special effects from equipped items (e.g., "Feuerschaden", "Beschwört Schleim")
+    getItemSpecialEffects: function (char) {
+        const effects = [];
+        (char.equipment || []).forEach(item => {
+            // Extract all (text in parens) from item name
+            const parenRegex = /\(([^)]+)\)/g;
+            let m;
+            while ((m = parenRegex.exec(item)) !== null) {
+                const spec = m[1].trim();
+                // Skip pure stat-bonus specs, keep abilities/lore
+                if (!spec.match(/^(?:STR|DEX|INT|CON)\s*[+-]\s*\d+$/) && !spec.match(/^[+-]\s*\d+\s*(?:STR|DEX|INT|CON)$/i)) {
+                    effects.push(spec);
+                }
+            }
+        });
+        return effects;
+    },
+    getEffectiveMaxHp: function (char) {
+        const effAttrs = this.getEffectiveAttributes(char);
+        const baseMax = 20 + ((char.level - 1) * 5);
+        const conBonus = (effAttrs.CON - 10) * 2;
+        return Math.max(1, baseMax + conBonus);
+    },
+    damage: function (char, amount) {
+        State.sessionStats.totalDamageTaken += amount;
+        char.hp = Math.max(0, char.hp - amount);
+        Sound.play('hit');
+        showFloatingNumber(char.name, amount, 'damage');
+        if (char.hp === 0) {
+            UI.addChatLog("System", `💀 **${char.name}** ist bewusstlos zu Boden gegangen! Ihr habt **GENAU EINEN VERSUCH**, ihn/sie zu retten (Medizin, Magie etc.).`);
+        }
+    },
+    heal: function (char, amount) {
+        const effMax = this.getEffectiveMaxHp(char);
+        const actualHeal = Math.min(amount, effMax - char.hp);
+        char.hp += actualHeal;
+        if (actualHeal > 0) {
+            State.sessionStats.totalHealed += actualHeal;
+            Sound.play('heal');
+
+            showFloatingNumber(char.name, actualHeal, 'heal');
+        }
+    },
+    addXP: function (char, amount) {
+        if (char.isSummon) return;
+        char.xp += amount;
+        State.sessionStats.totalXPEarned += amount;
+
+        showFloatingNumber(char.name, amount, 'xp');
+        let needed = char.level * 100; let leveledUp = false;
+        while (char.xp >= needed) {
+            char.xp -= needed; char.level++; char.statPoints += 2;
+            char.hp = this.getEffectiveMaxHp(char);
+            leveledUp = true; needed = char.level * 100;
+            if (char.level === 2 && !char.ability) {
+                const abs = { "Waldläufer": "Waldgeist (Beschwörung)", "Krieger": "Schildwall", "Magier": "Arkaner Familiar (Beschwörung)", "Schurke": "Schattenklon (Beschwörung)", "Kleriker": "Lichtbote (Beschwörung)" };
+                char.ability = abs[char.class] || null;
+            }
+            if ([3, 5, 10].includes(char.level) && TALENT_TREES[char.class]) {
+                char.pendingTalentPoints++;
+            }
+        }
+        if (leveledUp) {
+            Sound.play('levelup');
+            UI.addChatLog("System", `🌟 **${char.name}** hat Level ${char.level} erreicht!`);
+        }
+    },
+    consumeItem: function (char, itemName, amount = 1) {
+        let removed = 0;
+        for (let i = 0; i < amount; i++) {
+            const idx = char.inventory.findIndex(it => it.toLowerCase().includes(itemName.toLowerCase()));
+            if (idx > -1) { char.inventory.splice(idx, 1); removed++; }
+            else break;
+        }
+        if (removed > 0) {
+            UI.addChatLog("System", `🗑️ **${char.name}** hat **${removed}x ${itemName}** verbraucht.`);
+            const effMax = this.getEffectiveMaxHp(char);
+            if (char.hp > effMax) char.hp = effMax;
+        }
+    }
+};
+
+const CombatManager = {
+    damage: function (enemy, amount) {
+        State.sessionStats.totalDamageDealt += amount;
+        enemy.hp = Math.max(0, enemy.hp - amount);
+        Sound.play('hit');
+        if (enemy.hp === 0 && !enemy.loggedDefeat) { enemy.loggedDefeat = true; UI.addChatLog("System", `⚔️ ${enemy.name} wurde besiegt!`); }
+    },
+    spawn: async function (name, hp, desc) {
+        const lowerName = name ? name.toLowerCase().trim() : '';
+        if (!lowerName || lowerName.includes('tot') || lowerName.includes('tod') || lowerName.includes('dead') || lowerName.includes('leiche') || hp <= 0) return;
+
+        // GUARD: Prevent DM from respawning the exact same active enemy (clone prevention)
+        if (State.activeEnemies.some(e => e.name.toLowerCase() === lowerName)) return;
+
+        const wasEmpty = State.activeEnemies.length === 0;
+        const e = { id: Utils.generateId(), name, hp, maxHp: hp, desc, loggedDefeat: false, portrait: "" };
+        State.activeEnemies.push(e); UI.updateAll();
+
+        if (wasEmpty && State.activeEnemies.length > 0) {
+            const summoners = State.party.filter(p => {
+                if (p.isSummon) return false;
+                let hasSummon = false;
+                if (p.ability && p.ability.includes("Beschwörung")) hasSummon = true;
+                if (p.abilities && p.abilities.some(ab => ab.includes("Beschwörung"))) hasSummon = true;
+                return hasSummon;
+            });
+            for (const p of summoners) {
+                let summonAbilities = [];
+                if (p.ability && p.ability.includes("Beschwörung")) summonAbilities.push(p.ability);
+                if (p.abilities) {
+                    p.abilities.forEach(ab => {
+                        if (ab.includes("Beschwörung") && !summonAbilities.includes(ab)) summonAbilities.push(ab);
+                    });
+                }
+
+                for (const abilityFull of summonAbilities) {
+                    const summonName = abilityFull.split(' ')[0];
+
+                    const pEff = PartyManager.getEffectiveAttributes(p);
+                    const pInt = pEff.INT || 10;
+                    const mod = pInt - 10;
+                    const roll = Math.floor(Math.random() * 20) + 1;
+                    const total = roll + mod;
+                    const dc = 10 + p.level;
+                    const success = total >= dc;
+
+                    // Feature: Summon Balancing (50% stats/level)
+                    const summonLevel = Math.max(1, Math.floor(p.level / 2));
+                    const summonHp = success ? (15 + summonLevel * 5) : (5 + summonLevel * 5);
+                    const summonAttributes = {
+                        STR: Math.max(1, Math.floor((pEff.STR || 10) / 2)),
+                        DEX: Math.max(1, Math.floor((pEff.DEX || 10) / 2)),
+                        INT: Math.max(1, Math.floor((pEff.INT || 10) / 2)),
+                        CON: Math.max(1, Math.floor((pEff.CON || 10) / 2))
+                    };
+
+                    let summonPUrl = "";
+                    try {
+                        let summonImgPrompt = `Fantasy portrait, face only, highly detailed, ${summonName}`.replace(/\n/g, ' ').trim();
+                        summonPUrl = await API.generateImageWithFallbacks([
+                            summonImgPrompt,
+                            `Fantasy portrait, ${summonName}`,
+                            `Monster: ${summonName}`
+                        ]);
+                    } catch (e) { console.error("Summon Image Gen Error:", e); }
+
+                    State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name: summonName + ` (von ${p.name})`, class: 'Beschwörung', hp: summonHp, maxHp: summonHp, portrait: summonPUrl, isNPC: true, isSummon: true, level: summonLevel, attributes: summonAttributes, _summonSource: abilityFull }));
+
+                    const statusHtml = success ? `<span class="text-green-400 font-bold">Gewaltig! Begleiter ist extra stark.</span>` : `<span class="text-red-400 font-bold">Geschwächt! Schwacher Begleiter.</span>`;
+                    UI.addChatLog("System", `🌀 **${p.name}** beschwört einen **${summonName}**!\n🎲 **Beschwörungs-Wurf (Lvl ${p.level} vs DC ${dc}):** ${roll} (W20) ${mod >= 0 ? '+ ' + mod : mod} (INT) = **${total}** -> ${statusHtml} [${summonHp} HP]`);
+                }
+            }
+            UI.updateAll();
+        }
+        const descStr = desc ? `, ${desc}` : '';
+        let pUrl = "";
+        try {
+            let imgPrompt = `Fantasy portrait, face only, highly detailed, ${name}${descStr}`.replace(/\n/g, ' ').trim();
+            pUrl = await API.generateImageWithFallbacks([
+                imgPrompt,
+                `Fantasy portrait, ${name}`,
+                `Monster: ${name}, ${desc}`
+            ]);
+        } catch (e) { console.error("Enemy Image Gen Error:", e); }
+
+        e.portrait = pUrl;
+        UI.updateAll();
+    },
+    cleanupDead: function () {
+        State.activeEnemies.forEach(e => { if (e.hp <= 0 && !State.defeatedEnemies.some(d => d.id === e.id)) State.defeatedEnemies.unshift({ ...e }); });
+        State.activeEnemies = State.activeEnemies.filter(e => e.hp > 0);
+        if (State.activeEnemies.length === 0 && State.defeatedEnemies.length > 0) this.endCombat();
+    },
+    endCombat: function () {
+        State.sessionStats.combatsWon++;
+        State.activeEnemies = [];
+        State.combatEnded = true;
+        if (State.party.some(p => p.isSummon)) { State.party = State.party.filter(p => !p.isSummon); UI.addChatLog("System", `💨 Beschworene Kreaturen verschwinden.`); }
+
+        if ((State.fate || 0) >= 100) {
+            State.fate = 0;
+            UI.addChatLog("System", `🏆 Triumph! Das Schicksal hat sich gewendet und ein mächtiger Feind wurde bezwungen. Eine neue Ära bricht an.`);
+        }
+
+        UI.updateAll();
+    }
+};
+
+const TagParser = {
+    process: function (text) {
+        const tagRegex = /\[(Schaden|Gegner[\s\-]*Schaden|Heilung|Gegner|GegnerTot|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht)[\s:]*(.*?)\]/gi;
+        let match;
+        while ((match = tagRegex.exec(text)) !== null) {
+            let type = match[1].toLowerCase().replace(/[\s\-]+/g, '');
+            let argsStr = match[2] || "";
+            let args = argsStr.includes(',') ? argsStr.split(',').map(s => s.trim()) : argsStr.split(/\s+/).map(s => s.trim());
+            let targetName = args[0] || ""; let amount = parseInt(args[1]);
+            if (args.length > 1 && isNaN(amount) && !isNaN(parseInt(args[0]))) { amount = parseInt(args[0]); targetName = args.slice(1).join(' '); }
+            else if (args.length > 1 && !isNaN(amount)) { if (!argsStr.includes(',')) { targetName = args.slice(0, args.length - 1).join(' '); amount = parseInt(args[args.length - 1]); } }
+            this.applyEvent(type, targetName, amount || 0, argsStr);
+        }
+        CombatManager.cleanupDead(); UI.updateAll();
+    },
+    applyEvent: function (type, targetName, amount, rawArgs) {
+        // GUARD: Ensure numeric bounds for mathematical tags (ignore negative or NaN inputs)
+        if (['schaden', 'gegnerschaden', 'heilung', 'xp'].includes(type)) {
+            if (isNaN(amount) || amount < 0) return; // Silent discard of corrupted math logic
+        }
+
+        if (type === 'gegnerschaden') {
+            let e = Utils.findTarget(State.activeEnemies, targetName);
+            if (e) CombatManager.damage(e, amount);
+            else UI.addChatLog("System", `⚠️ Mechanik verworfen: Feind '${targetName}' nicht gefunden.`);
+        }
+        else if (type === 'schaden') {
+            let c = Utils.findTarget(State.party, targetName);
+            if (c) PartyManager.damage(c, amount);
+            else {
+                let e = Utils.findTarget(State.activeEnemies, targetName);
+                if (e) CombatManager.damage(e, amount);
+                else UI.addChatLog("System", `⚠️ Mechanik verworfen: Ziel '${targetName}' für Schaden nicht gefunden.`);
+            }
+        }
+        else if (type === 'heilung') {
+            let c = Utils.findTarget(State.party, targetName);
+            if (c) PartyManager.heal(c, amount);
+            else UI.addChatLog("System", `⚠️ Mechanik verworfen: Ziel '${targetName}' für Heilung nicht gefunden.`);
+        }
+        else if (type === 'gegner') {
+            let sArgs = rawArgs.includes(',') ? rawArgs.split(',').map(s => s.trim()) : rawArgs.split(/\s+/).map(s => s.trim());
+            let sName = sArgs[0] || "Gegner"; let sHp = parseInt(sArgs[1]) || 20;
+            if (!isNaN(parseInt(sArgs[0])) && isNaN(parseInt(sArgs[1]))) { sHp = parseInt(sArgs[0]); sName = sArgs[1]; }
+            if (sHp > 0) CombatManager.spawn(sName, sHp, sArgs.slice(2).join(', ') || '');
+        }
+        else if (type === 'gegnertot') {
+            let e = Utils.findTarget(State.activeEnemies, targetName || rawArgs.trim());
+            if (e) CombatManager.damage(e, e.hp);
+        }
+        else if (type === 'beute') {
+            let lootItems = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : [rawArgs.trim()];
+            lootItems.filter(a => a).forEach(itemStr => {
+                const { amt, name } = Utils.parseItemQuantity(itemStr);
+                for (let i = 0; i < amt; i++) State.lootDrops.push(name);
+            });
+        }
+        else if (type === 'route') { // [Route: Holztür]
+            let routeName = rawArgs.trim();
+            let btnHtml = `<button onclick="App.Engine.chooseRoute('${routeName.replace(/'/g, "\\'")}')" class="w-full bg-slate-800/80 hover:bg-slate-700 py-3 rounded-lg font-bold text-xs border border-slate-600 shadow-sm transition-colors text-slate-300 hover:text-white flex items-center justify-center gap-2 mb-2"><i class="fas fa-door-open text-slate-400"></i> Route wählen: ${routeName}</button>`;
+            DOM.actionBoxContainer.insertAdjacentHTML('beforeend', btnHtml);
+            DOM.actionBoxContainer.classList.remove('hidden');
+        }
+        else if (type === 'verbraucht') {
+            let vArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/);
+            let c = Utils.findTarget(State.party, vArgs[0]);
+            let rawItemStr = vArgs.slice(1).join(', ').trim() || rawArgs;
+            const { amt, name } = Utils.parseItemQuantity(rawItemStr);
+            if (c) PartyManager.consumeItem(c, name, amt);
+        }
+        else if (type === 'kampfbeendet') { State.activeEnemies = []; CombatManager.endCombat(); }
+        else if (type === 'xp') {
+            if (targetName && targetName.toLowerCase() === 'alle') State.party.forEach(p => PartyManager.addXP(p, amount));
+            else {
+                let c = Utils.findTarget(State.party, targetName);
+                if (c) PartyManager.addXP(c, amount);
+            }
+        }
+        else if (type === 'neuernpc') {
+            let nArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/);
+            Engine.spawnNPCFromTag(nArgs[0] || 'Unbekannt', nArgs[1] || 'Bürger', nArgs.slice(2).join(',') || 'Begleiter');
+        }
+        else if (type === 'tausch') {
+            let tArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/);
+            let c = Utils.findTarget(State.party, tArgs[0]);
+            if (c && tArgs.length >= 3) {
+                PartyManager.consumeItem(c, tArgs[1]);
+                c.inventory.push(tArgs[2].trim().charAt(0).toUpperCase() + tArgs[2].trim().slice(1));
+                UI.addChatLog("System", `🤝 **${c.name}** tauschte **${tArgs[1]}** gegen **${tArgs[2]}**.`);
+            } else if (!c) {
+                UI.addChatLog("System", `⚠️ Tausch verworfen: Charakter '${tArgs[0]}' nicht gefunden.`);
+            }
+        }
+        else if (type === 'endgueltigtot') {
+            let c = Utils.findTarget(State.party, targetName);
+            if (c) { State.party = State.party.filter(p => p.id !== c.id); UI.addChatLog("System", `⚰️ **${c.name}** ist endgültig von uns gegangen...`); UI.hideDetails(); }
+        }
+        else if (type === 'haendler') {
+            const parts = rawArgs.split('|');
+            const mName = parts[0] ? parts[0].trim() : "Händler";
+            const mItems = parts.length > 1 ? Utils.splitByCommaOutsideBrackets(parts[1]) : ["Bietet derzeit nichts an"];
+            State.activeMerchant = { name: mName, items: mItems };
+        }
+        else if (type === 'faehigkeit') {
+            let fParts = rawArgs.includes('|') ? rawArgs.split('|') : rawArgs.split(/\s+/);
+            let c = Utils.findTarget(State.party, fParts[0].trim());
+            if (c) {
+                let fName = fParts.slice(1).join(' ').trim();
+                if (!c.abilities) c.abilities = [];
+                if (c.ability && !c.abilities.includes(c.ability)) c.abilities.push(c.ability);
+                if (fName) {
+                    // Feature 3: Ähnliche Fähigkeiten zusammenführen statt hinzufügen
+                    let fNameBase = fName.replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/i, '').trim();
+                    let existingIdx = c.abilities.findIndex(ab => {
+                        let abBase = ab.replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/i, '').trim();
+                        return abBase.toLowerCase() === fNameBase.toLowerCase();
+                    });
+                    if (existingIdx !== -1) {
+                        let existing = c.abilities[existingIdx];
+                        let existingBase = existing.replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/i, '').trim();
+                        let tierMatch = existing.match(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/i);
+                        let currentTier = tierMatch ? tierMatch[1].toUpperCase() : 'I';
+                        const tiers = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+                        let tierIdx = tiers.indexOf(currentTier);
+                        let nextTier = tierIdx < tiers.length - 1 ? tiers[tierIdx + 1] : tiers[tiers.length - 1];
+                        c.abilities[existingIdx] = `${existingBase} ${nextTier}`;
+                        UI.addChatLog("System", `⚡ **${c.name}** hat die Fähigkeit **${existingBase}** verstärkt → **${c.abilities[existingIdx]}**!`);
+                    } else {
+                        if (c.abilities.length >= 3) {
+                            State.pendingAbilityLearning = { charId: c.id, newAbility: fName };
+                            App.UI.showAbilityReplaceModal(c.id, fName);
+                        } else {
+                            c.abilities.push(fName);
+                            UI.addChatLog("System", `🌟 **${c.name}** hat eine neue Fähigkeit erlernt: **${fName}**`);
+                        }
+                    }
+                }
+            }
+        }
+        else if (type === 'cooldown') {
+            // [Cooldown: HeldName | FähigkeitName | Runden]
+            let cdParts = rawArgs.split('|').map(s => s.trim());
+            if (cdParts.length >= 3) {
+                let charName = cdParts[0];
+                let abilityName = cdParts[1];
+                let rounds = parseInt(cdParts[2]) || 3;
+                let c = Utils.findTarget(State.party, charName);
+                if (c) {
+                    let cdKey = `${c.id}_${abilityName}`;
+                    State.abilityCooldowns[cdKey] = rounds;
+                    UI.addChatLog("System", `⏳ **${c.name}**: Fähigkeit **${abilityName}** hat **${rounds} Runden** Abklingzeit.`);
+                }
+            }
+        }
+        else if (type === 'flucht') {
+            // [Flucht: Erfolg] – Teleport/Flucht erfolgreich
+            let fluchtArg = rawArgs.trim().toLowerCase();
+            if (fluchtArg.includes('erfolg')) {
+                if (State.isBossFight) {
+                    UI.addChatLog("System", `🚫 **Flucht unmöglich!** Der Boss blockiert jeden Fluchtversuch!`);
+                } else {
+                    UI.addChatLog("System", `🌀 **Teleport erfolgreich!** Die Gruppe entkommt dem Kampf!`);
+                    State.activeEnemies = [];
+                    State.defeatedEnemies = [];
+                    State.combatEnded = true;
+                    // Beschwörungen entfernen
+                    if (State.party.some(p => p.isSummon)) {
+                        State.party = State.party.filter(p => !p.isSummon);
+                        UI.addChatLog("System", `💨 Beschworene Kreaturen verschwinden.`);
+                    }
+                }
+            }
+        }
+    }
+};
+
+/* ==========================================
+   7. ENGINE (Event Handlers & AI Flow)
+   ========================================== */
+const Engine = {
+    _isRollingAll: false,
+
+    setCustomApiKey: function () { DOM.customKeyInput.value = localStorage.getItem("custom_gemini_key") || ""; DOM.apiKeyModal.classList.remove('hidden'); setTimeout(() => DOM.customKeyInput.focus(), 100); },
+    saveApiKey: function () { localStorage.setItem("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "🔑 API-Key wurde gespeichert."); },
+    startGame: function () { if (State.party.length === 0) { UI.addChatLog("System", "⚠️ Erstelle zuerst einen Helden!"); return; } State.gameStarted = true; UI.toggleViews(true); this.interactWithAI("Die Reise beginnt."); },
+
+    toggleSound: function () {
+        State.soundEnabled = !State.soundEnabled;
+        const btn = DOM.soundToggle;
+        if (btn) {
+            btn.textContent = State.soundEnabled ? '🔊' : '🔇';
+            btn.className = `bg-slate-800/80 hover:bg-slate-700 px-3 py-2 rounded-lg text-xs font-medium border border-slate-600/50 hover:border-slate-400 shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(148,163,184,0.4)] transition-all duration-300 backdrop-blur-sm ${State.soundEnabled ? 'sound-on' : 'sound-off'}`;
+        }
+        if (State.soundEnabled) Sound.play('dice');
+    },
+
+    toggleQuickplay: function () {
+        State.quickplayEnabled = !State.quickplayEnabled;
+        const btn = document.getElementById('quickplay-btn');
+        if (State.quickplayEnabled) {
+            btn.className = "bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white px-3.5 py-2 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.6)] transition-all duration-300 backdrop-blur-sm tracking-wide flex items-center gap-1.5 animate-pulse";
+            btn.innerHTML = `<i class="fas fa-bolt text-yellow-300"></i> Quickplay (AN)`;
+            UI.addChatLog("System", "⚡ **Quickplay aktiviert:** Der DM wird sich nun kurz fassen, um den Spielfluss zu beschleunigen.");
+        } else {
+            btn.className = "bg-blue-900/40 hover:bg-blue-800/60 border border-blue-700/50 hover:border-blue-400 text-blue-200 px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300 backdrop-blur-sm tracking-wide flex items-center gap-1.5";
+            btn.innerHTML = `⚡ Quickplay`;
+            UI.addChatLog("System", "⚡ **Quickplay deaktiviert:** Der DM beschreibt die Welt wieder ausführlicher.");
+        }
+    },
+
+    generateJournalEntry: async function () {
+        if (!State.lastStoryPart || !State.gameStarted) return;
+        const oldJournalBtn = document.querySelector('[onclick="App.Engine.generateJournalEntry()"]');
+        if (oldJournalBtn) { oldJournalBtn.textContent = '⏳'; oldJournalBtn.disabled = true; }
+        try {
+            const partyNames = State.party.filter(p => !p.isSummon).map(p => p.name).join(', ');
+            const summary = await API.generateText(
+                `Fasse diese Szene in 1-2 Sätzen als Tagebucheintrag zusammen (Vergangenheit, dramatisch, kurz): "${State.lastStoryPart.substring(0, 500)}"`,
+                "Du bist ein Chronist. Antworte NUR mit dem Tagebucheintrag, ohne Anführungszeichen oder Präambel. Deutsch, max 2 Sätze."
+            );
+            const entry = { text: summary, timestamp: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), party: partyNames };
+            State.journal.unshift(entry);
+            if (State.journal.length > 20) State.journal.pop();
+            UI.renderJournal();
+        } catch (e) { } finally {
+            if (oldJournalBtn) { oldJournalBtn.textContent = '✨ Update'; oldJournalBtn.disabled = false; }
+        }
+    },
+
+    interactWithAI: async function (actionMsg) {
+        if (State.isProcessing) return;
+        State.isProcessing = true; UI.showLoader(true);
+        State.sessionStats.turnsPlayed++;
+        State.fate = (State.fate || 0) + 1; // Schicksals-Punkte sammeln
+
+        // Feature 2: Cooldowns pro Runde dekrementieren
+        let readyAbilities = [];
+        for (let cdKey in State.abilityCooldowns) {
+            State.abilityCooldowns[cdKey]--;
+            if (State.abilityCooldowns[cdKey] <= 0) {
+                let parts = cdKey.split('_');
+                let charId = parts[0];
+                let abName = parts.slice(1).join('_');
+                let ch = State.party.find(p => p.id === charId);
+                if (ch) readyAbilities.push(`**${ch.name}**: ${abName}`);
+                delete State.abilityCooldowns[cdKey];
+            }
+        }
+        if (readyAbilities.length > 0) {
+            UI.addChatLog("System", `✅ Fähigkeiten wieder bereit: ${readyAbilities.join(', ')}`);
+        }
+
+        // Feature 4: Boss-Flag setzen
+        State.isBossFight = (State.fate || 0) >= 100 && State.activeEnemies.length > 0;
+
+        const acting = DOM.actingChar.value;
+        const enemyCtx = State.activeEnemies.length > 0 ? State.activeEnemies.map(e => `${e.name} (HP ${e.hp}/${e.maxHp})`).join(', ') : 'Keine Feinde';
+
+        const partyCtx = State.party.map(p => {
+            const eff = PartyManager.getEffectiveAttributes(p);
+            const effMax = PartyManager.getEffectiveMaxHp(p);
+            const specEffects = PartyManager.getItemSpecialEffects(p);
+            const specStr = specEffects.length > 0 ? `, Item-Effekte: [${specEffects.join(', ')}]` : '';
+            return `${p.name} (Lvl ${p.level} ${p.class}, HP: ${p.hp}/${effMax}, Stats (inkl. Item-Boni): STR ${eff.STR} DEX ${eff.DEX} INT ${eff.INT} CON ${eff.CON}, Inv: [${p.inventory.join(', ')}], Ausgerüstet: [${(p.equipment || []).join(', ')}]${specStr})`;
+        }).join(' | ');
+
+        const diff = DOM.gameDifficulty.value; const rate = DOM.enemyRate.value;
+        const dInstr = diff === "Einfach" ? "Gegner-Schaden 1-2, Proben-DC ~10, Belohnungen: Normales Loot" : diff === "Normal" ? "Gegner-Schaden 3-5, Proben-DC ~12, Belohnungen: Gutes Loot" : diff === "Schwer" ? "Gegner-Schaden 6-8, Proben-DC ~14, Belohnungen: Sehr gutes magisches Loot" : "Gegner-Schaden 10-15, Proben-DC ~18, Belohnungen: Episches legendäres Loot";
+        const qpAddendum = State.quickplayEnabled
+            ? " QUICKPLAY AKTIV: Antworten extrem kurz (1-2 Sätze). Du darfst auch Angriffsproben für Spieler vorschlagen."
+            : " NORMALER MODUS – ANGRIFF-REGEL (ABSOLUT): Du darfst NIEMALS selbst eine Angriffs-Probe für einen Spieler fordern oder vorgeben wie dieser angreift. NUR Ausweichen/Blocken-Proben für Spieler sind erlaubt. Warte zwingend, bis der Spieler explizit schreibt dass er angreift (z.B. 'Ich greife an'). Erst dann und nur dann eine Probe fordern.";
+
+        let dungeonContext = "";
+        if ((State.fate || 0) >= 100) {
+            dungeonContext = ` [WICHTIGE DM-ANWEISUNG: Ein mächtiges Schicksal hat sich erfüllt! Initiiere JETZT SOFORT einen epischen Bosskampf. Der Boss MUSS massiven Loot fallen lassen (Beute-Tag). Erwähne das Schicksal NICHT beim Namen.]`;
+        } else {
+            dungeonContext = ``; // Schicksal läuft intern – kein Hinweis an den DM
+        }
+
+        // Chat-History als Kontext (letzte 5 Nachrichten, max 2000 Zeichen)
+        const historyCtx = State.chatHistory.slice(-5).join(' | ').substring(0, 2000);
+        const weatherCtx = (typeof App !== 'undefined' && App.Weather) ? App.Weather.getWeatherContext() : '';
+        const context = `Party: ${partyCtx}. Feinde: ${enemyCtx}. Vorherige Szenen: [${historyCtx}]. Aktuelle Szene: ${State.lastStoryPart}. Aktion (${acting}): ${actionMsg}. [Regeln: Diff=${diff} (${dInstr}), Rate=${rate}]${qpAddendum}${dungeonContext}${weatherCtx}`;
+
+        try {
+            const aiResponse = await API.generateText(context);
+            State.lastStoryPart = aiResponse;
+            // Wetter zufällig wechseln lassen (nach KI-Antwort)
+            if (typeof App !== 'undefined' && App.Weather) App.Weather.randomChange();
+            // Chat-History aktualisieren
+            State.chatHistory.push(aiResponse.substring(0, 400));
+            if (State.chatHistory.length > 8) State.chatHistory.shift();
+            let cleanText = aiResponse;
+
+            const probeRegex = /\[Probe:\s*([^|\]]+)\s*\|\s*([^|\]]+)\s*(?:\|\s*([^|\]]+))?\s*\|\s*(\d+)(?:\s*\|\s*(W\d+|w\d+))?\s*\]/gi;
+            let match;
+            while ((match = probeRegex.exec(cleanText)) !== null) {
+                let charName = match[1].trim();
+                let p2 = match[2].trim();
+                let p3 = match[3] ? match[3].trim() : "";
+                let dc = parseInt(match[4]) || 10;
+                let dt = match[5] ? match[5].trim().toUpperCase() : 'W20';
+
+                let rawStat = p2.toUpperCase();
+                let desc = p3 || p2; // If only 4 parts (fallback), p2 is the desc
+
+                let statName = "";
+                let modifier = 0;
+
+                if (rawStat.includes('STÄR') || rawStat.includes('STR')) statName = 'STR';
+                else if (rawStat.includes('GESCHICK') || rawStat.includes('DEX')) statName = 'DEX';
+                else if (rawStat.includes('INTELLIGENZ') || rawStat.includes('INT')) statName = 'INT';
+                else if (rawStat.includes('KONST') || rawStat.includes('CON')) statName = 'CON';
+                else {
+                    // Fallback scenario where attribute is omitted check description instead
+                    let upperDesc = desc.toUpperCase();
+                    if (upperDesc.includes('STÄR') || upperDesc.includes('STR')) statName = 'STR';
+                    else if (upperDesc.includes('GESCHICK') || upperDesc.includes('DEX')) statName = 'DEX';
+                    else if (upperDesc.includes('INTELLIGENZ') || upperDesc.includes('INT')) statName = 'INT';
+                    else if (upperDesc.includes('KONST') || upperDesc.includes('CON')) statName = 'CON';
+                }
+
+                const c = Utils.findTarget(State.party, charName);
+                if (c && statName) {
+                    const baseAttr = (c.attributes || {})[statName] || 10;
+                    const eff = PartyManager.getEffectiveAttributes(c);
+                    const totalAttr = eff[statName] || 10;
+                    const itemBonus = totalAttr - baseAttr;
+                    modifier = totalAttr - 10;
+                    // Attach breakdown to roll for display
+                    State.pendingRolls._nextModBreakdown = { base: baseAttr, item: itemBonus, total: totalAttr };
+                }
+
+                const breakdown = State.pendingRolls._nextModBreakdown || null;
+                delete State.pendingRolls._nextModBreakdown;
+                State.pendingRolls.push({ id: Utils.generateId(), name: charName, stat: statName, mod: modifier, desc: desc, dc: dc, diceType: dt, rolled: false, result: 0, rawRoll: 0, modBreakdown: breakdown });
+            }
+            cleanText = cleanText.replace(probeRegex, '');
+
+            UI.updateActionBox();
+
+            // Semantische Formatierung
+            // Semantische Formatierung
+            cleanText = cleanText.replace(/\[Erfolg:\s*(.*?)\]/gi, '<span class="border border-green-500/50 bg-green-900/30 text-green-300 rounded-lg px-2.5 py-1 font-bold inline-flex items-center align-middle shadow-[0_0_10px_rgba(34,197,94,0.15)] mx-0.5 my-1 backdrop-blur-sm"><i class="fas fa-check text-green-400 mr-1.5"></i> $1</span>');
+            cleanText = cleanText.replace(/\[Scheitern:\s*(.*?)\]/gi, '<span class="border border-red-500/50 bg-red-900/30 text-red-300 rounded-lg px-2.5 py-1 font-bold inline-flex items-center align-middle shadow-[0_0_10px_rgba(239,68,68,0.15)] mx-0.5 my-1 backdrop-blur-sm"><i class="fas fa-times text-red-400 mr-1.5"></i> $1</span>');
+            cleanText = cleanText.replace(/\[Zauber:\s*(.*?)\]/gi, '<span class="border border-blue-400/50 bg-blue-900/30 text-blue-200 rounded-lg px-2.5 py-1 font-bold inline-flex items-center align-middle shadow-[0_0_10px_rgba(59,130,246,0.15)] mx-0.5 my-1 backdrop-blur-sm tracking-wide"><i class="fas fa-magic text-blue-400 mr-2 drop-shadow-[0_0_5px_rgba(96,165,250,0.8)]"></i> $1</span>');
+            cleanText = cleanText.replace(/\[Schaden[\s:]*([^,\]]+)[\s,]+(\d+)\s*\]/gi, (m, name, amt) => `<span class="border border-red-600/50 bg-red-950/50 text-red-300 rounded-lg px-2 py-0.5 font-bold inline-flex items-center align-middle shadow-[inset_0_0_8px_rgba(220,38,38,0.2)] mx-0.5 my-0.5 backdrop-blur-sm"><i class="fas fa-tint text-red-500 mr-1.5"></i> ${name.trim()} <span class="text-white ml-0.5">-${amt} HP</span></span>`);
+            cleanText = cleanText.replace(/\[GegnerSchaden[\s:]*([^,\]]+)[\s,]+(\d+)\s*\]/gi, (m, name, amt) => `<span class="border border-orange-600/50 bg-orange-950/50 text-orange-300 rounded-lg px-2 py-0.5 font-bold inline-flex items-center align-middle shadow-[inset_0_0_8px_rgba(249,115,22,0.2)] mx-0.5 my-0.5 backdrop-blur-sm"><i class="fas fa-bolt text-orange-500 mr-1.5"></i> ${name.trim()} <span class="text-white ml-0.5">-${amt} HP</span></span>`);
+            cleanText = cleanText.replace(/\[Heilung[\s:]*([^,\]]+)[\s,]+(\d+)\s*\]/gi, (m, name, amt) => `<span class="border border-emerald-500/50 bg-emerald-950/50 text-emerald-300 rounded-lg px-2 py-0.5 font-bold inline-flex items-center align-middle shadow-[inset_0_0_8px_rgba(16,185,129,0.2)] mx-0.5 my-0.5 backdrop-blur-sm"><i class="fas fa-heart text-emerald-400 mr-1.5"></i> ${name.trim()} <span class="text-white ml-0.5">+${amt} HP</span></span>`);
+
+            // NEW: Merchant UI Injection directly into the chat
+            cleanText = cleanText.replace(/\[Haendler[\s:]*([^|\]]+)\|\s*(.*?)\]/gi, (m, name, itemsStr) => {
+                const mName = name.trim();
+                const items = itemsStr.split(',').map(s => s.trim());
+
+                let merchantOptions = items.map(it => `<option value="${it.replace(/"/g, '&quot;')}">${it}</option>`).join('');
+
+                let partyOptions = '<option value="">-- Wähle ein Item zum Tausch --</option>';
+                let hasItems = false;
+                State.party.forEach(p => {
+                    if (p.inventory.length > 0) {
+                        hasItems = true;
+                        let uniqueInv = [...new Set(p.inventory)];
+                        partyOptions += `<optgroup label="Inventar von ${p.name}">`;
+                        uniqueInv.forEach(it => {
+                            partyOptions += `<option value="${p.id}|${it.replace(/"/g, '&quot;')}">${it}</option>`;
+                        });
+                        partyOptions += `</optgroup>`;
+                    }
+                });
+                if (!hasItems) partyOptions = '<option value="">Ihr habt keine Items zum Tauschen</option>';
+
+                const safeId = mName.replace(/[^a-zA-Z0-9]/g, '');
+
+                return `<div class="mt-4 block w-full text-left bg-gradient-to-br from-slate-900 to-slate-800 border border-amber-600/40 p-4 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600"></div>
+                    <h4 class="text-amber-400 font-bold text-sm mb-3 border-b border-amber-900/50 pb-2 uppercase tracking-wider cinzel"><i class="fas fa-store mr-2 text-amber-500"></i>Handelsangebot: ${mName}</h4>
+                    <div class="space-y-3 mt-3">
+                        <div class="bg-black/20 p-2 rounded-lg border border-white/5">
+                            <label class="text-[10px] text-amber-600/80 uppercase font-bold tracking-widest"><i class="fas fa-box-open mr-1"></i> Warenangebot:</label>
+                            <select id="trade-want-${safeId}" class="w-full bg-slate-900/80 hover:bg-slate-900 border border-amber-900/40 rounded p-2 text-xs text-amber-100 outline-none focus:border-amber-500 mt-1 transition-colors cursor-pointer shadow-inner">
+                                ${merchantOptions}
+                            </select>
+                        </div>
+                        <div class="bg-black/20 p-2 rounded-lg border border-white/5">
+                            <label class="text-[10px] text-blue-500/80 uppercase font-bold tracking-widest"><i class="fas fa-hand-holding-usd mr-1"></i> Mein Gegenangebot:</label>
+                            <select id="trade-offer-${safeId}" class="w-full bg-slate-900/80 hover:bg-slate-900 border border-blue-900/40 rounded p-2 text-xs text-blue-100 outline-none focus:border-blue-500 mt-1 transition-colors cursor-pointer shadow-inner">
+                                ${partyOptions}
+                            </select>
+                        </div>
+                        <button onclick="App.Engine.proposeTrade('${safeId}', '${mName.replace(/'/g, "\\'")}')" class="w-full bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md mt-2 border border-amber-500 text-white uppercase tracking-wider"><i class="fas fa-handshake mr-2"></i> Handel Vorschlagen</button>
+                    </div>
+                </div>`;
+            });
+
+            cleanText = cleanText.replace(/\[(Gegner|GegnerTot|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht).*?\]/gi, '').trim();
+            cleanText = cleanText.replace(/(?:^|\n)(?:-|\*)\s+([^\n]+)/g, (m, p1) => `<div class="mt-2 block w-full text-left bg-slate-800/60 hover:bg-slate-700/80 border border-slate-600/50 hover:border-indigo-500/50 text-indigo-200 rounded-md px-3 py-2 cursor-pointer transition-all shadow-sm flex items-start gap-2 text-xs group" onclick="App.UI.selectOption('${p1.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')"><i class="fas fa-chevron-right text-indigo-500/70 group-hover:text-indigo-400 mt-0.5 transition-colors"></i> <span class="leading-relaxed">${p1}</span></div>`);
+
+            if (cleanText.length > 0) UI.addChatLog("DM", cleanText);
+            TagParser.process(aiResponse);
+        } catch (e) { UI.addChatLog("System", `⚠️ Fehler: ${e.message}`); }
+        finally {
+            State.isProcessing = false; UI.showLoader(false);
+            // Bestiary update - track from activeEnemies (hp<=0)
+            State.activeEnemies.filter(e => e.hp <= 0).forEach(e => {
+                if (!State.bestiary[e.name]) {
+                    State.bestiary[e.name] = { name: e.name, portrait: e.portrait || null, maxHp: e.maxHp, timesDefeated: 0 };
+                }
+                if (!e._bestiaryCounted) {
+                    State.bestiary[e.name].timesDefeated++;
+                    e._bestiaryCounted = true;
+                }
+            });
+            // Auto-Save
+            try {
+                const saveData = JSON.parse(JSON.stringify(State));
+                saveData._autoSaveTime = new Date().toISOString();
+                localStorage.setItem('infiniteDungeon_autosave', JSON.stringify(saveData));
+            } catch (e) { }
+            UI.updateAll();
+        }
+    },
+
+    chooseRoute: function (route) {
+        DOM.actionBoxContainer.innerHTML = ''; DOM.actionBoxContainer.classList.add('hidden');
+        UI.updateAll();
+        let actionText = `Die Gruppe wählt den Weg: ${route}.`;
+        this.submitPlayerAction(actionText);
+    },
+
+    camp: function () {
+        let actionText = `Die Gruppe schlägt ihr Lager auf, um sich auszuruhen.`;
+        State.fatigue = 0;
+        UI.updateAll();
+        this.submitPlayerAction(actionText);
+    },
+
+    learnTalent: function (charId, talentName) {
+        const char = State.party.find(p => p.id === charId);
+        if (!char || char.pendingTalentPoints <= 0) return;
+        if (!char.talents) char.talents = [];
+        char.talents.push(talentName);
+        char.pendingTalentPoints--;
+        Sound.play('levelup');
+        UI.addChatLog("System", `🌟 **${char.name}** hat die Spezialisierung **${talentName}** erlernt!`);
+        UI.showDetails(charId);
+        UI.updateAll();
+    },
+
+    submitPlayerAction: function (actionOverride) {
+        if (State.pendingRolls.length > 0) return;
+
+        if (State.combatEnded) {
+            State.defeatedEnemies = [];
+            State.combatEnded = false;
+            UI.updateAll();
+        }
+
+        const isStr = typeof actionOverride === 'string';
+        const action = isStr ? actionOverride.trim() : DOM.playerInput.value.trim();
+        if (!action || State.isProcessing) return;
+        if (!isStr) DOM.playerInput.value = "";
+        const actingName = DOM.actingChar.value === 'party' ? 'Die Gruppe' : DOM.actingChar.value;
+        UI.addChatLog(actingName, action);
+
+        State.fatigue = Math.min(20, State.fatigue + 1);
+        UI.updateAll();
+
+        this.interactWithAI(action);
+    },
+
+    proposeTrade: function (safeId, merchantName) {
+        const wantSelect = document.getElementById(`trade-want-${safeId}`);
+        const offerSelect = document.getElementById(`trade-offer-${safeId}`);
+        if (!wantSelect || !offerSelect) return;
+
+        const wantedItem = wantSelect.value;
+        const offerData = offerSelect.value;
+
+        if (!offerData) {
+            UI.addChatLog("System", "⚠️ Wähle zuerst ein Item aus dem Inventar aus, das du anbieten möchtest.");
+            return;
+        }
+
+        const [charId, offeredItem] = offerData.split('|');
+        const char = State.party.find(p => p.id === charId);
+        if (!char) return;
+
+        DOM.actingChar.value = char.name;
+        const msg = `Ich zeige ${merchantName} mein "${offeredItem}" und frage: "Wie viel ist das wert? Reicht das für: ${wantedItem}?"`;
+        DOM.playerInput.value = msg;
+        this.submitPlayerAction();
+    },
+
+    rollSpecific: function (id) {
+        const roll = State.pendingRolls.find(r => r.id === id);
+        if (!roll) return;
+        UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
+            roll.rolled = true; roll.result = result; roll.rawRoll = rawRoll;
+            UI.updateActionBox();
+        }, true, roll.diceType);
+    },
+
+    rollAllPending: async function () {
+        const unrolled = State.pendingRolls.filter(r => !r.rolled);
+        if (unrolled.length === 0 || this._isRollingAll) return;
+
+        this._isRollingAll = true;
+        // Because btn-roll-all is dynamically rendered inside actionBoxContainer, query it here
+        const btn = DOM.actionBoxContainer.querySelector('#btn-roll-all');
+        if (btn) { btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i> Würfeln...`; btn.disabled = true; btn.classList.add('opacity-70'); }
+
+        for (let i = 0; i < unrolled.length; i++) {
+            const roll = unrolled[i];
+            const isLast = i === unrolled.length - 1;
+
+            await new Promise(resolve => {
+                UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
+                    roll.rolled = true; roll.result = result; roll.rawRoll = rawRoll;
+                    UI.updateActionBox(); resolve();
+                }, isLast, roll.diceType);
+            });
+            if (!isLast) await new Promise(r => setTimeout(r, 400));
+        }
+        this._isRollingAll = false;
+    },
+
+    submitPendingRolls: function () {
+        let resText = "Die Würfel sind gefallen:\n";
+        State.pendingRolls.forEach(r => {
+            let dt = r.diceType || 'W20';
+            let modStr;
+            if (r.stat && r.modBreakdown) {
+                const bd = r.modBreakdown;
+                const itemPart = bd.item !== 0 ? ` (Basis ${bd.base}${bd.item >= 0 ? '+' : ''}${bd.item} Items = ${bd.total})` : ` (Basis ${bd.base})`;
+                modStr = `(${r.rawRoll} ${r.mod >= 0 ? '+' : ''}${r.mod} [${r.stat}${itemPart}])`;
+            } else if (r.stat) {
+                modStr = `(${r.rawRoll} ${r.mod >= 0 ? '+' : ''}${r.mod} [${r.stat}])`;
+            } else {
+                modStr = `(${r.rawRoll})`;
+            }
+            resText += `- ${r.name} [${dt}] (${r.desc}): gewürfelt ${modStr} = **${r.result}** vs DC ${r.dc} → ${r.result >= r.dc ? '✅ Erfolg' : '❌ Fehlschlag'}\n`;
+        });
+        State.pendingRolls = []; UI.updateActionBox();
+        UI.addChatLog("🎲 System", resText);
+        this.interactWithAI(`[Würfelergebnisse]\n${resText}\nBitte beschreibe basierend darauf die Konsequenzen.`);
+    },
+
+    submitManualDiceRoll: function () {
+        const r = DOM.diceResult.innerText;
+        const name = DOM.diceRollerName.innerText;
+        DOM.diceModal.classList.add('hidden');
+        const pendingAction = DOM.playerInput.value.trim();
+        if (pendingAction) {
+            UI.addChatLog(name, `${pendingAction} [🎲 ${r}]`);
+            DOM.playerInput.value = "";
+            this.interactWithAI(`${pendingAction}. [${name} würfelt eine ${r}]`);
+        } else {
+            this.interactWithAI(`[${name} würfelt frei eine ${r}]`);
+        }
+    },
+
+    askOracle: function () { DOM.oracleInput.value = ""; DOM.oracleModal.classList.remove('hidden'); setTimeout(() => DOM.oracleInput.focus(), 100); },
+    submitOracle: async function () {
+        const q = DOM.oracleInput.value.trim();
+        if (!q) return;
+        DOM.oracleModal.classList.add('hidden');
+        UI.showLoader(true, "Orakel...");
+        try {
+            const ans = await API.generateText(q, "Antworte extrem kurz.");
+            UI.addChatLog("✨ Orakel", ans);
+        } catch (e) { } finally { UI.showLoader(false); }
+    },
+    generatePlotTwist: async function () {
+        UI.showLoader(true, "Schicksal weben...");
+        try {
+            const twistText = await API.generateText(`Twist für: ${State.lastStoryPart}`, "Dramaturg");
+            UI.addChatLog("✨ Schicksal", twistText);
+        } catch (e) { } finally { UI.showLoader(false); }
+    },
+
+    generatePortrait: async function () {
+        const a = DOM.newAppearance.value, c = DOM.newClass.value;
+        DOM.genImgBtn.innerText = "⏳";
+        const prompt = `Fantasy portrait, face only, highly detailed, ${c}${a ? ', ' + a : ''}`.replace(/\n/g, ' ').trim();
+        State.tempImagePrompt = prompt;
+
+        let pData = await API.generateImageWithFallbacks([
+            prompt,
+            `Fantasy portrait, ${c}${a ? ', ' + a : ''}`,
+            `Fantasy portrait, ${c}`
+        ]);
+
+        State.tempPortraitData = pData;
+
+        if (State.tempPortraitData) {
+            DOM.generatedPortrait.src = State.tempPortraitData;
+            DOM.portraitPreview.classList.remove('hidden');
+        } else {
+            DOM.portraitPreview.classList.add('hidden');
+        }
+
+        DOM.saveCharBtn.disabled = false; DOM.saveCharBtn.classList.remove('opacity-50');
+        DOM.genImgBtn.innerText = State.imageQuotaExceeded ? "Ohne Porträt ✨" : "Porträt ✨";
+    },
+
+    finalizeCharacter: function () {
+        const name = DOM.newName.value; const cls = DOM.newClass.value;
+        const preset = PRESETS[name]; const attrs = preset ? { ...preset.attributes } : { STR: 10, DEX: 10, INT: 10, CON: 10 };
+        State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name: name, class: cls, hp: 20, maxHp: 20, portrait: State.tempPortraitData, imagePrompt: State.tempImagePrompt, inventory: [DOM.startItem.value], isNPC: false, attributes: attrs }));
+        State.tempPortraitData = ""; State.tempImagePrompt = ""; UI.closeCreator(); UI.updateAll();
+    },
+
+    generateNPC: async function () {
+        if (State.party.length === 0) return; UI.showLoader(true, "NPC wird rekrutiert...");
+        try {
+            let aiText = await API.generateText(`Erstelle einen passenden NPC-Begleiter für diese Szene: "${State.lastStoryPart}".`, "Du bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown. Nutze ZWINGEND diese exakten Keys: {\"name\": \"Name\", \"class\": \"Klasse\", \"appearance\": \"Kurze optische Beschreibung\"}");
+            const match = aiText.match(/\{[\s\S]*\}/);
+            if (!match) throw new Error("Konnte kein JSON extrahieren.");
+            const npcData = JSON.parse(match[0]);
+
+            const npcName = npcData.name || npcData.Name || npcData.NAME || "Unbekannter Reisender";
+            const npcClass = npcData.class || npcData.Klasse || npcData.klasse || "Abenteurer";
+            const npcApp = npcData.appearance || npcData.Aussehen || npcData.aussehen || "Gestalt";
+
+            let imgPrompt = `Fantasy portrait, face only, highly detailed, ${npcClass}, ${npcApp}`.replace(/\n/g, ' ').trim();
+            let pUrl = await API.generateImageWithFallbacks([
+                imgPrompt,
+                `Fantasy portrait, ${npcClass}, ${npcApp}`,
+                `Fantasy portrait, face only, highly detailed, ${npcClass}`
+            ]);
+
+            State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name: npcName, class: npcClass, hp: 20, maxHp: 20, portrait: pUrl, imagePrompt: imgPrompt, inventory: [], isNPC: true }));
+            UI.addChatLog("System", `✨ NPC **${npcName}** schließt sich der Gruppe an!`);
+            UI.updateAll();
+        } catch (e) {
+            UI.addChatLog("System", `⚠️ NPC konnte nicht generiert werden (${e.message}). Bitte erneut versuchen.`);
+        } finally {
+            UI.showLoader(false);
+        }
+    },
+
+    spawnNPCFromTag: async function (name, cls, app) {
+        UI.addChatLog("System", `⏳ **${name}** tritt der Gruppe bei...`);
+        try {
+            let imgPrompt = `Fantasy portrait, face only, highly detailed, ${cls}, ${app}`.replace(/\n/g, ' ');
+            let p = await API.generateImageWithFallbacks([
+                imgPrompt,
+                `Fantasy portrait, face only, highly detailed, ${cls}`
+            ]);
+            State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name, class: cls, hp: 20, maxHp: 20, portrait: p, inventory: [], isNPC: true }));
+            UI.addChatLog("System", `✨ **${name}** schließt sich der Gruppe an!`);
+            UI.updateAll();
+        } catch (e) { }
+    },
+
+    checkEnemies: function () {
+        if (State.activeEnemies.length === 0) {
+            UI.addChatLog("System", "👁️ **Feindstatus:** Aktuell sind keine lebenden Feinde in Sicht.");
+            return;
+        }
+        let statusText = "👁️ **Feindstatus:**\n";
+        State.activeEnemies.forEach(e => {
+            const healthPercent = (e.hp / e.maxHp) * 100;
+            let healthDesc = "Gesund";
+            if (healthPercent <= 0) healthDesc = "Tot";
+            else if (healthPercent <= 25) healthDesc = "Schwer verwundet";
+            else if (healthPercent <= 50) healthDesc = "Verwundet";
+            else if (healthPercent <= 75) healthDesc = "Leicht verletzt";
+
+            statusText += `- **${e.name}**: ${e.hp} / ${e.maxHp} HP (${healthDesc})\n`;
+        });
+        UI.addChatLog("System", statusText);
+    },
+
+    assignLoot: function (i, cid) { const c = State.party.find(p => p.id === cid); if (c && State.lootDrops[i]) { c.inventory.push(State.lootDrops[i]); State.lootDrops.splice(i, 1); UI.updateAll(); } },
+    collectAllLoot: function (cid) {
+        const c = State.party.find(p => p.id === cid);
+        if (c && State.lootDrops.length > 0) {
+            c.inventory.push(...State.lootDrops);
+            State.lootDrops = [];
+            UI.addChatLog("System", `🎒 **${c.name}** hat die gesamte Beute eingesammelt.`);
+            UI.updateAll();
+        }
+    },
+
+    leaveMerchant: function () { State.activeMerchant = null; UI.updateAll(); UI.addChatLog("System", "Ihr wendet euch vom Händler ab."); },
+
+    handleItemClick: function (cid, itemName, isEquipped = false, count = 1) {
+        const c = State.party.find(p => p.id === cid); if (!c) return;
+        DOM.itemActionTitle.innerText = itemName;
+        DOM.itemActionCid.value = cid;
+        DOM.itemActionName.value = itemName;
+        DOM.itemActionIsEquipped.value = isEquipped;
+
+        const amountContainer = document.getElementById('item-action-amount-container');
+        const maxCountInput = document.getElementById('item-action-max-count');
+        const numInput = document.getElementById('item-action-amount');
+        const slider = document.getElementById('item-action-slider');
+
+        if (amountContainer) {
+            if (count > 1 && !isEquipped) {
+                amountContainer.classList.remove('hidden');
+                maxCountInput.value = count;
+                numInput.max = count; numInput.value = 1;
+                slider.max = count; slider.value = 1;
+            } else {
+                amountContainer.classList.add('hidden');
+                maxCountInput.value = 1;
+                numInput.max = 1; numInput.value = 1;
+                slider.max = 1; slider.value = 1;
+            }
+        }
+
+        if (isEquipped) {
+            DOM.modalInvActions.classList.add('hidden');
+            DOM.modalEqActions.classList.remove('hidden');
+        } else {
+            DOM.modalInvActions.classList.remove('hidden');
+            DOM.modalEqActions.classList.add('hidden');
+
+            const others = State.party.filter(p => p.id !== cid && !p.isSummon);
+            if (others.length > 0) {
+                DOM.itemActionTarget.innerHTML = others.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+                DOM.itemActionTarget.disabled = false;
+            } else {
+                DOM.itemActionTarget.innerHTML = `<option value="">Niemand da</option>`;
+                DOM.itemActionTarget.disabled = true;
+            }
+
+            if (State.activeMerchant && DOM.btnOfferItem) {
+                DOM.btnOfferItem.classList.remove('hidden');
+            } else if (DOM.btnOfferItem) {
+                DOM.btnOfferItem.classList.add('hidden');
+            }
+        }
+        DOM.itemActionModal.classList.remove('hidden');
+    },
+    confirmDropItem: function () {
+        const amt = parseInt(document.getElementById('item-action-amount')?.value) || 1;
+        if (confirm(`Bist du sicher, dass du ${amt}x dieses Item unwiderruflich wegwerfen möchtest?`)) {
+            const cid = DOM.itemActionCid.value;
+            const itemName = DOM.itemActionName.value;
+            const c = State.party.find(p => p.id === cid);
+            if (c) {
+                for (let i = 0; i < amt; i++) {
+                    const idx = c.inventory.indexOf(itemName);
+                    if (idx > -1) c.inventory.splice(idx, 1);
+                }
+                UI.addChatLog("System", `🗑️ **${c.name}** hat **${amt}x ${itemName}** weggeworfen.`);
+            }
+            DOM.itemActionModal.classList.add('hidden');
+            UI.showDetails(cid); UI.updateAll();
+        }
+    },
+    confirmUseItem: function () {
+        const amt = parseInt(document.getElementById('item-action-amount')?.value) || 1;
+        const cid = DOM.itemActionCid.value;
+        const itemName = DOM.itemActionName.value;
+        const c = State.party.find(p => p.id === cid);
+        DOM.itemActionModal.classList.add('hidden');
+        DOM.playerInput.value = `Nutzt ${amt > 1 ? amt + 'x ' : ''}${itemName} `;
+        DOM.actingChar.value = c.name;
+        UI.hideDetails();
+        DOM.playerInput.focus();
+    },
+    confirmGiveItem: function () {
+        const amt = parseInt(document.getElementById('item-action-amount')?.value) || 1;
+        const cid = DOM.itemActionCid.value;
+        const targetId = DOM.itemActionTarget.value;
+        const itemName = DOM.itemActionName.value;
+        if (!targetId) return;
+
+        const fromChar = State.party.find(p => p.id === cid);
+        const toChar = State.party.find(p => p.id === targetId);
+
+        if (fromChar && toChar) {
+            for (let i = 0; i < amt; i++) {
+                const idx = fromChar.inventory.indexOf(itemName);
+                if (idx > -1) {
+                    fromChar.inventory.splice(idx, 1);
+                    toChar.inventory.push(itemName);
+                }
+            }
+            const effMax = PartyManager.getEffectiveMaxHp(fromChar);
+            if (fromChar.hp > effMax) fromChar.hp = effMax;
+
+            UI.addChatLog("System", `🤝 **${fromChar.name}** übergibt **${amt}x ${itemName}** an **${toChar.name}**.`);
+            DOM.itemActionModal.classList.add('hidden');
+            UI.showDetails(cid); UI.updateAll();
+        }
+    },
+    confirmOfferItem: function () {
+        const cid = DOM.itemActionCid.value;
+        const itemName = DOM.itemActionName.value;
+        const c = State.party.find(p => p.id === cid);
+        DOM.itemActionModal.classList.add('hidden');
+        if (c && State.activeMerchant) {
+            DOM.actingChar.value = c.name;
+            DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? Können wir tauschen?"`;
+            UI.hideDetails();
+            DOM.playerInput.focus();
+        }
+    },
+    confirmEquipItem: function () {
+        const cid = DOM.itemActionCid.value;
+        const itemName = DOM.itemActionName.value;
+        const c = State.party.find(p => p.id === cid);
+        if (c) {
+            const idx = c.inventory.indexOf(itemName);
+            if (idx > -1) {
+                const oldMax = PartyManager.getEffectiveMaxHp(c);
+                c.inventory.splice(idx, 1);
+                c.equipment = c.equipment || [];
+
+                // Limit auf 10 ausgerüstete Items
+                if (c.equipment.length >= 10) {
+                    const unequippedItem = c.equipment.shift(); // Ältestes Item entfernen
+                    c.inventory.push(unequippedItem); // Zurück ins Inventar
+                    UI.addChatLog("System", `🎒 **${c.name}** hat das Ausrüstungslimit (10) erreicht und legt automatisch **${unequippedItem}** ab.`);
+                }
+
+                c.equipment.push(itemName);
+
+                const newMax = PartyManager.getEffectiveMaxHp(c);
+                if (newMax > oldMax) {
+                    c.hp += (newMax - oldMax);
+                } else if (newMax < oldMax) {
+                    // HP reduzieren, falls ein CON-Item beim Swap abgelegt wurde
+                    c.hp -= (oldMax - newMax);
+                    if (c.hp <= 0) c.hp = 1;
+                }
+
+                UI.addChatLog("System", `🛡️ **${c.name}** rüstet **${itemName}** aus.`);
+            }
+        }
+        DOM.itemActionModal.classList.add('hidden');
+        UI.showDetails(cid); UI.updateAll();
+    },
+    confirmUnequipItem: function () {
+        const cid = DOM.itemActionCid.value;
+        const itemName = DOM.itemActionName.value;
+        const c = State.party.find(p => p.id === cid);
+        if (c) {
+            const idx = c.equipment.indexOf(itemName);
+            if (idx > -1) {
+                const oldMax = PartyManager.getEffectiveMaxHp(c);
+                c.equipment.splice(idx, 1);
+                c.inventory.push(itemName);
+
+                const newMax = PartyManager.getEffectiveMaxHp(c);
+                if (newMax < oldMax) {
+                    c.hp -= (oldMax - newMax);
+                    if (c.hp <= 0) c.hp = 1;
+                }
+                UI.addChatLog("System", `🎒 **${c.name}** legt **${itemName}** ab.`);
+            }
+        }
+        DOM.itemActionModal.classList.add('hidden');
+        UI.showDetails(cid); UI.updateAll();
+    },
+
+    startCrafting: function (cid) {
+        State.activeCrafterId = cid || null;
+        State.craftingIngredients = [];
+        DOM.craftingModal.classList.remove('hidden');
+        UI.renderCraftingModal();
+    },
+    addCraftingIngredient: function (charId, itemName) {
+        State.craftingIngredients.push({ charId, itemName });
+        UI.renderCraftingModal();
+    },
+    removeCraftingIngredient: function (index) {
+        State.craftingIngredients.splice(index, 1);
+        UI.renderCraftingModal();
+    },
+    suggestCrafting: async function () {
+        if (State.craftingIngredients.length === 0) {
+            UI.addChatLog("System", "⚠️ Bitte wähle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.");
+            return;
+        }
+        const btn = document.getElementById('btn-craft-suggest');
+        if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
+
+        const materials = State.craftingIngredients.map(ing => ing.itemName).join(', ');
+
+        try {
+            let aiText = await API.generateText(`Erfinde einen passenden, gut ausbalancierten Gegenstand, der logisch aus diesen Zutaten hergestellt werden kann: [${materials}]. WICHTIG: Wenn die Zutaten bereits starke Werte oder Fähigkeiten haben, soll dein vorgeschlagener Gegenstand diese Werte logischerweise übernehmen oder ganz leicht verbessern. \n\nDu bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown oder Codeblock-Tags. Nutze ZWINGEND diese exakten Keys: {"name": "Gegenstandsname", "str": Zahl, "dex": Zahl, "int": Zahl, "con": Zahl}. Wähle 1-2 passende weise Attribute aus (Wert 1-3 oder höher falls die Zutaten es rechtfertigen), die anderen 0.`);
+
+            const match = aiText.match(/\{[\s\S]*\}/);
+            if (!match) throw new Error("Konnte kein JSON aus Antwort extrahieren.");
+            const data = JSON.parse(match[0]);
+
+            DOM.craftTargetItem.value = data.name || "Mysterium";
+            const elStr = document.getElementById('craft-stat-str');
+            const elDex = document.getElementById('craft-stat-dex');
+            const elInt = document.getElementById('craft-stat-int');
+            const elCon = document.getElementById('craft-stat-con');
+
+            if (elStr) elStr.value = data.str > 0 ? data.str : "";
+            if (elDex) elDex.value = data.dex > 0 ? data.dex : "";
+            if (elInt) elInt.value = data.int > 0 ? data.int : "";
+            if (elCon) elCon.value = data.con > 0 ? data.con : "";
+
+        } catch (e) {
+            UI.addChatLog("System", `⚠️ KI Konnte keinen Vorschlag generieren: ${e.message}`);
+        } finally {
+            if (btn) { btn.innerHTML = '<i class="fas fa-magic mr-1"></i>Vorschlag'; btn.disabled = false; }
+        }
+    },
+    submitCrafting: function () {
+        let target = DOM.craftTargetItem.value.trim();
+        if (!target || State.craftingIngredients.length === 0) return;
+
+        const elStr = document.getElementById('craft-stat-str');
+        const elDex = document.getElementById('craft-stat-dex');
+        const elInt = document.getElementById('craft-stat-int');
+        const elCon = document.getElementById('craft-stat-con');
+
+        const str = parseInt(elStr ? elStr.value : 0) || 0;
+        const dex = parseInt(elDex ? elDex.value : 0) || 0;
+        const int = parseInt(elInt ? elInt.value : 0) || 0;
+        const con = parseInt(elCon ? elCon.value : 0) || 0;
+
+        const stats = [];
+        if (str > 0) stats.push(`+${str} STR`);
+        if (dex > 0) stats.push(`+${dex} DEX`);
+        if (int > 0) stats.push(`+${int} INT`);
+        if (con > 0) stats.push(`+${con} CON`);
+
+        if (stats.length > 0) {
+            target += ` (${stats.join(', ')})`;
+        }
+
+        const materials = State.craftingIngredients.map(ing => `1x ${ing.itemName} (von ${State.party.find(p => p.id === ing.charId)?.name || 'Unbekannt'})`).join(', ');
+
+        let crafter = State.party.find(p => p.id === State.activeCrafterId);
+        if (!crafter && State.party.length > 0) crafter = State.party[0];
+        const crafterName = crafter ? crafter.name : 'Ein Gruppenmitglied';
+
+        const msg = `Ich (${crafterName}) möchte aus den gesammelten Materialien [${materials}] auf Basis meiner Fähigkeiten folgenden Gegenstand verzaubern/schmieden: "${target}".\n\nBitte fordere mich GANZ EXPLIZIT im nächsten Schritt zu einer [Probe: ${crafterName} | Intelligenz (Crafting)] auf! Die Difficulty Class (DC) bestimmst du passend zur Schwere dieses Eingriffs. WICHTIG: Wenn die verwendeten Materialien bereits starke magische Werte oder Spezifikationen besitzen, mach die DC NICHT schwerer, da die Magie/Macht ja bereits in den Zutaten steckt und nur umgeformt wird! Entscheide ERST NACH meinem Wurf über Erfolg oder Misserfolg des Gegenstandes. Füge bei Erfolg 1-2 passende Zusatzfähigkeiten passend zur Zutatenkombination (+ Stats) hinzu. (WICHTIGE DM-ANWEISUNG: Verwende ein [Verbraucht: ...] Tag AUSSCHLIESSLICH exakt für die genannten Zutaten hier! Zerstöre niemals andere Waffen/Ausrüstung!)`;
+
+        DOM.craftingModal.classList.add('hidden');
+        DOM.craftTargetItem.value = "";
+        if (elStr) elStr.value = "";
+        if (elDex) elDex.value = "";
+        if (elInt) elInt.value = "";
+        if (elCon) elCon.value = "";
+        State.craftingIngredients = [];
+
+        DOM.actingChar.value = crafter ? crafter.name : 'party';
+        DOM.playerInput.value = msg;
+        this.submitPlayerAction();
+    },
+    replaceAbility: function (idx) {
+        if (!State.pendingAbilityLearning) return;
+        const c = State.party.find(p => p.id === State.pendingAbilityLearning.charId);
+        if (c && c.abilities[idx]) {
+            const oldAb = c.abilities[idx];
+            c.abilities[idx] = State.pendingAbilityLearning.newAbility;
+            UI.addChatLog("System", `🔄 **${c.name}** hat die alte Fähigkeit **${oldAb}** vergessen und dafür **${State.pendingAbilityLearning.newAbility}** erlernt!`);
+        }
+        State.pendingAbilityLearning = null;
+        document.getElementById('ability-replace-modal').classList.add('hidden');
+        UI.updateAll();
+    },
+    declineNewAbility: function () {
+        if (!State.pendingAbilityLearning) return;
+        const c = State.party.find(p => p.id === State.pendingAbilityLearning.charId);
+        if (c) {
+            UI.addChatLog("System", `❌ **${c.name}** hat entschieden, **${State.pendingAbilityLearning.newAbility}** doch nicht zu erlernen.`);
+        }
+        State.pendingAbilityLearning = null;
+        document.getElementById('ability-replace-modal').classList.add('hidden');
+    },
+    saveApiSettings: function () {
+        const provider = document.getElementById('api-provider-select').value;
+        localStorage.setItem('api_provider', provider);
+        localStorage.setItem('api_key_gemini', document.getElementById('api-key-gemini').value.trim());
+        localStorage.setItem('api_key_chatgpt', document.getElementById('api-key-chatgpt').value.trim());
+        localStorage.setItem('api_key_openrouter', document.getElementById('api-key-openrouter').value.trim());
+        localStorage.setItem('api_model_or_text', document.getElementById('api-model-or-text').value.trim() || 'google/gemini-2.5-flash');
+
+        // Only save image model if explicitly provided, otherwise leave empty for fallback.
+        localStorage.setItem('api_model_or_image', document.getElementById('api-model-or-image').value.trim());
+
+        document.getElementById('api-settings-modal').classList.add('hidden');
+        UI.addChatLog("System", "🔌 API-Einstellungen gespeichert!");
+    },
+    savePrompt: function () {
+        const inputEl = document.getElementById('new-prompt-input');
+        const pt = inputEl.value.trim();
+        if (pt) {
+            State.savedPrompts = State.savedPrompts || [];
+            State.savedPrompts.push(pt);
+            inputEl.value = "";
+            App.UI.renderPromptManager();
+        }
+    },
+    insertPrompt: function (idx) {
+        const promptText = (State.savedPrompts || [])[idx];
+        if (!promptText) return;
+        document.getElementById('player-input').value = promptText;
+        document.getElementById('prompt-manager-modal').classList.add('hidden');
+        document.getElementById('player-input').focus();
+    },
+    playPrompt: function (idx) {
+        const promptText = (State.savedPrompts || [])[idx];
+        if (!promptText) return;
+        document.getElementById('player-input').value = promptText;
+        document.getElementById('prompt-manager-modal').classList.add('hidden');
+        this.submitPlayerAction();
+    },
+    deletePrompt: function (idx) {
+        if (State.savedPrompts && State.savedPrompts[idx]) {
+            State.savedPrompts.splice(idx, 1);
+            App.UI.renderPromptManager();
+        }
+    },
+    useAbility: function (cid, abilityName, isItemAbility = false) {
+        const c = State.party.find(p => p.id === cid);
+        const ab = abilityName || c.ability;
+        if (c && ab) {
+            // Cooldown-Check
+            let cdKey = `${c.id}_${ab}`;
+            if (State.abilityCooldowns[cdKey]) {
+                UI.addChatLog("System", `⏳ **${ab}** ist noch **${State.abilityCooldowns[cdKey]} Runden** auf Abklingzeit!`);
+                return;
+            }
+            // Summon limit: max 1 creature per summoning ability
+            const abLower = ab.toLowerCase();
+            const isSummonAbility = abLower.includes('beschw') || abLower.includes('summon') || abLower.includes('kreatur') || abLower.includes('herbeiruf');
+            if (isSummonAbility) {
+                const existingSummon = State.party.find(p => p.isSummon && p._summonSource === ab);
+                if (existingSummon) {
+                    UI.addChatLog("System", "Bereits eine Kreatur aus **" + ab + "** aktiv! Nur 1 Wesen pro Beschw" + String.fromCharCode(0x00F6) + "rung.");
+                    return;
+                }
+            }
+            DOM.actingChar.value = c.name;
+            const currentInput = DOM.playerInput.value.trim();
+            const src = isItemAbility ? 'Item-Fähigkeit' : 'Fähigkeit';
+            DOM.playerInput.value = currentInput + ` Ich setze meine ${src}: "${ab}" ein. `;
+
+            // Auto-set 50 round cooldown for summon abilities
+            if (isSummonAbility) {
+                let cdKey2 = c.id + '_' + ab;
+                State.abilityCooldowns[cdKey2] = 50;
+            }
+            DOM.playerInput.focus();
+            UI.hideDetails();
+        }
+    },
+    upgradeStat: function (cid, key) { const c = State.party.find(p => p.id === cid); if (c && c.statPoints > 0) { c.attributes[key]++; c.statPoints--; UI.showDetails(cid); UI.updateAll(); } },
+    removeCharacter: function (id) { const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); } },
+    exportHero: function (id) { const c = State.party.find(p => p.id === id); if (!c) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(c)], { type: 'application/json' })); a.download = `Hero_${c.name}.json`; document.body.appendChild(a); a.click(); },
+    bulkExportHeroes: async function () {
+        const heroes = State.party.filter(p => !p.isSummon);
+        if (heroes.length === 0) {
+            UI.addChatLog("System", "⚠️ Keine Helden zum Exportieren vorhanden.");
+            return;
+        }
+        const now = new Date();
+        const pad = n => n.toString().padStart(2, '0');
+        const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+
+        for (let i = 0; i < heroes.length; i++) {
+            const c = heroes[i];
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([JSON.stringify(c)], { type: 'application/json' }));
+            a.download = `Hero_${c.name}_${ts}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            await new Promise(r => setTimeout(r, 250)); // Kurze Verzögerung, um Browser-Blockade bei multiplen Downloads zu umgehen
+        }
+        UI.addChatLog("System", `💾 **${heroes.length} Helden** wurden erfolgreich exportiert (Sammel-Download).`);
+    },
+    downloadSave: function () { const now = new Date(); const pad = n => n.toString().padStart(2, '0'); const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(State)], { type: 'application/json' })); a.download = `InfiniteDungeon_${ts}.json`; document.body.appendChild(a); a.click(); },
+    importSave: function (e) { if (!e.target.files[0]) return; const r = new FileReader(); r.onload = (ev) => { Object.assign(State, JSON.parse(ev.target.result)); State.targetMapMode = false; State.party = State.party.map(c => Utils.sanitizeCharacter(c)); UI.toggleViews(State.gameStarted); UI.updateAll(); }; r.readAsText(e.target.files[0]); e.target.value = ""; },
+    importHero: function (e) { if (!e.target.files[0]) return; const r = new FileReader(); r.onload = (ev) => { try { const h = JSON.parse(ev.target.result); h.id = Utils.generateId(); State.party.push(Utils.sanitizeCharacter(h)); UI.updateAll(); } catch (err) { } }; r.readAsText(e.target.files[0]); e.target.value = ""; }
+};
+
+/* ==========================================
+   9. INITIALIZATION
+   ========================================== */
+const init = () => {
+    initDOM();
+
+    // Auto-Save Recovery
+    const autoSave = localStorage.getItem('infiniteDungeon_autosave');
+    if (autoSave) {
+        try {
+            const saved = JSON.parse(autoSave);
+            if (saved.party && saved.party.length > 0 && saved.gameStarted) {
+                const time = saved._autoSaveTime ? new Date(saved._autoSaveTime).toLocaleString('de-DE') : 'Unbekannt';
+                if (confirm('Auto-Save gefunden (' + time + ').\nFortsetzen?')) {
+                    Object.keys(saved).forEach(k => { if (k !== '_autoSaveTime') State[k] = saved[k]; });
+                    DOM.storyLog.querySelector('#lobby-view')?.classList.add('hidden');
+                    DOM.actionArea?.classList.remove('hidden');
+                }
+            }
+        } catch (e) { }
+    }
+
+    UI.updateAll();
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.fixed:not(.hidden)').forEach(m => m.classList.add('hidden'));
+        }
+        if (e.key === 'z' && e.ctrlKey) {
+            e.preventDefault();
+            App.Engine.undoLastAction();
+        }
+    });
+    document.addEventListener('click', (e) => {
+        if (State.soundEnabled) {
+            Sound.getCtx().resume();
+            if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.cursor-pointer')) {
+                Sound.play('click');
+            }
+        }
+    });
+    document.addEventListener('keydown', () => { if (State.soundEnabled) Sound.getCtx().resume(); }, { once: true });
+};
+
+// Run init internally
+init();
+window.App = { Engine, UI, Utils, API, State, Weather: typeof Weather !== 'undefined' ? Weather : null };
