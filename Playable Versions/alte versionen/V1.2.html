@@ -141,6 +141,77 @@
                 transform: scale(1.05) translateY(-5px);
             }
         }
+
+        /* Journal & Stats */
+        .tab-btn {
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            border-bottom-color: #a855f7;
+            color: #c084fc;
+        }
+
+        .stat-bar {
+            height: 4px;
+            border-radius: 2px;
+            background: #1e293b;
+        }
+
+        .stat-bar-fill {
+            height: 4px;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .journal-entry {
+            border-left: 2px solid #7c3aed;
+            padding-left: 10px;
+            margin-bottom: 10px;
+        }
+
+        .combat-action {
+            animation: slideIn 0.2s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        #sound-toggle {
+            transition: all 0.2s;
+        }
+
+        .sound-on {
+            color: #a3e635;
+        }
+
+        .sound-off {
+            color: #64748b;
+        }
+
+        .crit-flash {
+            animation: critFlash 0.5s ease-out;
+        }
+
+        @keyframes critFlash {
+            0% {
+                background: rgba(234, 179, 8, 0.3);
+            }
+
+            100% {
+                background: transparent;
+            }
+        }
     </style>
 </head>
 
@@ -151,10 +222,13 @@
     <!-- ========================================== -->
     <header class="p-4 border-b border-purple-900 bg-slate-900 flex justify-between items-center shadow-lg z-50">
         <h1 class="text-xl md:text-2xl font-bold text-purple-400 glow-text">INFINITE DUNGEONS</h1>
-        <div class="flex gap-3 items-center">
+        <div class="flex gap-2 items-center">
             <button onclick="App.Engine.setCustomApiKey()"
                 class="bg-slate-800/80 hover:bg-slate-700 px-3 py-2 rounded-lg text-xs font-medium border border-slate-600/50 hover:border-slate-400 shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(148,163,184,0.4)] transition-all duration-300 backdrop-blur-sm inline-flex items-center gap-1"
                 title="Eigenen API Key eintragen">🔑 Key</button>
+            <button id="sound-toggle" onclick="App.Engine.toggleSound()"
+                class="bg-slate-800/80 hover:bg-slate-700 px-3 py-2 rounded-lg text-xs font-medium border border-slate-600/50 hover:border-slate-400 shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(148,163,184,0.4)] transition-all duration-300 backdrop-blur-sm sound-on"
+                title="Sound an/aus">🔊</button>
             <button onclick="App.Engine.downloadSave()"
                 class="bg-slate-800/80 hover:bg-slate-700 px-3 py-2 rounded-lg text-xs font-medium border border-slate-600/50 hover:border-slate-400 shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(148,163,184,0.4)] transition-all duration-300 backdrop-blur-sm inline-flex items-center gap-1">💾
                 Welt
@@ -296,19 +370,52 @@
                             Held</button>
                     </div>
                 </div>
-                <div id="party-list" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1"></div>
 
-                <div id="char-details"
-                    class="hidden parchment p-3 rounded-lg space-y-3 border-amber-900/30 border fade-in overflow-y-auto custom-scrollbar flex-1 pr-1">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                        <button onclick="App.UI.hideDetails()"
-                            class="text-xs text-slate-400 hover:text-white transition-colors duration-300 px-2 py-1 flex items-center gap-1"><i
-                                class="fas fa-chevron-left text-[10px]"></i> Zurück</button>
-                        <button id="export-hero-btn"
-                            class="text-xs bg-amber-700/60 hover:bg-amber-600/80 border border-amber-500/50 px-2.5 py-1 rounded-lg shadow-[0_0_8px_rgba(245,158,11,0.3)] hover:shadow-[0_0_12px_rgba(245,158,11,0.5)] transition-all duration-300">Export
-                            <i class="fas fa-download ml-1"></i></button>
+                <!-- Sidebar Tabs -->
+                <div class="flex border-b border-slate-700 mb-2 text-[10px]">
+                    <button class="tab-btn active px-3 py-1.5 text-slate-300" onclick="App.UI.switchTab('party')"
+                        id="tab-party">👥 Gruppe</button>
+                    <button class="tab-btn px-3 py-1.5 text-slate-400" onclick="App.UI.switchTab('journal')"
+                        id="tab-journal">📖 Journal</button>
+                    <button class="tab-btn px-3 py-1.5 text-slate-400" onclick="App.UI.switchTab('stats')"
+                        id="tab-stats">📊 Stats</button>
+                </div>
+
+                <div id="tab-content-party" class="flex flex-col overflow-hidden flex-1">
+                    <div id="party-list" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1"></div>
+
+                    <div id="char-details"
+                        class="hidden parchment p-3 rounded-lg space-y-3 border-amber-900/30 border fade-in overflow-y-auto custom-scrollbar flex-1 pr-1">
+                        <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                            <button onclick="App.UI.hideDetails()"
+                                class="text-xs text-slate-400 hover:text-white transition-colors duration-300 px-2 py-1 flex items-center gap-1"><i
+                                    class="fas fa-chevron-left text-[10px]"></i> Zurück</button>
+                            <button id="export-hero-btn"
+                                class="text-xs bg-amber-700/60 hover:bg-amber-600/80 border border-amber-500/50 px-2.5 py-1 rounded-lg shadow-[0_0_8px_rgba(245,158,11,0.3)] hover:shadow-[0_0_12px_rgba(245,158,11,0.5)] transition-all duration-300">Export
+                                <i class="fas fa-download ml-1"></i></button>
+                        </div>
+                        <div id="details-content"></div>
                     </div>
-                    <div id="details-content"></div>
+                </div>
+
+                <div id="tab-content-journal" class="hidden flex-col overflow-hidden flex-1">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] text-slate-500 uppercase tracking-wider">Automatisches Journal</span>
+                        <button onclick="App.Engine.generateJournalEntry()"
+                            class="text-[9px] bg-purple-900/50 hover:bg-purple-800/60 border border-purple-700/50 text-purple-300 px-2 py-0.5 rounded">✨
+                            Update</button>
+                    </div>
+                    <div id="journal-content"
+                        class="overflow-y-auto custom-scrollbar flex-1 space-y-2 text-[11px] text-slate-300">
+                        <p class="text-slate-500 italic">Noch keine Einträge. Beginne ein Abenteuer!</p>
+                    </div>
+                </div>
+
+                <div id="tab-content-stats" class="hidden flex-col overflow-hidden flex-1">
+                    <div id="stats-content"
+                        class="overflow-y-auto custom-scrollbar flex-1 text-[11px] text-slate-300 space-y-3">
+                        <p class="text-slate-500 italic">Noch keine Session-Daten.</p>
+                    </div>
                 </div>
             </div>
 
@@ -549,9 +656,43 @@
 
             <div class="mt-4 shrink-0">
                 <label class="text-[10px] font-bold text-indigo-400 uppercase">Was wollt ihr erschaffen?</label>
-                <input type="text" id="craft-target-item"
-                    class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white focus:border-indigo-500 outline-none mt-1"
-                    placeholder="z.B. Flammenschwert (+2 STR)">
+                <div class="flex gap-2 items-center mt-1">
+                    <input type="text" id="craft-target-item"
+                        class="flex-1 bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white focus:border-indigo-500 outline-none"
+                        placeholder="z.B. Flammenschwert">
+                    <button id="btn-craft-suggest" onclick="App.Engine.suggestCrafting()"
+                        class="bg-indigo-600/80 hover:bg-indigo-500 p-2 rounded border border-indigo-400/50 text-white shadow-[0_0_10px_rgba(79,70,229,0.4)] transition-colors text-xs font-bold whitespace-nowrap"><i
+                            class="fas fa-magic mr-1"></i>Vorschlag</button>
+                </div>
+
+                <label class="text-[10px] font-bold text-indigo-400 uppercase mt-3 block">Zusätzliche Attribute <span
+                        class="text-slate-500 normal-case">(optional)</span></label>
+                <div class="grid grid-cols-4 gap-2 mt-1">
+                    <div>
+                        <label class="text-[9px] text-slate-400 block text-center mb-0.5">STR</label>
+                        <input type="number" id="craft-stat-str"
+                            class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-center text-amber-500"
+                            min="0" max="10" placeholder="+0">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-400 block text-center mb-0.5">DEX</label>
+                        <input type="number" id="craft-stat-dex"
+                            class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-center text-amber-500"
+                            min="0" max="10" placeholder="+0">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-400 block text-center mb-0.5">INT</label>
+                        <input type="number" id="craft-stat-int"
+                            class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-center text-amber-500"
+                            min="0" max="10" placeholder="+0">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-400 block text-center mb-0.5">CON</label>
+                        <input type="number" id="craft-stat-con"
+                            class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-center text-amber-500"
+                            min="0" max="10" placeholder="+0">
+                    </div>
+                </div>
             </div>
 
             <div class="flex gap-2 mt-4 pt-4 border-t border-slate-800 shrink-0">
@@ -602,15 +743,20 @@ Regeln:
 5. KAMPF & GEGNERZUG: Kämpfe sind rundenbasiert. Nach der Spieler-Aktion greifen Gegner an. Fordere eine Probe (z.B. [Probe: Legolas | DEX | Ausweichen | 13 | W20]). Schaden erst nach Ergebnissen.
 6. HANDLUNGSVORSCHLÄGE: Schließe oft mit bis zu 3 konkreten Handlungsmöglichkeiten als Aufzählungszeichen (-) ab.
 7. SUCHEN, HANDELN, CRAFTEN (WICHTIG):
-   - BEUTE: Nutze [Beute: 3x Heiltrank]. WICHTIG: Jeder Gegner/Ort kann nur EINMAL geplündert werden! Wenn Spieler mehrmals looten wollen, weise sie atmosphärisch darauf hin, dass nichts mehr da ist (kein Tag).
+   - BEUTE: Nutze [Beute: 3x Heiltrank]. WICHTIG: Jeder Gegner/Ort kann nur EINMAL geplündert werden! Schreibe NIEMALS Charakternamen in den Beute-Tag! Wenn Spieler mehrmals looten wollen, weise sie atmosphärisch darauf hin, dass nichts mehr da ist (kein Tag).
    - HÄNDLER: [Haendler: Name | Item1 (Preis), Item2 (Preis)].
    - TAUSCHEN / KAUFEN: [Tausch: CharName, GegebenesItem, ErhaltenesItem].
    - CRAFTEN/VERZAUBERN (WICHTIG): Fordere [Probe: Char | INT | Crafting... | DC | W60] - Die Schwere (DC) und der WuerfelTyp (z.B. W60) richten sich nach der Macht des Items.
-     Bei Erfolg schreibst du: [Verbraucht: CharName1, Item1], [Verbraucht: CharName2, Item2] etc. für alle genutzten Zutaten UND [Beute: HergestelltesItem (+Bonus)].
+     Bei Erfolg schreibst du: [Verbraucht: CharName1, Item1], [Verbraucht: CharName2, Item2] etc. für alle genutzten Zutaten UND [Beute: HergestelltesItem (+Bonus) (Tolle Eigenschaft)]. Effekte MÜSSEN in runden Klammern stehen! Format: Item Name (+Stat) (Besonderer Effekt).
      Bei Fehlschlag zerstöre zufällig manche der Zutaten via [Verbraucht: ...] (die anderen bleiben gnädigerweise erhalten).
-   - BONI: An Items in Klammern (STR +2).
+   - BONI & EFFEKTE: An Items zwingend in runden Klammern z.B. (STR +2) (Beschwört Schleim).
 8. DATEN-INTEGRITÄT (STRIKT): 
-   - Exakte Namen aus Kontext nutzen. Nur positive Zahlen. Kurze deutsche Antworten.`
+   - Exakte Namen aus Kontext nutzen. Nur positive Zahlen. Kurze deutsche Antworten.
+9. STAT-PUNKTE & BONI: Berücksichtige die spezifischen Attribute und zusätzlichen Stat-Punkte (Boni durch Ausrüstung/Level) der Helden bei der Festlegung von Schwierigkeitsgraden (DC) und beschreibe aktiv, wie diese Werte den Ausgang der Würfelproben beeinflussen!
+10. FÄHIGKEITEN & ABKLINGZEIT: Wenn ein Spieler seine "Fähigkeit" einsetzt (z.B. "Fähigkeit: Schildwall eingesetzt"), gelingt diese IMMER automatisch (keine Auswürfel-Probe nötig!). 
+   - Der DM MUSS nach dem Einsatz die Effekte der Fähigkeit passend beschreiben und dem Spieler diese gewähren.
+   - Der DM bestimmt gleichzeitig eine faire Abklingzeit in Runden (z.B. 3 Runden) und kommuniziert diese im Text.
+   - Der DM zählt ab dann verdeckt die Runden mit und kündigt unaufgefordert im Chat an (via System Nachricht), wenn die Fähigkeit wieder bereit ist (z.B. "System: Schildwall ist wieder einsatzbereit.").`
             };
 
             const PRESETS = {
@@ -633,7 +779,10 @@ Regeln:
                 targetMapMode: false,
                 imageQuotaExceeded: false,
                 combatEnded: false,
-                activeMerchant: null
+                activeMerchant: null,
+                journal: [],
+                sessionStats: { totalDamageDealt: 0, totalDamageTaken: 0, totalXPEarned: 0, totalHealed: 0, diceRolls: [], highestRoll: 0, lowestRoll: 21, combatsWon: 0, turnsPlayed: 0 },
+                soundEnabled: true
             };
 
             /* ==========================================
@@ -656,7 +805,10 @@ Regeln:
                     'item-action-title', 'item-action-cid', 'item-action-name',
                     'item-action-is-equipped', 'modal-inv-actions', 'item-action-target',
                     'modal-eq-actions', 'load-input', 'merchant-section', 'merchant-name', 'merchant-items', 'btn-offer-item',
-                    'crafting-modal', 'craft-inv-list', 'craft-sel-list', 'craft-target-item'
+                    'crafting-modal', 'craft-inv-list', 'craft-sel-list', 'craft-target-item',
+                    'journal-content', 'stats-content', 'quick-actions-container', 'sound-toggle',
+                    'tab-party', 'tab-journal', 'tab-stats',
+                    'tab-content-party', 'tab-content-journal', 'tab-content-stats'
                 ];
                 ids.forEach(id => {
                     const camelCaseId = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
@@ -670,6 +822,24 @@ Regeln:
             const Utils = {
                 generateId: function () {
                     return (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2);
+                },
+                splitByCommaOutsideBrackets: function (str) {
+                    let res = [];
+                    let current = '';
+                    let depth = 0;
+                    for (let i = 0; i < str.length; i++) {
+                        const c = str[i];
+                        if (c === '(' || c === '[' || c === '{') depth++;
+                        else if (c === ')' || c === ']' || c === '}') depth = Math.max(0, depth - 1);
+                        else if (c === ',' && depth === 0) {
+                            res.push(current.trim());
+                            current = '';
+                            continue;
+                        }
+                        current += c;
+                    }
+                    if (current.trim()) res.push(current.trim());
+                    return res;
                 },
                 parseItemQuantity: function (str) {
                     let amt = 1, name = str.trim();
@@ -765,6 +935,113 @@ Regeln:
                 }
             };
 
+            const Sound = {
+                ctx: null,
+                getCtx: function () {
+                    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    return this.ctx;
+                },
+                play: function (type) {
+                    if (!State.soundEnabled) return;
+                    try {
+                        const ctx = this.getCtx();
+                        if (ctx.state === 'suspended') ctx.resume();
+                        const t = ctx.currentTime;
+                        switch (type) {
+                            case 'dice': {
+                                // Dice roll: quick rattling noise
+                                for (let i = 0; i < 5; i++) {
+                                    const o = ctx.createOscillator();
+                                    const g = ctx.createGain();
+                                    o.connect(g); g.connect(ctx.destination);
+                                    o.type = 'square';
+                                    o.frequency.setValueAtTime(200 + Math.random() * 400, t + i * 0.06);
+                                    g.gain.setValueAtTime(0.06, t + i * 0.06);
+                                    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.05);
+                                    o.start(t + i * 0.06);
+                                    o.stop(t + i * 0.06 + 0.05);
+                                }
+                                break;
+                            }
+                            case 'crit': {
+                                // Critical: triumphant chord
+                                [523, 659, 784].forEach((freq, i) => {
+                                    const o = ctx.createOscillator();
+                                    const g = ctx.createGain();
+                                    o.connect(g); g.connect(ctx.destination);
+                                    o.type = 'triangle';
+                                    o.frequency.value = freq;
+                                    g.gain.setValueAtTime(0, t + i * 0.05);
+                                    g.gain.linearRampToValueAtTime(0.1, t + i * 0.05 + 0.05);
+                                    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.05 + 0.5);
+                                    o.start(t + i * 0.05);
+                                    o.stop(t + i * 0.05 + 0.5);
+                                });
+                                break;
+                            }
+                            case 'fail': {
+                                // Fail: descending tone
+                                const o = ctx.createOscillator();
+                                const g = ctx.createGain();
+                                o.connect(g); g.connect(ctx.destination);
+                                o.type = 'sawtooth';
+                                o.frequency.setValueAtTime(300, t);
+                                o.frequency.linearRampToValueAtTime(100, t + 0.4);
+                                g.gain.setValueAtTime(0.08, t);
+                                g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+                                o.start(t); o.stop(t + 0.4);
+                                break;
+                            }
+                            case 'hit': {
+                                // Hit: short thud
+                                const o = ctx.createOscillator();
+                                const g = ctx.createGain();
+                                o.connect(g); g.connect(ctx.destination);
+                                o.type = 'sine';
+                                o.frequency.setValueAtTime(80, t);
+                                o.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+                                g.gain.setValueAtTime(0.2, t);
+                                g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                                o.start(t); o.stop(t + 0.15);
+                                break;
+                            }
+                            case 'heal': {
+                                // Heal: gentle ascending
+                                [523, 659, 784, 1047].forEach((freq, i) => {
+                                    const o = ctx.createOscillator();
+                                    const g = ctx.createGain();
+                                    o.connect(g); g.connect(ctx.destination);
+                                    o.type = 'sine';
+                                    o.frequency.value = freq;
+                                    g.gain.setValueAtTime(0.0, t + i * 0.07);
+                                    g.gain.linearRampToValueAtTime(0.07, t + i * 0.07 + 0.04);
+                                    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.25);
+                                    o.start(t + i * 0.07);
+                                    o.stop(t + i * 0.07 + 0.25);
+                                });
+                                break;
+                            }
+                            case 'levelup': {
+                                // Level up: fanfare
+                                const notes = [523, 659, 784, 1047, 1319];
+                                notes.forEach((freq, i) => {
+                                    const o = ctx.createOscillator();
+                                    const g = ctx.createGain();
+                                    o.connect(g); g.connect(ctx.destination);
+                                    o.type = 'triangle';
+                                    o.frequency.value = freq;
+                                    g.gain.setValueAtTime(0.12, t + i * 0.08);
+                                    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.3);
+                                    o.start(t + i * 0.08);
+                                    o.stop(t + i * 0.08 + 0.3);
+                                });
+                                break;
+                            }
+                        }
+                    } catch (e) { }
+                }
+            };
+
             /* ==========================================
                6. CORE LOGIC (Party & Combat Modules)
                ========================================== */
@@ -795,17 +1072,26 @@ Regeln:
                     return Math.max(1, baseMax + conBonus);
                 },
                 damage: function (char, amount) {
+                    State.sessionStats.totalDamageTaken += amount;
                     char.hp = Math.max(0, char.hp - amount);
+                    Sound.play('hit');
                     if (char.hp === 0) {
                         UI.addChatLog("System", `💀 **${char.name}** ist bewusstlos zu Boden gegangen! Ihr habt **GENAU EINEN VERSUCH**, ihn/sie zu retten (Medizin, Magie etc.).`);
                     }
                 },
                 heal: function (char, amount) {
                     const effMax = this.getEffectiveMaxHp(char);
-                    char.hp = Math.min(effMax, char.hp + amount);
+                    const actualHeal = Math.min(amount, effMax - char.hp);
+                    char.hp += actualHeal;
+                    if (actualHeal > 0) {
+                        State.sessionStats.totalHealed += actualHeal;
+                        Sound.play('heal');
+                    }
                 },
                 addXP: function (char, amount) {
-                    if (char.isSummon) return; char.xp += amount;
+                    if (char.isSummon) return;
+                    char.xp += amount;
+                    State.sessionStats.totalXPEarned += amount;
                     let needed = char.level * 100; let leveledUp = false;
                     while (char.xp >= needed) {
                         char.xp -= needed; char.level++; char.statPoints += 2;
@@ -816,7 +1102,10 @@ Regeln:
                             char.ability = abs[char.class] || null;
                         }
                     }
-                    if (leveledUp) { UI.addChatLog("System", `🌟 **${char.name}** hat Level ${char.level} erreicht!`); }
+                    if (leveledUp) {
+                        Sound.play('levelup');
+                        UI.addChatLog("System", `🌟 **${char.name}** hat Level ${char.level} erreicht!`);
+                    }
                 },
                 consumeItem: function (char, itemName, amount = 1) {
                     let removed = 0;
@@ -834,10 +1123,15 @@ Regeln:
             };
 
             const CombatManager = {
-                damage: function (enemy, amount) { enemy.hp = Math.max(0, enemy.hp - amount); if (enemy.hp === 0 && !enemy.loggedDefeat) { enemy.loggedDefeat = true; UI.addChatLog("System", `⚔️ ${enemy.name} wurde besiegt!`); } },
+                damage: function (enemy, amount) {
+                    State.sessionStats.totalDamageDealt += amount;
+                    enemy.hp = Math.max(0, enemy.hp - amount);
+                    Sound.play('hit');
+                    if (enemy.hp === 0 && !enemy.loggedDefeat) { enemy.loggedDefeat = true; UI.addChatLog("System", `⚔️ ${enemy.name} wurde besiegt!`); }
+                },
                 spawn: async function (name, hp, desc) {
                     const lowerName = name ? name.toLowerCase().trim() : '';
-                    if (!lowerName || ['tot', 'tod', 'dead', 'toter'].includes(lowerName) || hp <= 0) return;
+                    if (!lowerName || lowerName.includes('tot') || lowerName.includes('tod') || lowerName.includes('dead') || lowerName.includes('leiche') || hp <= 0) return;
 
                     // GUARD: Prevent DM from respawning the exact same active enemy (clone prevention)
                     if (State.activeEnemies.some(e => e.name.toLowerCase() === lowerName)) return;
@@ -850,12 +1144,32 @@ Regeln:
                         State.party.filter(p => !p.isSummon).forEach(p => {
                             if (p.ability && p.ability.includes("Beschwörung")) {
                                 const summonName = p.ability.split(' ')[0];
-                                State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name: summonName + ` (von ${p.name})`, class: 'Beschwörung', hp: 10 * p.level, maxHp: 10 * p.level, portrait: "", isNPC: true, isSummon: true, level: p.level }));
-                                UI.addChatLog("System", `🌀 **${p.name}** beschwört einen **${summonName}**!`);
+
+                                const pEff = PartyManager.getEffectiveAttributes(p);
+                                const pInt = pEff.INT || 10;
+                                const mod = pInt - 10;
+                                const roll = Math.floor(Math.random() * 20) + 1;
+                                const total = roll + mod;
+                                const dc = 10 + p.level;
+                                const success = total >= dc;
+
+                                const summonHp = success ? (15 * p.level) : (5 * p.level);
+
+                                State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name: summonName + ` (von ${p.name})`, class: 'Beschwörung', hp: summonHp, maxHp: summonHp, portrait: "", isNPC: true, isSummon: true, level: p.level }));
+
+                                const statusHtml = success ? `<span class="text-green-400 font-bold">Gewaltig! Begleiter ist extra stark.</span>` : `<span class="text-red-400 font-bold">Geschwächt! Schwacher Begleiter.</span>`;
+                                UI.addChatLog("System", `🌀 **${p.name}** beschwört einen **${summonName}**!\n🎲 **Beschwörungs-Wurf (Lvl ${p.level} vs DC ${dc}):** ${roll} (W20) ${mod >= 0 ? '+ ' + mod : mod} (INT) = **${total}** -> ${statusHtml} [${summonHp} HP]`);
                             }
                         }); UI.updateAll();
                     }
-                    const pUrl = await API.generateImage(`Monster: ${name}, ${desc}`);
+                    const descStr = desc ? `, ${desc}` : '';
+                    let imgPrompt = `Fantasy monster portrait, face only, highly detailed, ${name}${descStr}`.replace(/\n/g, ' ').trim();
+                    let pUrl = await API.generateImage(imgPrompt);
+
+                    if (!pUrl && !State.imageQuotaExceeded) {
+                        pUrl = await API.generateImage(`Fantasy monster portrait, face only, highly detailed, ${name}`);
+                    }
+
                     e.portrait = pUrl;
                     UI.updateAll();
                 },
@@ -865,6 +1179,7 @@ Regeln:
                     if (State.activeEnemies.length === 0 && State.defeatedEnemies.length > 0) this.endCombat();
                 },
                 endCombat: function () {
+                    State.sessionStats.combatsWon++;
                     State.activeEnemies = [];
                     State.combatEnded = true;
                     if (State.party.some(p => p.isSummon)) { State.party = State.party.filter(p => !p.isSummon); UI.addChatLog("System", `💨 Beschworene Kreaturen verschwinden.`); }
@@ -923,16 +1238,16 @@ Regeln:
                         if (e) CombatManager.damage(e, e.hp);
                     }
                     else if (type === 'beute') {
-                        let lootItems = rawArgs.includes(',') ? rawArgs.split(',').map(s => s.trim()) : [rawArgs.trim()];
+                        let lootItems = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : [rawArgs.trim()];
                         lootItems.filter(a => a).forEach(itemStr => {
                             const { amt, name } = Utils.parseItemQuantity(itemStr);
                             for (let i = 0; i < amt; i++) State.lootDrops.push(name);
                         });
                     }
                     else if (type === 'verbraucht') {
-                        let vArgs = rawArgs.includes(',') ? rawArgs.split(',').map(s => s.trim()) : rawArgs.split(/\s+/);
+                        let vArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/);
                         let c = Utils.findTarget(State.party, vArgs[0]);
-                        let rawItemStr = vArgs.slice(1).join(' ').trim() || rawArgs;
+                        let rawItemStr = vArgs.slice(1).join(', ').trim() || rawArgs;
                         const { amt, name } = Utils.parseItemQuantity(rawItemStr);
                         if (c) PartyManager.consumeItem(c, name, amt);
                     }
@@ -944,9 +1259,9 @@ Regeln:
                             if (c) PartyManager.addXP(c, amount);
                         }
                     }
-                    else if (type === 'neuernpc') { let nArgs = rawArgs.includes(',') ? rawArgs.split(',').map(s => s.trim()) : rawArgs.split(/\s+/); Engine.spawnNPCFromTag(nArgs[0] || 'Unbekannt', nArgs[1] || 'Bürger', nArgs.slice(2).join(',') || 'Begleiter'); }
+                    else if (type === 'neuernpc') { let nArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/); Engine.spawnNPCFromTag(nArgs[0] || 'Unbekannt', nArgs[1] || 'Bürger', nArgs.slice(2).join(',') || 'Begleiter'); }
                     else if (type === 'tausch') {
-                        let tArgs = rawArgs.includes(',') ? rawArgs.split(',').map(s => s.trim()) : rawArgs.split(/\s+/);
+                        let tArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/);
                         let c = Utils.findTarget(State.party, tArgs[0]);
                         if (c && tArgs.length >= 3) {
                             PartyManager.consumeItem(c, tArgs[1]);
@@ -963,7 +1278,7 @@ Regeln:
                     else if (type === 'haendler') {
                         const parts = rawArgs.split('|');
                         const mName = parts[0] ? parts[0].trim() : "Händler";
-                        const mItems = parts.length > 1 ? parts[1].split(',').map(s => s.trim()) : ["Bietet derzeit nichts an"];
+                        const mItems = parts.length > 1 ? Utils.splitByCommaOutsideBrackets(parts[1]) : ["Bietet derzeit nichts an"];
                         State.activeMerchant = { name: mName, items: mItems };
                     }
                 }
@@ -979,9 +1294,39 @@ Regeln:
                 saveApiKey: function () { localStorage.setItem("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "🔑 API-Key wurde gespeichert."); },
                 startGame: function () { if (State.party.length === 0) { UI.addChatLog("System", "⚠️ Erstelle zuerst einen Helden!"); return; } State.gameStarted = true; UI.toggleViews(true); this.interactWithAI("Die Reise beginnt."); },
 
+                toggleSound: function () {
+                    State.soundEnabled = !State.soundEnabled;
+                    const btn = DOM.soundToggle;
+                    if (btn) {
+                        btn.textContent = State.soundEnabled ? '🔊' : '🔇';
+                        btn.className = `bg-slate-800/80 hover:bg-slate-700 px-3 py-2 rounded-lg text-xs font-medium border border-slate-600/50 hover:border-slate-400 shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(148,163,184,0.4)] transition-all duration-300 backdrop-blur-sm ${State.soundEnabled ? 'sound-on' : 'sound-off'}`;
+                    }
+                    if (State.soundEnabled) Sound.play('dice');
+                },
+
+                generateJournalEntry: async function () {
+                    if (!State.lastStoryPart || !State.gameStarted) return;
+                    const oldJournalBtn = document.querySelector('[onclick="App.Engine.generateJournalEntry()"]');
+                    if (oldJournalBtn) { oldJournalBtn.textContent = '⏳'; oldJournalBtn.disabled = true; }
+                    try {
+                        const partyNames = State.party.filter(p => !p.isSummon).map(p => p.name).join(', ');
+                        const summary = await API.generateText(
+                            `Fasse diese Szene in 1-2 Sätzen als Tagebucheintrag zusammen (Vergangenheit, dramatisch, kurz): "${State.lastStoryPart.substring(0, 500)}"`,
+                            "Du bist ein Chronist. Antworte NUR mit dem Tagebucheintrag, ohne Anführungszeichen oder Präambel. Deutsch, max 2 Sätze."
+                        );
+                        const entry = { text: summary, timestamp: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), party: partyNames };
+                        State.journal.unshift(entry);
+                        if (State.journal.length > 20) State.journal.pop();
+                        UI.renderJournal();
+                    } catch (e) { } finally {
+                        if (oldJournalBtn) { oldJournalBtn.textContent = '✨ Update'; oldJournalBtn.disabled = false; }
+                    }
+                },
+
                 interactWithAI: async function (actionMsg) {
                     if (State.isProcessing) return;
                     State.isProcessing = true; UI.showLoader(true);
+                    State.sessionStats.turnsPlayed++;
 
                     const acting = DOM.actingChar.value;
                     const enemyCtx = State.activeEnemies.length > 0 ? State.activeEnemies.map(e => `${e.name} (HP ${e.hp}/${e.maxHp})`).join(', ') : 'Keine Feinde';
@@ -1014,15 +1359,55 @@ Regeln:
                             const c = Utils.findTarget(State.party, charName);
                             if (c) {
                                 const eff = PartyManager.getEffectiveAttributes(c);
-                                modifier = Math.floor(((eff[statName] || 10) - 10) / 2);
+                                modifier = (eff[statName] || 10) - 10;
                             }
                             State.pendingRolls.push({ id: Utils.generateId(), name: charName, stat: statName, mod: modifier, desc: desc, dc: dc, diceType: dt, rolled: false, result: 0, rawRoll: 0 });
                         }
                         cleanText = cleanText.replace(probeRegexExact, '');
 
+                        const probeRegexRelaxed = /\[Probe:\s*([^|\]]+)\s*\|\s*([^|\]]+)\s*\|\s*([^|\]]+)\s*\|\s*(\d+)(?:\s*\|\s*(W\d+|w\d+))?\s*\]/gi;
+                        while ((match = probeRegexRelaxed.exec(cleanText)) !== null) {
+                            let charName = match[1].trim();
+                            let rawStat = match[2].trim().toUpperCase();
+                            let desc = match[3].trim();
+                            let statName = "";
+                            let modifier = 0;
+
+                            if (rawStat.includes('STÄR') || rawStat.includes('STR')) statName = 'STR';
+                            else if (rawStat.includes('GESCHICK') || rawStat.includes('DEX')) statName = 'DEX';
+                            else if (rawStat.includes('INTELLIGENZ') || rawStat.includes('INT')) statName = 'INT';
+                            else if (rawStat.includes('KONST') || rawStat.includes('CON')) statName = 'CON';
+
+                            const c = Utils.findTarget(State.party, charName);
+                            if (c && statName) {
+                                const eff = PartyManager.getEffectiveAttributes(c);
+                                modifier = (eff[statName] || 10) - 10;
+                            }
+
+                            State.pendingRolls.push({ id: Utils.generateId(), name: charName, stat: statName, mod: modifier, desc: desc, dc: parseInt(match[4]) || 10, diceType: match[5] ? match[5].trim().toUpperCase() : 'W20', rolled: false, result: 0, rawRoll: 0 });
+                        }
+                        cleanText = cleanText.replace(probeRegexRelaxed, '');
+
                         const probeRegexFallback = /\[Probe:\s*([^|\]]+)\s*\|\s*([^|\]]+)\s*\|\s*(\d+)(?:\s*\|\s*(W\d+|w\d+))?\s*\]/gi;
                         while ((match = probeRegexFallback.exec(cleanText)) !== null) {
-                            State.pendingRolls.push({ id: Utils.generateId(), name: match[1].trim(), stat: "", mod: 0, desc: match[2].trim(), dc: parseInt(match[3]) || 10, diceType: match[4] ? match[4].trim().toUpperCase() : 'W20', rolled: false, result: 0, rawRoll: 0 });
+                            let charName = match[1].trim();
+                            let rawDesc = match[2].trim();
+                            let upperDesc = rawDesc.toUpperCase();
+                            let statName = "";
+                            let modifier = 0;
+
+                            if (upperDesc.includes('STÄR') || upperDesc.includes('STR')) statName = 'STR';
+                            else if (upperDesc.includes('GESCHICK') || upperDesc.includes('DEX')) statName = 'DEX';
+                            else if (upperDesc.includes('INTELLIGENZ') || upperDesc.includes('INT')) statName = 'INT';
+                            else if (upperDesc.includes('KONST') || upperDesc.includes('CON')) statName = 'CON';
+
+                            const c = Utils.findTarget(State.party, charName);
+                            if (c && statName) {
+                                const eff = PartyManager.getEffectiveAttributes(c);
+                                modifier = (eff[statName] || 10) - 10;
+                            }
+
+                            State.pendingRolls.push({ id: Utils.generateId(), name: charName, stat: statName, mod: modifier, desc: rawDesc, dc: parseInt(match[3]) || 10, diceType: match[4] ? match[4].trim().toUpperCase() : 'W20', rolled: false, result: 0, rawRoll: 0 });
                         }
                         cleanText = cleanText.replace(probeRegexFallback, '');
 
@@ -1471,25 +1856,93 @@ Regeln:
                     State.craftingIngredients.splice(index, 1);
                     UI.renderCraftingModal();
                 },
+                suggestCrafting: async function () {
+                    if (State.craftingIngredients.length === 0) {
+                        UI.addChatLog("System", "⚠️ Bitte wähle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.");
+                        return;
+                    }
+                    const btn = document.getElementById('btn-craft-suggest');
+                    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
+
+                    const materials = State.craftingIngredients.map(ing => ing.itemName).join(', ');
+
+                    try {
+                        let aiText = await API.generateText(`Erfinde einen passenden Gegenstand, der logisch aus diesen Zutaten hergestellt werden kann: [${materials}]. \n\nDu bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown oder Codeblock-Tags. Nutze ZWINGEND diese exakten Keys: {"name": "Gegenstandsname", "str": Zahl, "dex": Zahl, "int": Zahl, "con": Zahl}. Wähle 1-2 passende weise Attribute aus (Wert 1-3), die anderen 0.`);
+
+                        const match = aiText.match(/\{[\s\S]*\}/);
+                        if (!match) throw new Error("Konnte kein JSON aus Antwort extrahieren.");
+                        const data = JSON.parse(match[0]);
+
+                        DOM.craftTargetItem.value = data.name || "Mysterium";
+                        const elStr = document.getElementById('craft-stat-str');
+                        const elDex = document.getElementById('craft-stat-dex');
+                        const elInt = document.getElementById('craft-stat-int');
+                        const elCon = document.getElementById('craft-stat-con');
+
+                        if (elStr) elStr.value = data.str > 0 ? data.str : "";
+                        if (elDex) elDex.value = data.dex > 0 ? data.dex : "";
+                        if (elInt) elInt.value = data.int > 0 ? data.int : "";
+                        if (elCon) elCon.value = data.con > 0 ? data.con : "";
+
+                    } catch (e) {
+                        UI.addChatLog("System", `⚠️ KI Konnte keinen Vorschlag generieren: ${e.message}`);
+                    } finally {
+                        if (btn) { btn.innerHTML = '<i class="fas fa-magic mr-1"></i>Vorschlag'; btn.disabled = false; }
+                    }
+                },
                 submitCrafting: function () {
-                    const target = DOM.craftTargetItem.value.trim();
+                    let target = DOM.craftTargetItem.value.trim();
                     if (!target || State.craftingIngredients.length === 0) return;
+
+                    const elStr = document.getElementById('craft-stat-str');
+                    const elDex = document.getElementById('craft-stat-dex');
+                    const elInt = document.getElementById('craft-stat-int');
+                    const elCon = document.getElementById('craft-stat-con');
+
+                    const str = parseInt(elStr ? elStr.value : 0) || 0;
+                    const dex = parseInt(elDex ? elDex.value : 0) || 0;
+                    const int = parseInt(elInt ? elInt.value : 0) || 0;
+                    const con = parseInt(elCon ? elCon.value : 0) || 0;
+
+                    const stats = [];
+                    if (str > 0) stats.push(`+${str} STR`);
+                    if (dex > 0) stats.push(`+${dex} DEX`);
+                    if (int > 0) stats.push(`+${int} INT`);
+                    if (con > 0) stats.push(`+${con} CON`);
+
+                    if (stats.length > 0) {
+                        target += ` (${stats.join(', ')})`;
+                    }
 
                     const materials = State.craftingIngredients.map(ing => `1x ${ing.itemName} (von ${State.party.find(p => p.id === ing.charId).name})`).join(', ');
                     const msg = `Ich möchte aus den gesammelten Materialien [${materials}] folgenden Gegenstand erschaffen: "${target}". Wir bündeln unsere Kräfte. (WICHTIGE DM-ANWEISUNG: Verwende den [Verbraucht: ...] Tag AUSSCHLIESSLICH für Items aus dieser eckigen Klammer! Zerstöre oder nutze auf keinen Fall andere Gegenstände der Spieler!)`;
 
                     DOM.craftingModal.classList.add('hidden');
                     DOM.craftTargetItem.value = "";
+                    if (elStr) elStr.value = "";
+                    if (elDex) elDex.value = "";
+                    if (elInt) elInt.value = "";
+                    if (elCon) elCon.value = "";
                     State.craftingIngredients = [];
 
                     DOM.actingChar.value = 'party';
                     DOM.playerInput.value = msg;
                     this.submitPlayerAction();
                 },
+                useAbility: function (cid) {
+                    const c = State.party.find(p => p.id === cid);
+                    if (c && c.ability) {
+                        DOM.actingChar.value = c.name;
+                        const currentInput = DOM.playerInput.value.trim();
+                        DOM.playerInput.value = currentInput + ` Ich setze meine Fähigkeit: "${c.ability}" ein. `;
+                        DOM.playerInput.focus();
+                        UI.hideDetails();
+                    }
+                },
                 upgradeStat: function (cid, key) { const c = State.party.find(p => p.id === cid); if (c && c.statPoints > 0) { c.attributes[key]++; c.statPoints--; UI.showDetails(cid); UI.updateAll(); } },
                 removeCharacter: function (id) { const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); } },
                 exportHero: function (id) { const c = State.party.find(p => p.id === id); if (!c) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(c)], { type: 'application/json' })); a.download = `Hero_${c.name}.json`; document.body.appendChild(a); a.click(); },
-                downloadSave: function () { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(State)], { type: 'application/json' })); a.download = `InfiniteDungeon.json`; document.body.appendChild(a); a.click(); },
+                downloadSave: function () { const now = new Date(); const pad = n => n.toString().padStart(2, '0'); const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(State)], { type: 'application/json' })); a.download = `InfiniteDungeon_${ts}.json`; document.body.appendChild(a); a.click(); },
                 importSave: function (e) { if (!e.target.files[0]) return; const r = new FileReader(); r.onload = (ev) => { Object.assign(State, JSON.parse(ev.target.result)); State.targetMapMode = false; State.party = State.party.map(c => Utils.sanitizeCharacter(c)); UI.toggleViews(State.gameStarted); UI.updateAll(); }; r.readAsText(e.target.files[0]); e.target.value = ""; },
                 importHero: function (e) { if (!e.target.files[0]) return; const r = new FileReader(); r.onload = (ev) => { try { const h = JSON.parse(ev.target.result); h.id = Utils.generateId(); State.party.push(Utils.sanitizeCharacter(h)); UI.updateAll(); } catch (err) { } }; r.readAsText(e.target.files[0]); e.target.value = ""; }
             };
@@ -1521,7 +1974,8 @@ Regeln:
                         <button onclick="event.stopPropagation(); App.Engine.removeCharacter('${c.id}')" class="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>
                     </div>`;
                 },
-                buildEnemyCard: function (e, isDead) {
+                buildEnemyCard: function (e, isDeadFlag) {
+                    const isDead = isDeadFlag || e.hp <= 0;
                     const hpDisplay = isDead ? 0 : e.hp;
                     const hpBarWidth = isDead ? 0 : (e.hp / e.maxHp) * 100;
                     const hoverClass = isDead ? '' : 'cursor-pointer hover:border-amber-500 transition-colors';
@@ -1536,9 +1990,118 @@ Regeln:
             };
 
             const UI = {
+                formatItemDisplay: function (fullItemString) {
+                    let effects = [];
+                    let cleanName = fullItemString.replace(/\s*\((.*?)\)/g, (match, p1) => {
+                        effects.push(p1);
+                        return '';
+                    }).trim();
+                    if (!cleanName) cleanName = fullItemString;
+
+                    let visibleStats = [];
+                    let hiddenEffects = [];
+                    effects.forEach(e => {
+                        if (e.match(/^[+-]\d+\s*(STR|DEX|INT|CON)|(STR|DEX|INT|CON)\s*[+-]\d+$/i)) {
+                            visibleStats.push(e);
+                        } else {
+                            hiddenEffects.push(e);
+                        }
+                    });
+
+                    let displayName = cleanName;
+                    if (visibleStats.length > 0) displayName += ` (${visibleStats.join(', ')})`;
+                    return {
+                        displayName: displayName,
+                        tooltip: hiddenEffects.join(' | '),
+                        hasEffects: hiddenEffects.length > 0
+                    };
+                },
                 toggleViews: function (s) { DOM.lobbyView.classList.toggle('hidden', s); DOM.actionArea.classList.toggle('hidden', !s); },
                 showLoader: function (s, t = "Lädt...") { DOM.loadingSpinner.classList.toggle('hidden', !s); DOM.loadingText.innerText = t; },
                 selectOption: function (t) { DOM.playerInput.value = t; DOM.playerInput.focus(); },
+
+                switchTab: function (tab) {
+                    ['party', 'journal', 'stats'].forEach(t => {
+                        const btn = DOM[`tab${t.charAt(0).toUpperCase() + t.slice(1)}`];
+                        const content = DOM[`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`];
+                        if (!btn || !content) return;
+                        const active = t === tab;
+                        btn.classList.toggle('active', active);
+                        content.classList.toggle('hidden', !active);
+                        content.classList.toggle('flex', active);
+                    });
+                    if (tab === 'journal') this.renderJournal();
+                    if (tab === 'stats') this.renderStats();
+                },
+
+                renderJournal: function () {
+                    if (!DOM.journalContent) return;
+                    if (State.journal.length === 0) {
+                        DOM.journalContent.innerHTML = '<p class="text-slate-500 italic">Noch keine Einträge. Starte ein Abenteuer und klicke ✨ Update!</p>';
+                        return;
+                    }
+                    DOM.journalContent.innerHTML = State.journal.map((e, i) => `
+                        <div class="journal-entry fade-in">
+                            <div class="flex justify-between text-[9px] text-slate-500 mb-1">
+                                <span>Eintrag #${State.journal.length - i}</span>
+                                <span>${e.timestamp}</span>
+                            </div>
+                            <p class="text-slate-300 leading-relaxed">${e.text}</p>
+                        </div>
+                    `).join('');
+                },
+
+                renderStats: function () {
+                    if (!DOM.statsContent) return;
+                    const s = State.sessionStats;
+                    if (s.turnsPlayed === 0) {
+                        DOM.statsContent.innerHTML = '<p class="text-slate-500 italic">Noch keine Session-Daten.</p>';
+                        return;
+                    }
+                    const avgRoll = s.diceRolls.length > 0 ? (s.diceRolls.reduce((a, b) => a + b, 0) / s.diceRolls.length).toFixed(1) : '-';
+                    const luckyColor = parseFloat(avgRoll) >= 12 ? 'text-green-400' : parseFloat(avgRoll) >= 8 ? 'text-amber-400' : 'text-red-400';
+
+                    // Per-character damage breakdown
+                    const charStats = State.party.filter(p => !p.isSummon).map(p => {
+                        const hpPercent = (p.hp / PartyManager.getEffectiveMaxHp(p)) * 100;
+                        const barColor = hpPercent > 60 ? 'bg-green-500' : hpPercent > 30 ? 'bg-amber-500' : 'bg-red-500';
+                        return `<div class="mb-2">
+                            <div class="flex justify-between text-[10px] mb-0.5">
+                                <span class="text-amber-300">${p.name}</span>
+                                <span class="text-slate-400">Lvl ${p.level} | ${p.hp}/${PartyManager.getEffectiveMaxHp(p)} HP</span>
+                            </div>
+                            <div class="stat-bar"><div class="stat-bar-fill ${barColor}" style="width:${hpPercent}%"></div></div>
+                        </div>`;
+                    }).join('');
+
+                    DOM.statsContent.innerHTML = `
+                        <div class="space-y-3">
+                            <div>
+                                <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">⚔️ Kampf</div>
+                                <div class="grid grid-cols-2 gap-1.5 text-[10px]">
+                                    <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Schaden ausgeteilt</div><div class="text-red-400 font-bold text-sm">${s.totalDamageDealt}</div></div>
+                                    <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Schaden erhalten</div><div class="text-orange-400 font-bold text-sm">${s.totalDamageTaken}</div></div>
+                                    <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Geheilt</div><div class="text-green-400 font-bold text-sm">${s.totalHealed}</div></div>
+                                    <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Kämpfe gewonnen</div><div class="text-purple-400 font-bold text-sm">${s.combatsWon}</div></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">🎲 Würfelglück</div>
+                                <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+                                    <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50 text-center"><div class="text-slate-400">Ø Wurf</div><div class="${luckyColor} font-bold text-sm">${avgRoll}</div></div>
+                                    <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50 text-center"><div class="text-slate-400">Höchster</div><div class="text-green-400 font-bold text-sm">${s.diceRolls.length ? s.highestRoll : '-'}</div></div>
+                                    <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50 text-center"><div class="text-slate-400">Niedrigster</div><div class="text-red-400 font-bold text-sm">${s.diceRolls.length ? s.lowestRoll : '-'}</div></div>
+                                </div>
+                                <div class="text-center text-[10px] text-slate-500 mt-1">${s.diceRolls.length} Würfe gesamt | ${s.turnsPlayed} Runden</div>
+                            </div>
+                            <div>
+                                <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">🧙 Gruppe</div>
+                                ${charStats || '<p class="text-slate-500 italic text-[10px]">Keine Helden</p>'}
+                                <div class="text-[10px] text-slate-400 mt-1">Gesamt XP dieser Session: <span class="text-yellow-400 font-bold">${s.totalXPEarned}</span></div>
+                            </div>
+                        </div>
+                    `;
+                },
 
                 toggleTargetMode: function () {
                     State.targetMapMode = !State.targetMapMode;
@@ -1572,7 +2135,12 @@ Regeln:
                     DOM.enemyHistoryContainer.innerHTML = State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join('');
                     DOM.currentEnemyContainer.innerHTML = State.activeEnemies.map(e => UIBuilders.buildEnemyCard(e, false)).join('');
                     DOM.lootDropSection.classList.toggle('hidden', !State.lootDrops.length);
-                    DOM.lootList.innerHTML = State.lootDrops.map((it, idx) => `<div class="text-[10px] bg-amber-950/60 p-1.5 rounded border border-amber-800/50 flex justify-between items-center mt-1.5 shadow-sm"><span class="text-amber-300 font-mono truncate mr-2 flex-1">+ ${it}</span><select onchange="App.Engine.assignLoot(${idx}, this.value)" class="bg-slate-800 text-slate-300 border border-slate-600 rounded outline-none p-1 max-w-[85px] cursor-pointer"><option value="">Geben...</option>${State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>`).join('');
+                    DOM.lootList.innerHTML = State.lootDrops.map((it, idx) => {
+                        const formatted = App.UI.formatItemDisplay(it);
+                        const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
+                        const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
+                        return `<div class="text-[10px] bg-amber-950/60 p-1.5 rounded border border-amber-800/50 flex justify-between items-center mt-1.5 shadow-sm" ${titleAttr}><span class="text-amber-300 font-mono truncate mr-2 flex-1">+ ${formatted.displayName} ${effectIcon}</span><select onchange="App.Engine.assignLoot(${idx}, this.value)" class="bg-slate-800 text-slate-300 border border-slate-600 rounded outline-none p-1 max-w-[85px] cursor-pointer"><option value="">Geben...</option>${State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>`;
+                    }).join('');
                     const collectAllSelect = document.getElementById('collect-all-select');
                     if (collectAllSelect) {
                         collectAllSelect.innerHTML = '<option value="">Alle nehmen...</option>' + State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -1668,8 +2236,11 @@ Regeln:
                             Object.entries(invCounts).forEach(([it, count]) => {
                                 const avail = count - (selectedCounts[it] || 0);
                                 if (avail > 0) {
-                                    charInvHtml += `<div class="flex justify-between items-center bg-slate-900 hover:bg-slate-800 p-1.5 rounded border border-slate-700/50 cursor-pointer mb-1 transition-colors group" onclick="App.Engine.addCraftingIngredient('${c.id}', '${it.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')">
-                                        <span class="text-[10px] text-slate-300 truncate mr-1">${it} ${avail > 1 ? '<span class="text-amber-500 font-bold">(x' + avail + ')</span>' : ''}</span>
+                                    const formatted = App.UI.formatItemDisplay(it);
+                                    const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
+                                    const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-slate-500 ml-1 text-[8px]" ${titleAttr}></i>` : '';
+                                    charInvHtml += `<div class="flex justify-between items-center bg-slate-900 hover:bg-slate-800 p-1.5 rounded border border-slate-700/50 cursor-pointer mb-1 transition-colors group" onclick="App.Engine.addCraftingIngredient('${c.id}', '${it.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')" ${titleAttr}>
+                                        <span class="text-[10px] text-slate-300 truncate mr-1">${formatted.displayName} ${effectIcon} ${avail > 1 ? '<span class="text-amber-500 font-bold">(x' + avail + ')</span>' : ''}</span>
                                         <i class="fas fa-plus text-green-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
                                     </div>`;
                                 }
@@ -1688,8 +2259,11 @@ Regeln:
                     } else {
                         DOM.craftSelList.innerHTML = State.craftingIngredients.map((ing, idx) => {
                             const cName = State.party.find(p => p.id === ing.charId)?.name || 'Unbekannt';
-                            return `<div class="flex justify-between items-center bg-indigo-900/40 hover:bg-indigo-900/80 p-1.5 rounded border border-indigo-700/50 cursor-pointer mb-1 shadow-sm transition-colors group" onclick="App.Engine.removeCraftingIngredient(${idx})">
-                                <span class="text-[10px] text-indigo-100 truncate flex-1"><span class="text-indigo-400 font-bold mr-1">[${cName}]</span>${ing.itemName}</span>
+                            const formatted = App.UI.formatItemDisplay(ing.itemName);
+                            const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
+                            const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-indigo-400/50 ml-1 text-[8px]" ${titleAttr}></i>` : '';
+                            return `<div class="flex justify-between items-center bg-indigo-900/40 hover:bg-indigo-900/80 p-1.5 rounded border border-indigo-700/50 cursor-pointer mb-1 shadow-sm transition-colors group" onclick="App.Engine.removeCraftingIngredient(${idx})" ${titleAttr}>
+                                <span class="text-[10px] text-indigo-100 truncate flex-1"><span class="text-indigo-400 font-bold mr-1">[${cName}]</span>${formatted.displayName} ${effectIcon}</span>
                                 <i class="fas fa-times text-red-500 text-[10px] ml-2 opacity-50 group-hover:opacity-100 transition-opacity"></i>
                             </div>`;
                         }).join('');
@@ -1717,7 +2291,7 @@ Regeln:
                         <div class="text-center">${detailPortraitHtml}
                         <h3 class="cinzel text-amber-400 text-sm mt-2">${c.name} ${sumBadge}</h3><p class="text-[8px] opacity-50 mb-1">${c.class} • Lvl ${c.level}</p>
                         <div class="w-3/4 mx-auto bg-slate-900 h-1 rounded-full"><div class="bg-purple-500 h-full" style="width: ${(c.xp / (c.level * 100)) * 100}%"></div></div><p class="text-[7px] text-slate-500 mb-3">${c.xp}/${c.level * 100} XP</p></div>
-                        ${c.ability ? `<div class="mb-3 p-1.5 bg-amber-900/30 border border-amber-700/50 rounded text-center text-[9px]"><span class="text-amber-500 font-bold block mb-0.5">Fähigkeit:</span>${c.ability}</div>` : ''}
+                        ${c.ability ? `<div onclick="App.Engine.useAbility('${c.id}')" class="mb-3 p-1.5 bg-amber-900/40 hover:bg-amber-800/80 border border-amber-700/50 hover:border-amber-500 rounded text-center text-[9px] cursor-pointer shadow-sm transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)] hover:shadow-[0_0_15px_rgba(245,158,11,0.4)] group"><span class="text-amber-500 font-bold block mb-0.5 group-hover:animate-pulse"><i class="fas fa-meteor"></i> Fähigkeit (Klicken zum Einsetzen):</span>${c.ability}</div>` : ''}
                         <div><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2">ATTRIBUTE ${sBadge}</h4>${aHtml}</div>
                         <div class="mt-3">
                             <h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-indigo-300">AUSRÜSTUNG</h4>
@@ -1732,7 +2306,10 @@ Regeln:
                     document.getElementById(`equipment-list-${c.id}`).innerHTML = Array.from(eqMap.entries()).map(([it, count]) => {
                         const safeIt = it.replace(/'/g, "\\'").replace(/"/g, "&quot;");
                         const countHtml = count > 1 ? `<span class="text-indigo-400 font-bold ml-1">(x${count})</span>` : '';
-                        return `<li onclick="App.Engine.handleItemClick('${c.id}', '${safeIt}', true)" class="bg-indigo-900/30 p-1.5 rounded cursor-pointer hover:bg-indigo-800/50 border border-indigo-700/50 flex justify-between group transition-colors"><span class="text-indigo-200">• ${it} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-indigo-400 mt-0.5"></i></li>`;
+                        const formatted = App.UI.formatItemDisplay(it);
+                        const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
+                        const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-indigo-400/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
+                        return `<li onclick="App.Engine.handleItemClick('${c.id}', '${safeIt}', true)" class="bg-indigo-900/30 p-1.5 rounded cursor-pointer hover:bg-indigo-800/50 border border-indigo-700/50 flex justify-between group transition-colors" ${titleAttr}><span class="text-indigo-200">• ${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-indigo-400 mt-0.5"></i></li>`;
                     }).join('') || '<li class="text-slate-500 italic">Nichts ausgerüstet</li>';
 
                     const invMap = new Map();
@@ -1740,7 +2317,10 @@ Regeln:
                     document.getElementById(`inventory-list-${c.id}`).innerHTML = Array.from(invMap.entries()).map(([it, count]) => {
                         const safeIt = it.replace(/'/g, "\\'").replace(/"/g, "&quot;");
                         const countHtml = count > 1 ? `<span class="text-amber-500 font-bold ml-1">(x${count})</span>` : '';
-                        return `<li onclick="App.Engine.handleItemClick('${c.id}', '${safeIt}', false)" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors"><span>• ${it} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
+                        const formatted = App.UI.formatItemDisplay(it);
+                        const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
+                        const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
+                        return `<li onclick="App.Engine.handleItemClick('${c.id}', '${safeIt}', false)" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors" ${titleAttr}><span>• ${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
                     }).join('') || '<li class="text-slate-500 italic">Leer</li>';
 
                     DOM.exportHeroBtn.onclick = () => App.Engine.exportHero(c.id);
@@ -1787,9 +2367,16 @@ Regeln:
                             const finalRawRoll = Math.floor(Math.random() * sides) + 1;
                             const totalResult = finalRawRoll + modifier;
 
+                            State.sessionStats.diceRolls.push(finalRawRoll);
+                            if (finalRawRoll > State.sessionStats.highestRoll) State.sessionStats.highestRoll = finalRawRoll;
+                            if (finalRawRoll < State.sessionStats.lowestRoll) State.sessionStats.lowestRoll = finalRawRoll;
+
                             const success = totalResult >= targetDC;
                             DOM.diceQualityLabel.innerHTML = success ? "Erfolg <i class='fas fa-check'></i>" : "Fehlschlag <i class='fas fa-times'></i>";
                             DOM.diceQualityLabel.className = `text-2xl cinzel font-bold uppercase tracking-widest mb-4 drop-shadow-lg h-8 ${success ? 'text-green-400' : 'text-red-500'}`;
+
+                            if (success && finalRawRoll === sides) Sound.play('crit');
+                            else if (!success) Sound.play('fail');
 
                             let modStr = modifier !== 0 ? `<span class="text-4xl text-slate-400 mx-2">${modifier >= 0 ? '+' : ''}${modifier}</span><span class="text-7xl">=${totalResult}</span>` : '';
                             DOM.diceResult.innerHTML = `<span class="text-7xl">${finalRawRoll}</span>${modStr}`;
@@ -1804,6 +2391,7 @@ Regeln:
                 },
 
                 showDiceModal: function (target, isGroup = false) {
+                    Sound.play('dice');
                     const r = Math.floor(Math.random() * 20) + 1;
                     DOM.diceResult.innerText = r;
                     DOM.diceResult.className = "text-9xl font-bold cinzel mb-6 text-white inline-block";
@@ -1827,6 +2415,8 @@ Regeln:
             const init = () => {
                 initDOM();
                 UI.updateAll();
+                document.addEventListener('click', () => { if (State.soundEnabled) Sound.getCtx().resume(); }, { once: true });
+                document.addEventListener('keydown', () => { if (State.soundEnabled) Sound.getCtx().resume(); }, { once: true });
             };
 
             // Run init internally

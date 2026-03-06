@@ -1,0 +1,214 @@
+<!--
+================================================================
+  WETTER-FEATURE PATCH
+  Entwickelt für: D&D Dungeon Simulator
+  
+  Anleitung zum Einbauen:
+  1. CSS  → in den <style>-Block einfügen
+  2. HTML → je nach Abschnitt einfügen (s. Kommentare)
+  3. JS   → nach "window.App = App;" in einen
+             DOMContentLoaded-Listener einfügen
+  4. KI-Integration → optionaler Patch für interactWithAI
+================================================================
+-->
+
+
+<!-- ============================================================
+     1. CSS — in den <style>-Block einfügen
+     ============================================================ -->
+<style id="weather-css-patch">
+/* ==================== WEATHER ==================== */
+        #weather-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+        .rain-particle {
+            position: absolute;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(147,197,253,0.5));
+            animation: rainFall linear infinite;
+            top: -100px;
+        }
+        @keyframes rainFall {
+            to { transform: translateY(110vh) translateX(-20px); }
+        }
+        .snow-particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.7);
+            animation: snowFall linear infinite;
+            top: -20px;
+        }
+        @keyframes snowFall {
+            to { transform: translateY(110vh) translateX(30px); }
+        }
+        .fog-layer {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 100%, rgba(148,163,184,0.08) 0%, transparent 70%);
+            animation: fogPulse 8s ease-in-out infinite;
+        }
+        @keyframes fogPulse {
+            0%,100% { opacity: 0.5; } 50% { opacity: 1; }
+        }
+        #weather-badge {
+            transition: all 0.5s ease;
+        }
+</style>
+
+
+<!-- ============================================================
+     2a. HTML — Direkt nach <body> einfügen
+     ============================================================ -->
+
+<!-- Weather Overlay (Partikeleffekte: Regen, Schnee, Nebel...) -->
+<div id="weather-overlay"></div>
+
+
+<!-- ============================================================
+     2b. HTML — Wetter-Badge im HUD einfügen
+     (neben SCHICKSAL und ERSCHÖPFUNG, innerhalb von #dungeon-hud)
+     ============================================================ -->
+
+                <div id="weather-badge" class="text-[10px] font-bold tracking-widest text-slate-300" title="Aktuelles Wetter">
+                    <span id="hud-weather-icon">☀️</span> <span id="hud-weather-name" class="text-yellow-300 text-xs">Sonnig</span>
+                </div>
+
+
+<!-- ============================================================
+     3. JAVASCRIPT
+     Nach "window.App = App;" einfügen, innerhalb von:
+     document.addEventListener('DOMContentLoaded', function() { ... });
+     ============================================================ -->
+<script id="weather-js-patch">
+document.addEventListener('DOMContentLoaded', function() {
+
+const WEATHER_TYPES = [
+            { id: 'sunny',    name: 'Sonnig',       icon: '☀️',  dcMod: 0,   bodyBg: 'radial-gradient(circle at 50% 0%, #282460 0%, #0d1330 60%, #080816 100%)', descHint: 'Die Sonne scheint hell.' },
+            { id: 'cloudy',   name: 'Bewölkt',      icon: '☁️',  dcMod: 0,   bodyBg: 'radial-gradient(circle at 50% 0%, #1e2a3a 0%, #0d1520 60%, #060c14 100%)', descHint: 'Schwere Wolken hängen am Himmel.' },
+            { id: 'rain',     name: 'Regen',        icon: '🌧️', dcMod: 1,   bodyBg: 'radial-gradient(circle at 50% 0%, #1a2535 0%, #0a1020 60%, #04080f 100%)', descHint: 'Regen prasselt herab. DEX-Proben sind schwieriger.' },
+            { id: 'storm',    name: 'Gewitter',     icon: '⛈️', dcMod: 2,   bodyBg: 'radial-gradient(circle at 50% 0%, #200a30 0%, #0d0818 60%, #050308 100%)', descHint: 'Ein Sturm wütet! DEX und STR-Proben sind schwieriger.' },
+            { id: 'snow',     name: 'Schnee',       icon: '❄️',  dcMod: 1,   bodyBg: 'radial-gradient(circle at 50% 0%, #1e2d40 0%, #0e1a2a 60%, #080e18 100%)', descHint: 'Schnee bedeckt alles. Bewegung ist langsam.' },
+            { id: 'fog',      name: 'Nebel',        icon: '🌫️', dcMod: 2,   bodyBg: 'radial-gradient(circle at 50% 0%, #232830 0%, #111518 60%, #08090b 100%)', descHint: 'Dicker Nebel verhüllt die Welt. Wahrnehmungsproben sind schwieriger.' },
+            { id: 'heatwave', name: 'Gluthitze',    icon: '🔥',  dcMod: 1,   bodyBg: 'radial-gradient(circle at 50% 0%, #3d1a0a 0%, #1a0a04 60%, #0d0502 100%)', descHint: 'Unerträgliche Hitze. CON-Proben werden schwieriger.' },
+            { id: 'night',    name: 'Nacht',        icon: '🌙',  dcMod: 1,   bodyBg: 'radial-gradient(circle at 50% 0%, #050518 0%, #030310 60%, #010108 100%)', descHint: 'Tiefe Dunkelheit. Alle Sichtproben sind schwieriger.' },
+        ];
+
+        App.Weather = {
+            _particles: [],
+            _interval: null,
+            apply: function(weatherId) {
+                const wt = WEATHER_TYPES.find(w => w.id === weatherId) || WEATHER_TYPES[0];
+                App.State.weather = { current: wt.id, name: wt.name, icon: wt.icon, dcMod: wt.dcMod, bodyBg: wt.bodyBg };
+                
+                // Update background
+                document.body.style.background = wt.bodyBg;
+                
+                // Update HUD
+                const iconEl = document.getElementById('hud-weather-icon');
+                const nameEl = document.getElementById('hud-weather-name');
+                if (iconEl) iconEl.textContent = wt.icon;
+                if (nameEl) {
+                    nameEl.textContent = wt.name;
+                    nameEl.className = 'text-xs font-bold ' + (wt.dcMod > 0 ? 'text-orange-300' : 'text-yellow-300');
+                }
+                
+                // Clear old particles
+                this.clearParticles();
+                
+                // Create new effects
+                const overlay = document.getElementById('weather-overlay');
+                overlay.innerHTML = '';
+                
+                if (wt.id === 'rain' || wt.id === 'storm') {
+                    const count = wt.id === 'storm' ? 80 : 40;
+                    for (let i = 0; i < count; i++) {
+                        const p = document.createElement('div');
+                        p.className = 'rain-particle';
+                        p.style.left = Math.random() * 100 + 'vw';
+                        p.style.height = (8 + Math.random() * 15) + 'px';
+                        p.style.animationDuration = (0.4 + Math.random() * 0.4) + 's';
+                        p.style.animationDelay = (-Math.random() * 2) + 's';
+                        p.style.opacity = 0.3 + Math.random() * 0.4;
+                        overlay.appendChild(p);
+                    }
+                    if (wt.id === 'storm') {
+                        // Lightning flash interval
+                        this._interval = setInterval(() => {
+                            if (Math.random() > 0.7) {
+                                overlay.style.background = 'rgba(200,220,255,0.05)';
+                                setTimeout(() => overlay.style.background = '', 80);
+                                setTimeout(() => { overlay.style.background = 'rgba(200,220,255,0.03)'; setTimeout(() => overlay.style.background = '', 60); }, 120);
+                            }
+                        }, 3000);
+                    }
+                } else if (wt.id === 'snow') {
+                    for (let i = 0; i < 50; i++) {
+                        const p = document.createElement('div');
+                        p.className = 'snow-particle';
+                        p.style.left = Math.random() * 100 + 'vw';
+                        p.style.width = p.style.height = (2 + Math.random() * 4) + 'px';
+                        p.style.animationDuration = (3 + Math.random() * 4) + 's';
+                        p.style.animationDelay = (-Math.random() * 6) + 's';
+                        overlay.appendChild(p);
+                    }
+                } else if (wt.id === 'fog') {
+                    for (let i = 0; i < 3; i++) {
+                        const p = document.createElement('div');
+                        p.className = 'fog-layer';
+                        p.style.animationDelay = (i * 2.5) + 's';
+                        p.style.opacity = 0.4 + i * 0.1;
+                        overlay.appendChild(p);
+                    }
+                }
+                
+                if (wt.dcMod > 0) {
+                    App.UI.addChatLog('🌦️ Wetter', `Das Wetter hat sich geändert: **${wt.name}** ${wt.icon}\n${wt.descHint}\n⚠️ Alle Proben erhalten **+${wt.dcMod} DC** durch die Witterung.`);
+                }
+            },
+            clearParticles: function() {
+                if (this._interval) { clearInterval(this._interval); this._interval = null; }
+            },
+            cycle: function() {
+                const idx = WEATHER_TYPES.findIndex(w => w.id === App.State.weather.current);
+                const next = WEATHER_TYPES[(idx + 1) % WEATHER_TYPES.length];
+                this.apply(next.id);
+            },
+            randomChange: function() {
+                const roll = Math.random();
+                if (roll < 0.15) {
+                    const options = WEATHER_TYPES.filter(w => w.id !== App.State.weather.current);
+                    const pick = options[Math.floor(Math.random() * options.length)];
+                    this.apply(pick.id);
+                }
+            },
+            getWeatherContext: function() {
+                const wt = WEATHER_TYPES.find(w => w.id === App.State.weather.current);
+                if (!wt || wt.dcMod === 0) return '';
+                return ` [WETTER: ${wt.name} – alle Proben +${wt.dcMod} DC. ${wt.descHint}]`;
+            }
+        };
+
+    // Wetter beim Start initialisieren
+    App.Weather.apply('sunny');
+
+});
+</script>
+
+
+<!-- ============================================================
+     4. KI-INTEGRATION (optional)
+     In der interactWithAI-Funktion, vor dem KI-API-Call:
+
+         const weatherCtx = App.Weather.getWeatherContext();
+         // weatherCtx an den Prompt anhängen:
+         // prompt = userPrompt + weatherCtx;
+
+     Nach dem KI-API-Call (Response erhalten):
+
+         App.Weather.randomChange();
+
+     ============================================================ -->
