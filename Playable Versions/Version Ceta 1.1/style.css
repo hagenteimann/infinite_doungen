@@ -355,6 +355,86 @@
             animation: floatUp 1.5s ease-out forwards !important;
         }
 
+        .damage-float.loot {
+            color: #c084fc !important; /* purple-400 */
+            font-size: 28px !important;
+            font-weight: 900 !important;
+            text-shadow: 0 4px 16px rgba(192, 132, 252, 0.9) !important;
+            animation: lootFloatUp 1.8s ease-out forwards !important;
+        }
+
+        @keyframes lootFloatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(0.8);
+            }
+            50% {
+                opacity: 1;
+                transform: translateY(-30px) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-60px) scale(1);
+            }
+        }
+
+        /* Loot Container Glow */
+        @keyframes lootGlow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(192, 132, 252, 0.4),
+                            inset 0 0 15px rgba(192, 132, 252, 0.1);
+                border-color: #c084fc !important;
+            }
+            50% {
+                box-shadow: 0 0 35px rgba(192, 132, 252, 0.7),
+                            inset 0 0 20px rgba(192, 132, 252, 0.2);
+                border-color: #e879f9 !important;
+            }
+        }
+
+        .loot-container-glow {
+            animation: lootGlow 1.2s ease-in-out 3;
+        }
+
+        /* Loot Item Staggered Entrance */
+        @keyframes lootItemPop {
+            0% {
+                opacity: 0;
+                transform: scale(0.7) translateY(10px);
+            }
+            60% {
+                transform: scale(1.05) translateY(-2px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .loot-item-entrance {
+            animation: lootItemPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            opacity: 0;
+        }
+
+        /* Loot Particle */
+        .loot-particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: lootParticleFall 2s ease-out forwards;
+        }
+
+        @keyframes lootParticleFall {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100px) scale(0);
+            }
+        }
+
         /* ==================== WEATHER ==================== */
         #weather-overlay {
             position: fixed;

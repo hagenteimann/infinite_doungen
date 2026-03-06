@@ -277,13 +277,25 @@ const UI = {
         DOM.enemySection.classList.toggle('hidden', !State.activeEnemies.length && !State.defeatedEnemies.length);
         DOM.enemyHistoryContainer.innerHTML = State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join('');
         DOM.currentEnemyContainer.innerHTML = State.activeEnemies.map(e => UIBuilders.buildEnemyCard(e, false)).join('');
+        const hadLoot = !DOM.lootDropSection.classList.contains('hidden');
         DOM.lootDropSection.classList.toggle('hidden', !State.lootDrops.length);
         DOM.lootList.innerHTML = State.lootDrops.map((it, idx) => {
             const formatted = App.UI.formatItemDisplay(it);
             const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
             const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-            return `<div class="text-[10px] bg-amber-950/60 p-1.5 rounded border border-amber-800/50 flex justify-between items-center mt-1.5 shadow-sm" ${titleAttr}><span class="text-amber-300 font-mono truncate mr-2 flex-1">+ ${formatted.displayName} ${effectIcon}</span><select onchange="App.Engine.assignLoot(${idx}, this.value)" class="bg-slate-800 text-slate-300 border border-slate-600 rounded outline-none p-1 max-w-[85px] cursor-pointer"><option value="">Geben...</option>${State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>`;
+            return `<div class="text-[10px] bg-amber-950/60 p-1.5 rounded border border-amber-800/50 flex justify-between items-center mt-1.5 shadow-sm loot-item-entrance" ${titleAttr}><span class="text-amber-300 font-mono truncate mr-2 flex-1">+ ${formatted.displayName} ${effectIcon}</span><select onchange="App.Engine.assignLoot(${idx}, this.value)" class="bg-slate-800 text-slate-300 border border-slate-600 rounded outline-none p-1 max-w-[85px] cursor-pointer"><option value="">Geben...</option>${State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>`;
         }).join('');
+
+        // If loot just appeared, trigger animations
+        if (!hadLoot && State.lootDrops.length > 0) {
+            UI.showLootAnimation();
+        } else if (State.lootDrops.length > 0) {
+            // Animate new items with staggered delays
+            const items = DOM.lootList.querySelectorAll('.loot-item-entrance');
+            items.forEach((item, idx) => {
+                item.style.animationDelay = `${idx * 0.15}s`;
+            });
+        }
         const collectAllSelect = document.getElementById('collect-all-select');
         if (collectAllSelect) {
             collectAllSelect.innerHTML = '<option value="">Alle nehmen...</option>' + State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -655,6 +667,72 @@ const UI = {
         DOM.diceQualityLabel.innerText = r === 20 ? "Kritisch!" : r >= 10 ? "Erfolg" : r > 1 ? "Fehlschlag" : "Patzer!";
         DOM.diceQualityLabel.className = `text-xl cinzel font-bold uppercase tracking-widest mb-8 ${r >= 10 ? 'text-green-400' : 'text-red-500'}`;
         DOM.diceModal.classList.remove('hidden');
+    },
+
+    showLootAnimation: function () {
+        const container = DOM.lootDropSection;
+        if (!container) return;
+
+        // Play loot sound
+        Sound.play('loot');
+
+        // Layer 1: Container glow effect
+        container.classList.add('loot-container-glow');
+        setTimeout(() => {
+            container.classList.remove('loot-container-glow');
+        }, 3600); // 3 iterations of 1.2s = 3.6s
+
+        // Layer 2: "LOOT!" floating text
+        const float = document.createElement('div');
+        float.className = 'damage-float loot';
+        float.textContent = 'LOOT!';
+        float.style.position = 'fixed';
+
+        const rect = container.getBoundingClientRect();
+        float.style.left = (rect.left + rect.width / 2 - 50) + 'px';
+        float.style.top = (rect.top - 50) + 'px';
+        float.style.zIndex = '1000';
+
+        document.body.appendChild(float);
+        setTimeout(() => float.remove(), 1800);
+
+        // Layer 3: Particle explosion inside container
+        this.createLootParticles(container);
+    },
+
+    createLootParticles: function (container) {
+        const colors = ['#c084fc', '#fbbf24', '#a3e635', '#22c55e', '#3b82f6'];
+        const particleCount = 15;
+
+        for (let i = 0; i < particleCount; i++) {
+            const p = document.createElement('div');
+            p.className = 'loot-particle';
+
+            const size = 4 + Math.random() * 6;
+            p.style.width = size + 'px';
+            p.style.height = size + 'px';
+            p.style.background = colors[Math.floor(Math.random() * colors.length)];
+            p.style.boxShadow = `0 0 ${size}px ${p.style.background}`;
+
+            // Start position (random within container)
+            const containerRect = container.getBoundingClientRect();
+            const startX = Math.random() * containerRect.width;
+            const startY = Math.random() * containerRect.height * 0.5; // top half
+
+            p.style.left = (containerRect.left + startX) + 'px';
+            p.style.top = (containerRect.top + startY) + 'px';
+            p.style.position = 'fixed';
+
+            // Random horizontal drift
+            const drift = (Math.random() - 0.5) * 100;
+            p.style.setProperty('--drift', drift + 'px');
+
+            // Extend animation with custom drift
+            p.style.animation = `lootParticleFall ${1.5 + Math.random() * 0.5}s ease-out forwards`;
+
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 2000);
+        }
     }
 };
 

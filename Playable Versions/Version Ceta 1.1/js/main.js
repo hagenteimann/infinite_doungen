@@ -338,6 +338,23 @@ const Sound = {
                     });
                     break;
                 }
+                case 'loot': {
+                    // Loot: shimmering sparkle sound
+                    const notes = [800, 1000, 1200, 1400];
+                    notes.forEach((freq, i) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination);
+                        o.type = 'sine';
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.0, t + i * 0.12);
+                        g.gain.linearRampToValueAtTime(0.05, t + i * 0.12 + 0.08);
+                        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.4);
+                        o.start(t + i * 0.12);
+                        o.stop(t + i * 0.12 + 0.4);
+                    });
+                    break;
+                }
                 case 'click': {
                     // UI Click: short high-pitched pop
                     const o = ctx.createOscillator();
