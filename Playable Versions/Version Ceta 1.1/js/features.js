@@ -97,4 +97,4 @@ getWeatherContext: function () {
 };
 
 // Wetter beim Start initialisieren
-App.Weather.apply('sunny');
+Weather.apply('sunny');

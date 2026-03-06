@@ -277,9 +277,12 @@ const UI = {
         DOM.enemySection.classList.toggle('hidden', !State.activeEnemies.length && !State.defeatedEnemies.length);
         DOM.enemyHistoryContainer.innerHTML = State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join('');
         DOM.currentEnemyContainer.innerHTML = State.activeEnemies.map(e => UIBuilders.buildEnemyCard(e, false)).join('');
-        const hadLoot = !DOM.lootDropSection.classList.contains('hidden');
-        DOM.lootDropSection.classList.toggle('hidden', !State.lootDrops.length);
-        DOM.lootList.innerHTML = State.lootDrops.map((it, idx) => {
+
+        // Loot section with null checks
+        if (DOM.lootDropSection && DOM.lootList) {
+            const hadLoot = !DOM.lootDropSection.classList.contains('hidden');
+            DOM.lootDropSection.classList.toggle('hidden', !State.lootDrops.length);
+            DOM.lootList.innerHTML = State.lootDrops.map((it, idx) => {
             const formatted = App.UI.formatItemDisplay(it);
             const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
             const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
@@ -296,6 +299,8 @@ const UI = {
                 item.style.animationDelay = `${idx * 0.15}s`;
             });
         }
+        }
+
         const collectAllSelect = document.getElementById('collect-all-select');
         if (collectAllSelect) {
             collectAllSelect.innerHTML = '<option value="">Alle nehmen...</option>' + State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('');

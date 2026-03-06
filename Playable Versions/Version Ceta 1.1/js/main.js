@@ -941,10 +941,16 @@ const Engine = {
             dungeonContext = ``; // Schicksal läuft intern – kein Hinweis an den DM
         }
 
+        // Wenn Proben ausstehen: KEINE Vorschläge machen, sondern nur auf Proben warten
+        const pendingRollsCount = State.pendingRolls.filter(r => !r.rolled).length;
+        const rollsAddendum = pendingRollsCount > 0
+            ? ` [WICHTIG: Es stehen ${pendingRollsCount} Probe(n) aus. Gib KEINE Handlungsvorschläge am Ende deiner Antwort. Der Spieler muss zuerst diese Proben würfeln. Warte auf deren Ergebnisse.]`
+            : "";
+
         // Chat-History als Kontext (letzte 5 Nachrichten, max 2000 Zeichen)
         const historyCtx = State.chatHistory.slice(-5).join(' | ').substring(0, 2000);
         const weatherCtx = (typeof App !== 'undefined' && App.Weather) ? App.Weather.getWeatherContext() : '';
-        const context = `Party: ${partyCtx}. Feinde: ${enemyCtx}. Vorherige Szenen: [${historyCtx}]. Aktuelle Szene: ${State.lastStoryPart}. Aktion (${acting}): ${actionMsg}. [Regeln: Diff=${diff} (${dInstr}), Rate=${rate}]${qpAddendum}${dungeonContext}${weatherCtx}`;
+        const context = `Party: ${partyCtx}. Feinde: ${enemyCtx}. Vorherige Szenen: [${historyCtx}]. Aktuelle Szene: ${State.lastStoryPart}. Aktion (${acting}): ${actionMsg}. [Regeln: Diff=${diff} (${dInstr}), Rate=${rate}]${qpAddendum}${dungeonContext}${weatherCtx}${rollsAddendum}`;
 
         try {
             const aiResponse = await API.generateText(context);
@@ -1791,6 +1797,7 @@ const init = () => {
     document.addEventListener('keydown', () => { if (State.soundEnabled) Sound.getCtx().resume(); }, { once: true });
 };
 
-// Run init internally
-init();
+// Make App globally available first
 window.App = { Engine, UI, Utils, API, State, Weather: typeof Weather !== 'undefined' ? Weather : null };
+// Then run init
+init();
