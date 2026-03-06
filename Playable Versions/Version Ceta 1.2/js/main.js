@@ -1064,18 +1064,25 @@ const Engine = {
             });
 
             cleanText = cleanText.replace(/\[(Gegner|GegnerTot|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht).*?\]/gi, '').trim();
-            cleanText = cleanText.replace(/(?:^|\n)(?:-|\*)\s+([^\n]+)/g, (m, p1) => `<div class="mt-2 block w-full text-left bg-slate-800/60 hover:bg-slate-700/80 border border-slate-600/50 hover:border-indigo-500/50 text-indigo-200 rounded-md px-3 py-2 cursor-pointer transition-all shadow-sm flex items-start gap-2 text-xs group" onclick="App.UI.selectOption('${p1.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')"><i class="fas fa-chevron-right text-indigo-500/70 group-hover:text-indigo-400 mt-0.5 transition-colors"></i> <span class="leading-relaxed">${p1}</span></div>`);
+            cleanText = cleanText.replace(/(?:^|\n)(?:-|\*)\s+([^\n]+)/g, (m, p1) => {
+                // Use data attribute and event delegation to avoid JavaScript escaping issues
+                const safeValue = p1.replace(/"/g, '&quot;');
+                return `<div class="mt-2 suggestion-option block w-full text-left bg-slate-800/60 hover:bg-slate-700/80 border border-slate-600/50 hover:border-indigo-500/50 text-indigo-200 rounded-md px-3 py-2 cursor-pointer transition-all shadow-sm flex items-start gap-2 text-xs group" data-prompt="${safeValue}"><i class="fas fa-chevron-right text-indigo-500/70 group-hover:text-indigo-400 mt-0.5 transition-colors"></i> <span class="leading-relaxed">${p1}</span></div>`;
+            });
 
             if (cleanText.length > 0) UI.addChatLog("DM", cleanText);
             TagParser.process(aiResponse);
         } catch (e) { UI.addChatLog("System", `⚠️ Fehler: ${e.message}`); }
         finally {
             State.isProcessing = false; UI.showLoader(false);
-            // Bestiary update - track from activeEnemies (hp<=0)
-            State.activeEnemies.filter(e => e.hp <= 0).forEach(e => {
+            // Cleanup dead enemies first (moves hp<=0 from activeEnemies to defeatedEnemies)
+            CombatManager.cleanupDead();
+            // Bestiary update - track from defeatedEnemies (now contains all defeated foes)
+            State.defeatedEnemies.forEach(e => {
                 if (!State.bestiary[e.name]) {
                     State.bestiary[e.name] = { name: e.name, portrait: e.portrait || null, maxHp: e.maxHp, timesDefeated: 0 };
                 }
+                // Count each defeated enemy only once per session
                 if (!e._bestiaryCounted) {
                     State.bestiary[e.name].timesDefeated++;
                     e._bestiaryCounted = true;

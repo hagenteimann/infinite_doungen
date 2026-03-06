@@ -27,6 +27,19 @@ const initDOM = () => {
         const camelCaseId = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
         DOM[camelCaseId] = document.getElementById(id);
     });
+
+    // Event delegation for suggestion options (avoids inline onclick escaping issues)
+    if (DOM.storyLog) {
+        DOM.storyLog.addEventListener('click', (e) => {
+            const suggestion = e.target.closest('.suggestion-option');
+            if (suggestion) {
+                const prompt = suggestion.getAttribute('data-prompt');
+                if (prompt) {
+                    App.UI.selectOption(prompt);
+                }
+            }
+        });
+    }
 };
 
 /* ==========================================
@@ -226,16 +239,27 @@ const UI = {
     renderBestiary: function () {
         const el = document.getElementById('bestiary-content');
         if (!el) return;
-        const entries = Object.values(State.bestiary || {});
+        let entries = Object.values(State.bestiary || {});
+
+        // Sortieren: zuerst nach Besiegt-Anzahl (absteigend), dann nach Name
+        entries.sort((a, b) => {
+            if (b.timesDefeated !== a.timesDefeated) {
+                return b.timesDefeated - a.timesDefeated;
+            }
+            return a.name.localeCompare(b.name);
+        });
+
         if (entries.length === 0) {
-            el.innerHTML = '<p class="text-slate-500 italic text-center mt-4">Noch keine Monster besiegt. K\u00e4mpfe und besiege Feinde!</p>';
+            el.innerHTML = '<p class="text-slate-500 italic text-center mt-4">Noch keine Monster besiegt. Kämpfe und besiege Feinde!</p>';
             return;
         }
-        el.innerHTML = entries.map(e => {
+
+        el.innerHTML = entries.map((e, idx) => {
             const portrait = e.portrait
                 ? `<img src="${e.portrait}" class="w-9 h-9 rounded-lg object-cover border border-red-900/50 shadow-[0_0_6px_rgba(127,29,29,0.5)] flex-shrink-0">`
                 : `<div class="w-9 h-9 rounded-lg bg-black/60 border border-red-900/40 flex items-center justify-center text-red-500/60 flex-shrink-0"><i class="fas fa-skull text-sm"></i></div>`;
             return `<div class="bg-black/30 border border-slate-800 rounded-xl p-2 flex gap-2.5 items-center fade-in">
+                <div class="text-[9px] text-slate-500 font-mono w-5 text-center">${idx + 1}.</div>
                 ${portrait}
                 <div class="flex-1 min-w-0">
                     <div class="text-slate-200 text-[11px] font-bold truncate">${e.name}</div>
@@ -348,6 +372,9 @@ const UI = {
 
         this.updateTargetModeButton();
         this.updateActionBox();
+
+        // Always render bestiary to keep it up-to-date
+        this.renderBestiary();
     },
 
     updateActionBox: function () {
