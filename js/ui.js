@@ -814,6 +814,20 @@ export const UI = {
 
         // Watch mode: show animation but don't execute callback (another player is rolling)
         if (watchMode) {
+            if (DOM.diceRollerPortrait) {
+                let entity = Utils.findTarget(State.party, name) || Utils.findTarget(State.activeEnemies, name);
+                let portraitHtml = '👤';
+                if (entity) {
+                    if (entity.portrait) portraitHtml = `<img src="${entity.portrait}" class="w-full h-full object-cover">`;
+                    else if (entity.isSummon) portraitHtml = '🌀';
+                    else if (entity.hp !== undefined && !entity.class) portraitHtml = '💀';
+                    DOM.diceRollerPortrait.className = `w-16 h-16 rounded-full border-2 bg-slate-800 flex items-center justify-center text-3xl overflow-hidden shadow-inner flex-shrink-0 ${entity.isNPC ? (entity.isSummon ? 'border-purple-500' : 'border-blue-500') : (entity.class ? 'border-amber-500' : 'border-red-600')}`;
+                } else {
+                    DOM.diceRollerPortrait.className = 'w-16 h-16 rounded-full border-2 border-slate-600 bg-slate-800 flex items-center justify-center text-3xl overflow-hidden shadow-inner flex-shrink-0';
+                }
+                DOM.diceRollerPortrait.innerHTML = portraitHtml;
+                DOM.diceRollerPortrait.classList.remove('hidden');
+            }
             DOM.diceRollerName.innerText = name;
             DOM.diceTargetDc.innerText = `Ziel: DC ${targetDC}`; DOM.diceTargetDc.classList.remove('hidden');
             DOM.diceAcceptBtn.classList.add('hidden'); DOM.diceModal.classList.remove('hidden');

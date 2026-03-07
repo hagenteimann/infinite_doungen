@@ -17,7 +17,7 @@ export const WEATHER_TYPES = [
 
 export const Weather = {
 _interval: null,
-apply: function (weatherId) {
+apply: function (weatherId, silent = false) {
     const wt = WEATHER_TYPES.find(w => w.id === weatherId) || WEATHER_TYPES[0];
     State.weather = { current: wt.id, name: wt.name, icon: wt.icon, dcMod: wt.dcMod };
     document.body.style.background = wt.bodyBg;
@@ -78,7 +78,7 @@ apply: function (weatherId) {
         }
     }
 
-    if (wt.dcMod > 0) {
+    if (wt.dcMod > 0 && !silent) {
         UI.addChatLog('🌦️ Wetter', `Das Wetter hat sich geändert: **${wt.name}** ${wt.icon}\n${wt.descHint}\n⚠️ Alle Proben erhalten **+${wt.dcMod} DC** durch die Witterung.`);
     }
 },

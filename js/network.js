@@ -5,6 +5,7 @@ import { Engine } from './engine.js';
 import { Sound } from './sound.js';
 import { PartyManager } from './party.js';
 import { validateHeroData } from './sanitize.js';
+import { Weather } from './features.js';
 
 const ROOM_PREFIX = 'infdung-';
 const CONNECT_TIMEOUT_MS = 10000;
@@ -855,6 +856,7 @@ export const Network = {
 
     _applyStateSync(incoming) {
         const wasStarted = State.gameStarted;
+        const prevWeatherId = State.weather?.current;
         SYNC_KEYS.forEach(k => {
             if (incoming[k] === undefined) return;
             if (k === 'pendingRolls' && Array.isArray(incoming[k])) {
@@ -867,6 +869,10 @@ export const Network = {
             }
         });
         if (State.gameStarted && !wasStarted) UI.toggleViews(true);
+        // Wetter visuell anwenden wenn es sich geändert hat (silent = keine Chat-Meldung)
+        if (State.weather?.current && State.weather.current !== prevWeatherId) {
+            Weather.apply(State.weather.current, true);
+        }
     },
 
     _handleHostMessage(msg) {
@@ -895,9 +901,18 @@ export const Network = {
                 this._updateTurnUI();
                 break;
             }
-            case 'DM_MESSAGE':
-                UI.addChatLog(msg.sender || 'DM', msg.text);
+            case 'DM_MESSAGE': {
+                let dmText = msg.text;
+                // Vorschläge nur anzeigen wenn der Client gerade am Zug ist
+                if (!this.isMyTurn()) {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = dmText;
+                    tmp.querySelectorAll('.suggestion-option').forEach(el => el.remove());
+                    dmText = tmp.innerHTML;
+                }
+                UI.addChatLog(msg.sender || 'DM', dmText);
                 break;
+            }
             case 'PLAYER_CHAT':
                 Sound.play('turn');
                 UI.addChatLog(msg.sender || 'Spieler', msg.text);

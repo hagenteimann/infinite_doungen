@@ -377,6 +377,8 @@ export const Engine = {
         const action = isStr ? actionOverride.trim() : DOM.playerInput.value.trim();
         if (!action || State.isProcessing) return;
         if (!isStr) DOM.playerInput.value = "";
+        // Vorherige Vorschläge aus dem Chat entfernen
+        DOM.storyLog?.querySelectorAll('.suggestion-option').forEach(el => el.remove());
         let actingName;
         if (Network.isConnected() && Network.turnOrder.length > 1) {
             const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
