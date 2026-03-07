@@ -335,6 +335,7 @@ export const Engine = {
 
     submitPlayerAction: function (actionOverride) {
         if (State.pendingRolls.length > 0) return;
+        if (Network.isConnected() && !Network.isMyTurn()) return;
 
         if (State.combatEnded) {
             State.defeatedEnemies = [];
@@ -386,6 +387,7 @@ export const Engine = {
     },
 
     rollSpecific: function (id) {
+        if (this._requireHost('Würfeln')) return;
         const roll = State.pendingRolls.find(r => r.id === id);
         if (!roll) return;
         UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
@@ -395,6 +397,7 @@ export const Engine = {
     },
 
     rollAllPending: async function () {
+        if (this._requireHost('Würfeln')) return;
         const unrolled = State.pendingRolls.filter(r => !r.rolled);
         if (unrolled.length === 0 || this._isRollingAll) return;
 
@@ -418,6 +421,7 @@ export const Engine = {
     },
 
     submitPendingRolls: function () {
+        if (this._requireHost('Ergebnisse bestätigen')) return;
         const rollsCopy = [...State.pendingRolls];
         let resText = "Die Würfel sind gefallen:\n";
         State.pendingRolls.forEach(r => {
@@ -453,6 +457,7 @@ export const Engine = {
     },
 
     submitManualDiceRoll: function () {
+        if (this._requireHost('Würfeln')) return;
         const r = DOM.diceResult.innerText;
         const name = DOM.diceRollerName.innerText;
         DOM.diceModal.classList.add('hidden');

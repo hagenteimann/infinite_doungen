@@ -417,6 +417,7 @@ export const Network = {
                 });
                 if (State.gameStarted && !wasStarted) UI.toggleViews(true);
                 UI.updateAll();
+                this._updateTurnUI();
                 break;
             }
             case 'DM_MESSAGE':
@@ -618,6 +619,7 @@ export const Network = {
 
         if (!this.isConnected() || this.turnOrder.length <= 1) {
             el.classList.add('hidden');
+            this._setQuickActionsEnabled(true);
             return;
         }
 
@@ -631,12 +633,53 @@ export const Network = {
         const playerInput = document.getElementById('player-input');
         const sendBtn = document.getElementById('send-btn');
         const hasPendingRolls = State.pendingRolls && State.pendingRolls.length > 0;
-        if (playerInput && !hasPendingRolls) {
+
+        if (hasPendingRolls) {
+            playerInput.disabled = true;
+            sendBtn.disabled = true;
+            if (this.isClient()) {
+                playerInput.placeholder = 'Der Host würfelt...';
+                this._showClientRollView();
+            }
+        } else {
             playerInput.disabled = !myTurn;
+            sendBtn.disabled = !myTurn;
             playerInput.placeholder = myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayer}...`;
         }
-        if (sendBtn && !hasPendingRolls) {
-            sendBtn.disabled = !myTurn;
+
+        this._setQuickActionsEnabled(myTurn && !hasPendingRolls);
+    },
+
+    _showClientRollView() {
+        const actionBox = document.getElementById('action-box-container');
+        if (!actionBox || actionBox.classList.contains('hidden')) return;
+
+        actionBox.querySelectorAll(
+            'button[data-action="roll-specific"], button[data-action="roll-all"], button[data-action="submit-rolls"]'
+        ).forEach(btn => btn.remove());
+
+        if (!actionBox.querySelector('.mp-waiting-rolls')) {
+            const msg = document.createElement('p');
+            msg.className = 'mp-waiting-rolls text-center text-[10px] text-amber-400 mt-2 animate-pulse';
+            msg.innerHTML = '<i class="fas fa-dice-d20 mr-1"></i> Der Host würfelt die Proben...';
+            actionBox.appendChild(msg);
         }
+    },
+
+    _setQuickActionsEnabled(enabled) {
+        const selectors = [
+            '[data-action="submit-action"]',
+            '[data-action="camp"]',
+            '[data-action="ask-oracle"]',
+            '[data-action="plot-twist"]',
+            '[data-action="generate-npc"]',
+            '[data-action="check-enemies"]',
+            '[data-action="toggle-quickplay"]',
+        ];
+        document.querySelectorAll(selectors.join(',')).forEach(btn => {
+            btn.disabled = !enabled;
+            btn.classList.toggle('opacity-40', !enabled);
+            btn.classList.toggle('pointer-events-none', !enabled);
+        });
     },
 };
