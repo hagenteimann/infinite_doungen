@@ -272,16 +272,14 @@ describe('registerCharacter', () => {
         expect(State._mpMyCharId).toBeNull();
     });
 
-    it('broadcasts char map to clients', () => {
+    it('marks dirty for sync broadcast', () => {
         Network.role = 'host';
         Network.connState = 'connected';
         Network.playerName = 'Host';
-        const mockConn = { send: vi.fn() };
-        Network.connections = [mockConn];
+        Network.connections = [];
+        Network._syncDirty = false;
         Network.registerCharacter('Host', 'c1');
-        expect(mockConn.send).toHaveBeenCalledWith(
-            expect.objectContaining({ type: 'CHAR_MAP', map: { Host: 'c1' } })
-        );
+        expect(Network._syncDirty).toBe(true);
     });
 });
 
@@ -987,6 +985,105 @@ describe('canRollFor', () => {
             makeChar({ id: 'c2', name: 'Legolas' }),
         ];
         expect(Network.canRollFor('Legolas')).toBe(false);
+    });
+});
+
+// ──────────────────────────────────────────
+// fullSync / _markDirty / _getFullSyncPayload
+// ──────────────────────────────────────────
+
+describe('fullSync', () => {
+    it('does nothing when not host', () => {
+        Network.role = 'client';
+        const mockConn = { send: vi.fn() };
+        Network.connections = [mockConn];
+        Network.fullSync();
+        expect(mockConn.send).not.toHaveBeenCalled();
+    });
+
+    it('sends FULL_SYNC with all state and network metadata', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.playerName = 'Host';
+        Network.turnOrder = ['Host', 'Player1'];
+        Network.currentTurnIndex = 1;
+        Network.playerCharMap = { Host: 'c1' };
+        Network.autoPlayers = { Player1: true };
+        Network.combatActions = {};
+        Network.currentVote = null;
+        State.gold = 42;
+        State.isProcessing = true;
+        const mockConn = { send: vi.fn() };
+        Network.connections = [mockConn];
+        Network.fullSync();
+        expect(mockConn.send).toHaveBeenCalledOnce();
+        const payload = mockConn.send.mock.calls[0][0];
+        expect(payload.type).toBe('FULL_SYNC');
+        expect(payload.state.gold).toBe(42);
+        expect(payload.turnOrder).toEqual(['Host', 'Player1']);
+        expect(payload.currentTurnIndex).toBe(1);
+        expect(payload.playerCharMap).toEqual({ Host: 'c1' });
+        expect(payload.autoPlayers).toEqual({ Player1: true });
+        expect(payload.isProcessing).toBe(true);
+    });
+
+    it('clears dirty flag after sending', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.connections = [];
+        Network._syncDirty = true;
+        Network.fullSync();
+        expect(Network._syncDirty).toBe(false);
+    });
+
+    it('includes combat submitted status', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.turnOrder = ['Host', 'P1'];
+        Network.combatActions = { Host: { action: 'attack', charName: 'Gimli' } };
+        const mockConn = { send: vi.fn() };
+        Network.connections = [mockConn];
+        Network.fullSync();
+        const payload = mockConn.send.mock.calls[0][0];
+        expect(payload.combatSubmitted['Host']).toBe('Gimli');
+        expect(payload.combatSubmitted['P1']).toBeNull();
+    });
+});
+
+describe('_markDirty', () => {
+    it('sets dirty flag', () => {
+        Network.role = 'host';
+        Network._syncDirty = false;
+        Network._markDirty();
+        expect(Network._syncDirty).toBe(true);
+        if (Network._syncDebounceTimer) clearTimeout(Network._syncDebounceTimer);
+        Network._syncDebounceTimer = null;
+    });
+});
+
+describe('requestSync', () => {
+    it('client sends REQUEST_SYNC to host', () => {
+        Network.role = 'client';
+        Network.connState = 'connected';
+        const mockConn = { send: vi.fn() };
+        Network.connections = [mockConn];
+        Network.requestSync();
+        expect(mockConn.send).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'REQUEST_SYNC' })
+        );
+    });
+
+    it('host calls fullSync directly', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.turnOrder = ['Host'];
+        Network.combatActions = {};
+        const mockConn = { send: vi.fn() };
+        Network.connections = [mockConn];
+        Network.requestSync();
+        expect(mockConn.send).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'FULL_SYNC' })
+        );
     });
 });
 

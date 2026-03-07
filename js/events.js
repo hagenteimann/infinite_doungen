@@ -111,6 +111,7 @@ export function initEvents() {
                 else Network.showModal();
             },
             'mp-save-config': () => Network.saveAdvancedConfig(),
+            'mp-request-sync': () => Network.requestSync(),
             'mp-execute-round': () => Network.executeCombatRound(),
             'mp-skip-player': () => Network.skipPlayer(actionEl.dataset.player),
             'mp-toggle-auto': () => Network.toggleAutoPlayer(actionEl.dataset.player),

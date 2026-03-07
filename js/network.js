@@ -44,6 +44,9 @@ export const Network = {
     currentVote: null,
     _mySubmittedAction: null,
     autoPlayers: {},
+    _syncDirty: false,
+    _syncDebounceTimer: null,
+    _heartbeatTimer: null,
 
     isHost() { return this.role === 'host'; },
     isClient() { return this.role === 'client'; },
@@ -135,6 +138,7 @@ export const Network = {
             this._setConnState('connected');
             this.turnOrder = [this.playerName];
             this.currentTurnIndex = 0;
+            this._startHeartbeat();
             UI.addChatLog('System', `Multiplayer-Raum erstellt: **${this.roomCode}**. Teile diesen Code mit deinen Spielern.`);
         });
 
@@ -147,10 +151,9 @@ export const Network = {
                     this.turnOrder.push(joinedName);
                 }
                 this._updateUI();
-                this._sendTo(conn, { type: 'STATE_SYNC', state: this._getSyncState() });
-                this.broadcastTurnState();
                 this.assignCharacters();
-                if (this.isInCombat()) this._broadcastCombatStatus();
+                this._sendTo(conn, this._getFullSyncPayload());
+                this._updateTurnUI();
             });
 
             conn.on('data', (msg) => this._handleClientMessage(conn, msg));
@@ -195,7 +198,7 @@ export const Network = {
         });
 
         this._unsubscribe = subscribe(() => {
-            this.broadcastState();
+            this._markDirty();
         });
     },
 
@@ -260,6 +263,12 @@ export const Network = {
     },
 
     disconnect() {
+        this._stopHeartbeat();
+        if (this._syncDebounceTimer) {
+            clearTimeout(this._syncDebounceTimer);
+            this._syncDebounceTimer = null;
+        }
+        this._syncDirty = false;
         this._clearConnectTimeout();
         if (this._unsubscribe) {
             this._unsubscribe();
@@ -320,10 +329,7 @@ export const Network = {
 
     broadcastState() {
         if (!this.isHost()) return;
-        const syncState = this._getSyncState();
-        this.connections.forEach(conn => {
-            this._sendTo(conn, { type: 'STATE_SYNC', state: syncState });
-        });
+        this._markDirty();
     },
 
     broadcastChat(sender, text) {
@@ -363,13 +369,8 @@ export const Network = {
 
     broadcastTurnState() {
         if (!this.isHost()) return;
-        const msg = {
-            type: 'TURN_UPDATE',
-            turnOrder: this.turnOrder,
-            currentTurnIndex: this.currentTurnIndex,
-        };
-        this.connections.forEach(c => this._sendTo(c, msg));
         this._updateTurnUI();
+        this._markDirty();
     },
 
     submitCombatAction(action, charName) {
@@ -496,14 +497,8 @@ export const Network = {
 
     _broadcastCombatStatus() {
         if (!this.isHost()) return;
-        const submitted = {};
-        this.turnOrder.forEach(p => {
-            submitted[p] = this.combatActions[p] ? this.combatActions[p].charName : null;
-        });
-        this.connections.forEach(c => {
-            this._sendTo(c, { type: 'COMBAT_STATUS', submitted, inCombat: this.isInCombat() });
-        });
         this._updateTurnUI();
+        this._markDirty();
     },
 
     registerCharacter(playerName, charId) {
@@ -527,8 +522,8 @@ export const Network = {
     },
 
     _broadcastCharMap() {
-        const msg = { type: 'CHAR_MAP', map: this.playerCharMap };
-        this.connections.forEach(c => this._sendTo(c, msg));
+        if (!this.isHost()) return;
+        this._markDirty();
     },
 
     canRollFor(rollName) {
@@ -653,6 +648,67 @@ export const Network = {
         return JSON.parse(JSON.stringify(sync));
     },
 
+    _getFullSyncPayload() {
+        const combatSubmitted = {};
+        this.turnOrder.forEach(p => {
+            combatSubmitted[p] = this.combatActions[p] ? this.combatActions[p].charName : null;
+        });
+        return {
+            type: 'FULL_SYNC',
+            state: this._getSyncState(),
+            turnOrder: this.turnOrder,
+            currentTurnIndex: this.currentTurnIndex,
+            playerCharMap: this.playerCharMap,
+            autoPlayers: this.autoPlayers,
+            combatSubmitted,
+            vote: this.currentVote,
+            isProcessing: State.isProcessing,
+        };
+    },
+
+    fullSync() {
+        if (!this.isHost()) return;
+        this._syncDirty = false;
+        const payload = this._getFullSyncPayload();
+        this.connections.forEach(c => this._sendTo(c, payload));
+    },
+
+    _markDirty() {
+        if (!this.isHost()) return;
+        this._syncDirty = true;
+        if (this._syncDebounceTimer) return;
+        this._syncDebounceTimer = setTimeout(() => {
+            this._syncDebounceTimer = null;
+            if (this._syncDirty) this.fullSync();
+        }, 80);
+    },
+
+    _startHeartbeat() {
+        this._stopHeartbeat();
+        this._heartbeatTimer = setInterval(() => {
+            if (this.isHost() && this.isConnected() && this._syncDirty) {
+                this.fullSync();
+            }
+        }, 3000);
+    },
+
+    _stopHeartbeat() {
+        if (this._heartbeatTimer) {
+            clearInterval(this._heartbeatTimer);
+            this._heartbeatTimer = null;
+        }
+    },
+
+    requestSync() {
+        if (this.isClient() && this.connections.length > 0) {
+            this._sendTo(this.connections[0], { type: 'REQUEST_SYNC' });
+        } else if (this.isHost()) {
+            this.fullSync();
+            this._updateTurnUI();
+            UI.updateAll();
+        }
+    },
+
     _sendTo(conn, data) {
         try {
             conn.send(data);
@@ -720,7 +776,12 @@ export const Network = {
                     roll.result = msg.result;
                     roll.rawRoll = msg.rawRoll;
                     UI.updateActionBox();
+                    this._markDirty();
                 }
+                break;
+            }
+            case 'REQUEST_SYNC': {
+                this._sendTo(conn, this._getFullSyncPayload());
                 break;
             }
             default:
@@ -728,25 +789,44 @@ export const Network = {
         }
     },
 
+    _applyStateSync(incoming) {
+        const wasStarted = State.gameStarted;
+        SYNC_KEYS.forEach(k => {
+            if (incoming[k] === undefined) return;
+            if (k === 'pendingRolls' && Array.isArray(incoming[k])) {
+                State[k] = incoming[k].map(r => {
+                    const local = State.pendingRolls.find(lr => lr.id === r.id);
+                    return (local && local.rolled && !r.rolled) ? local : r;
+                });
+            } else {
+                State[k] = incoming[k];
+            }
+        });
+        if (State.gameStarted && !wasStarted) UI.toggleViews(true);
+    },
+
     _handleHostMessage(msg) {
         if (!msg || !msg.type) return;
 
         switch (msg.type) {
+            case 'FULL_SYNC': {
+                this._applyStateSync(msg.state);
+                this.turnOrder = msg.turnOrder || [];
+                this.currentTurnIndex = msg.currentTurnIndex || 0;
+                this.playerCharMap = msg.playerCharMap || {};
+                this.autoPlayers = msg.autoPlayers || {};
+                State._mpMyCharId = this.playerCharMap[this.playerName] || null;
+                this._combatStatus = msg.combatSubmitted || {};
+                this._mySubmittedAction = this._combatStatus[this.playerName] ? { submitted: true } : null;
+                this.currentVote = msg.vote || null;
+                State.isProcessing = !!msg.isProcessing;
+                UI.showLoader(!!msg.isProcessing);
+                UI.updateAll();
+                this._updateTurnUI();
+                break;
+            }
             case 'STATE_SYNC': {
-                const incoming = msg.state;
-                const wasStarted = State.gameStarted;
-                SYNC_KEYS.forEach(k => {
-                    if (incoming[k] === undefined) return;
-                    if (k === 'pendingRolls' && Array.isArray(incoming[k])) {
-                        State[k] = incoming[k].map(r => {
-                            const local = State.pendingRolls.find(lr => lr.id === r.id);
-                            return (local && local.rolled && !r.rolled) ? local : r;
-                        });
-                    } else {
-                        State[k] = incoming[k];
-                    }
-                });
-                if (State.gameStarted && !wasStarted) UI.toggleViews(true);
+                this._applyStateSync(msg.state);
                 UI.updateAll();
                 this._updateTurnUI();
                 break;
@@ -764,10 +844,6 @@ export const Network = {
             case 'TURN_UPDATE': {
                 this.turnOrder = msg.turnOrder || [];
                 this.currentTurnIndex = msg.currentTurnIndex || 0;
-                const wasProcessing = State.isProcessing;
-                State.isProcessing = false;
-                UI.showLoader(false);
-                if (wasProcessing && this.isMyTurn()) Sound.play('turn');
                 this._updateTurnUI();
                 break;
             }
@@ -961,13 +1037,15 @@ export const Network = {
             </div>`;
     },
 
+    _syncBtnHtml: '<button data-action="mp-request-sync" class="absolute top-1 right-1.5 text-[9px] text-slate-600 hover:text-cyan-400 transition-colors" title="Sync erzwingen"><i class="fas fa-sync-alt"></i></button>',
+
     _injectTurnIndicator() {
         if (document.getElementById('mp-turn-indicator')) return;
         const actionArea = document.getElementById('action-area');
         if (!actionArea) return;
         const indicator = document.createElement('div');
         indicator.id = 'mp-turn-indicator';
-        indicator.className = 'hidden text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
+        indicator.className = 'hidden relative text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
         actionArea.insertBefore(indicator, actionArea.firstChild);
     },
 
@@ -988,7 +1066,7 @@ export const Network = {
 
         if (this.currentVote && !this.currentVote.resolved) {
             el.classList.remove('hidden');
-            el.className = 'px-3 py-2 bg-black/40 border border-purple-900/50 rounded-lg backdrop-blur-sm shadow-[0_0_15px_rgba(168,85,247,0.15)]';
+            el.className = 'relative px-3 py-2 bg-black/40 border border-purple-900/50 rounded-lg backdrop-blur-sm shadow-[0_0_15px_rgba(168,85,247,0.15)]';
             this._renderVotePanel(el);
             playerInput.disabled = true;
             sendBtn.disabled = true;
@@ -998,7 +1076,7 @@ export const Network = {
 
         if (this.isInCombat() && !hasPendingRolls) {
             el.classList.remove('hidden');
-            el.className = 'px-3 py-2 bg-black/40 border border-red-900/50 rounded-lg backdrop-blur-sm shadow-[0_0_15px_rgba(239,68,68,0.15)]';
+            el.className = 'relative px-3 py-2 bg-black/40 border border-red-900/50 rounded-lg backdrop-blur-sm shadow-[0_0_15px_rgba(239,68,68,0.15)]';
             this._renderCombatRoundPanel(el);
             const submitted = !!this._mySubmittedAction;
             playerInput.disabled = submitted || State.isProcessing;
@@ -1012,15 +1090,16 @@ export const Network = {
 
         if (hasPendingRolls) {
             el.classList.remove('hidden');
-            el.className = 'text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
+            el.className = 'relative text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
             if (this.isClient()) {
                 const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
                 const hasOwnRolls = myChar && State.pendingRolls.some(r => !r.rolled && r.name === myChar.name);
-                el.innerHTML = hasOwnRolls
+                el.innerHTML = (hasOwnRolls
                     ? '<i class="fas fa-dice-d20 text-green-400 mr-1.5 animate-pulse"></i> <span class="text-green-300 font-bold">Deine Proben wuerfeln!</span>'
-                    : '<i class="fas fa-dice-d20 text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300">Warte auf Probenergebnisse...</span>';
+                    : '<i class="fas fa-dice-d20 text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300">Warte auf Probenergebnisse...</span>')
+                    + this._syncBtnHtml;
             } else {
-                el.innerHTML = '<i class="fas fa-dice-d20 text-indigo-400 mr-1.5 animate-pulse"></i> <span class="text-indigo-300 font-bold">Proben ausstehend...</span>';
+                el.innerHTML = '<i class="fas fa-dice-d20 text-indigo-400 mr-1.5 animate-pulse"></i> <span class="text-indigo-300 font-bold">Proben ausstehend...</span>' + this._syncBtnHtml;
             }
             playerInput.disabled = true;
             sendBtn.disabled = true;
@@ -1031,7 +1110,7 @@ export const Network = {
         const currentPlayer = this.turnOrder[this.currentTurnIndex] || '';
         const myTurn = this.isMyTurn();
         el.classList.remove('hidden');
-        el.className = 'text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
+        el.className = 'relative text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
         const voteBtn = this.isHost() ? ' <button data-action="mp-start-vote" class="ml-2 text-purple-400 hover:text-purple-300 transition-colors" title="Abstimmung starten"><i class="fas fa-poll"></i></button>' : '';
         const isAutoTurn = this.autoPlayers[currentPlayer];
         const turnOrderHtml = this.turnOrder.map(p => {
@@ -1043,7 +1122,7 @@ export const Network = {
             const isAuto = !!this.autoPlayers[p];
             return `<button data-action="mp-toggle-auto" data-player="${p}" class="text-[9px] px-1.5 py-0.5 rounded ${isAuto ? 'bg-cyan-900/40 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800/60 text-slate-500 border border-slate-600/30'} hover:text-cyan-300 transition-all" title="${p}: KI ${isAuto ? 'aus' : 'an'}"><i class="fas fa-robot mr-0.5"></i>${p}</button>`;
         }).join(' ') : '';
-        el.innerHTML = (myTurn
+        el.innerHTML = this._syncBtnHtml + (myTurn
             ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span>${voteBtn}`
             : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayer}</b>${isAutoTurn ? ' <i class="fas fa-robot text-[9px]"></i>' : ''} ist am Zug...</span>`)
             + `<div class="text-slate-500 text-[9px] mt-1">${turnOrderHtml}</div>`
@@ -1088,7 +1167,7 @@ export const Network = {
             ? `<button data-action="mp-execute-round" class="mt-2 w-full ${canExecute ? 'bg-red-700 hover:bg-red-600 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'} text-white py-1.5 rounded-lg text-[10px] font-bold border transition-all" ${canExecute ? '' : 'disabled'}><i class="fas fa-fist-raised mr-1"></i> Runde ausfuehren (${submittedCount}/${totalPlayers})</button>`
             : '';
 
-        el.innerHTML = `<div class="text-left space-y-1.5">
+        el.innerHTML = `${this._syncBtnHtml}<div class="text-left space-y-1.5">
             <div class="flex items-center gap-2 mb-1">
                 <i class="fas fa-khanda text-red-400"></i>
                 <span class="text-red-300 font-bold text-[11px] uppercase tracking-wider">Kampfrunde</span>
