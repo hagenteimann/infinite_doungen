@@ -283,6 +283,9 @@ export const Engine = {
         finally {
             State.isProcessing = false; UI.showLoader(false);
             CombatManager.cleanupDead();
+            if (Network.isHost() && Network.isConnected() && State.lootDrops.length > 0) {
+                Network.autoDistributeLoot();
+            }
             try {
                 const saveData = JSON.parse(JSON.stringify(State));
                 saveData._autoSaveTime = new Date().toISOString();
@@ -291,7 +294,11 @@ export const Engine = {
             UI.updateAll();
             if (Network.isHost() && Network.isConnected()) {
                 Network.broadcastState();
-                Network.advanceTurn();
+                if (Network.isInCombat()) {
+                    Network.startNewCombatRound();
+                } else {
+                    Network.advanceTurn();
+                }
             }
         }
     },
@@ -348,6 +355,27 @@ export const Engine = {
         if (!action || State.isProcessing) return;
         if (!isStr) DOM.playerInput.value = "";
         const actingName = DOM.actingChar.value === 'party' ? 'Die Gruppe' : DOM.actingChar.value;
+
+        if (action.startsWith('/vote ') && Network.isHost() && Network.isConnected()) {
+            const parts = action.substring(6).split('|').map(s => s.trim());
+            if (parts.length >= 2) {
+                const question = parts[0];
+                const options = parts[1].split(',').map(s => s.trim()).filter(Boolean);
+                if (options.length >= 2) {
+                    Network.startVote(question, options);
+                    return;
+                }
+            }
+            UI.addChatLog('System', 'Syntax: /vote Frage | Option1, Option2, Option3');
+            return;
+        }
+
+        if (Network.isInCombat()) {
+            UI.addChatLog(actingName, action);
+            Network.submitCombatAction(action, actingName);
+            return;
+        }
+
         UI.addChatLog(actingName, action);
 
         if (Network.isClient() && Network.isConnected()) {
@@ -387,11 +415,20 @@ export const Engine = {
     },
 
     rollSpecific: function (id) {
-        if (this._requireHost('Würfeln')) return;
         const roll = State.pendingRolls.find(r => r.id === id);
         if (!roll) return;
+        if (Network.isClient() && Network.isConnected()) {
+            const myChar = State.party.find(p => p.id === State._mpMyCharId);
+            if (!myChar || roll.name !== myChar.name) {
+                UI.addChatLog('System', 'Du kannst nur fuer deinen eigenen Charakter wuerfeln.');
+                return;
+            }
+        }
         UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
             roll.rolled = true; roll.result = result; roll.rawRoll = rawRoll;
+            if (Network.isClient() && Network.isConnected()) {
+                Network.sendDiceResult(roll.id, result, rawRoll);
+            }
             UI.updateActionBox();
         }, true, roll.diceType);
     },
@@ -529,7 +566,16 @@ export const Engine = {
         const preset = PRESETS[name]; const attrs = preset ? { ...preset.attributes } : { STR: 10, DEX: 10, INT: 10, CON: 10 };
         const tempChar = { id: Utils.generateId(), name, class: cls, level: 1, hp: 20, maxHp: 20, attributes: attrs, equipment: [] };
         const startHp = PartyManager.getEffectiveMaxHp(tempChar);
-        State.party.push(Utils.sanitizeCharacter({ ...tempChar, hp: startHp, maxHp: startHp, portrait: State.tempPortraitData, imagePrompt: State.tempImagePrompt, inventory: [DOM.startItem.value], isNPC: false }));
+        const charData = Utils.sanitizeCharacter({ ...tempChar, hp: startHp, maxHp: startHp, portrait: State.tempPortraitData, imagePrompt: State.tempImagePrompt, inventory: [DOM.startItem.value], isNPC: false });
+        if (Network.isClient() && Network.isConnected()) {
+            Network.sendCharacterCreate(charData);
+        } else {
+            State.party.push(charData);
+            if (Network.isHost() && Network.isConnected()) {
+                Network.assignCharacters();
+                Network.broadcastState();
+            }
+        }
         State.tempPortraitData = ""; State.tempImagePrompt = ""; UI.closeCreator(); UI.updateAll();
     },
 

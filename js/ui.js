@@ -151,11 +151,12 @@ export const initDOM = () => {
    8. UI RENDERING (Templates & DOM Updates)
    ========================================== */
 export const UIBuilders = {
-    buildHeroCard: function (c) {
+    buildHeroCard: function (c, isOwnHero = false) {
         const isDead = c.hp === 0;
-        const borderClass = isDead ? 'border-red-900 shadow-[0_0_15px_rgba(220,38,38,0.3)] grayscale opacity-80' :
+        const ownHighlight = isOwnHero && !isDead ? 'border-cyan-400/70 shadow-[0_0_20px_rgba(34,211,238,0.35)] ring-1 ring-cyan-500/30' : '';
+        const borderClass = ownHighlight || (isDead ? 'border-red-900 shadow-[0_0_15px_rgba(220,38,38,0.3)] grayscale opacity-80' :
             (c.isSummon ? 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]' :
-                (c.isNPC ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-white/10 hover:border-amber-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]'));
+                (c.isNPC ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-white/10 hover:border-amber-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]')));
         const nameColor = isDead ? 'text-red-500 line-through' :
             (c.isSummon ? 'text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.5)]' :
                 (c.isNPC ? 'text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]' : 'text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]'));
@@ -376,8 +377,21 @@ export const UI = {
     },
 
     updateAll: function () {
-        DOM.partyList.innerHTML = sanitize(State.party.map(UIBuilders.buildHeroCard).join(''));
+        const myCharId = State._mpMyCharId || null;
+        const sorted = [...State.party].sort((a, b) => {
+            if (a.id === myCharId) return -1;
+            if (b.id === myCharId) return 1;
+            return 0;
+        });
+        DOM.partyList.innerHTML = sanitize(sorted.map(c => UIBuilders.buildHeroCard(c, c.id === myCharId)).join(''));
+        const prevActing = DOM.actingChar.value;
         DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>' + State.party.filter(p => !p.isSummon && p.hp > 0).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        if (DOM.actingChar.querySelector(`option[value="${CSS.escape(prevActing)}"]`)) {
+            DOM.actingChar.value = prevActing;
+        } else if (State._mpMyCharId) {
+            const myChar = State.party.find(p => p.id === State._mpMyCharId);
+            if (myChar) DOM.actingChar.value = myChar.name;
+        }
         DOM.enemySection.classList.toggle('hidden', !State.activeEnemies.length && !State.defeatedEnemies.length);
         DOM.enemyHistoryContainer.innerHTML = sanitize(State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join(''));
         DOM.currentEnemyContainer.innerHTML = sanitize(State.activeEnemies.map(e => UIBuilders.buildEnemyCard(e, false)).join(''));
@@ -464,16 +478,30 @@ export const UI = {
             DOM.playerInput.disabled = true; DOM.sendBtn.disabled = true;
             DOM.playerInput.placeholder = "Würfle zuerst die anstehenden Proben aus...";
 
-            let html = '<h3 class="text-indigo-400 text-[10px] font-bold uppercase mb-2 tracking-widest flex items-center gap-2"><i class="fas fa-dice-d20"></i> Erforderliche DM-Proben</h3><div class="space-y-1.5">';
+            const isClient = State._mpRole === 'client';
+            const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
+
+            let html = '<h3 class="text-indigo-400 text-[10px] font-bold uppercase mb-2 tracking-widest flex items-center gap-2"><i class="fas fa-dice-d20"></i> Erforderliche Proben</h3><div class="space-y-1.5">';
             State.pendingRolls.forEach(r => {
                 let dt = r.diceType || 'W20';
                 let btnClass = dt === 'W6' ? 'bg-blue-600 hover:bg-blue-500' : (dt === 'W100' ? 'bg-purple-700 hover:bg-purple-600 shadow-[0_0_15px_rgba(147,51,234,0.5)]' : 'bg-indigo-600 hover:bg-indigo-500');
                 let textClass = dt === 'W6' ? 'text-blue-400' : (dt === 'W100' ? 'text-purple-300 font-bold' : 'text-indigo-400');
 
-                let status = r.rolled ? (r.result >= r.dc ? `<span class="text-green-400 text-xs font-bold flex items-center gap-1 bg-green-900/20 px-2 py-1 rounded border border-green-700/50"><i class="fas fa-check"></i> Erfolg (${r.result})</span>` : `<span class="text-red-400 text-xs font-bold flex items-center gap-1 bg-red-900/20 px-2 py-1 rounded border border-red-700/50"><i class="fas fa-times"></i> Fehl (${r.result})</span>`) : `<div id="roll-status-${r.id}"><button data-action="roll-specific" data-roll-id="${r.id}" class="${btnClass} px-3 py-1 rounded text-white text-[10px] font-bold shadow-md transition-all">${dt} Werfen</button></div>`;
+                const canRoll = !isClient || (myChar && r.name === myChar.name);
+                let status;
+                if (r.rolled) {
+                    status = r.result >= r.dc
+                        ? `<span class="text-green-400 text-xs font-bold flex items-center gap-1 bg-green-900/20 px-2 py-1 rounded border border-green-700/50"><i class="fas fa-check"></i> Erfolg (${r.result})</span>`
+                        : `<span class="text-red-400 text-xs font-bold flex items-center gap-1 bg-red-900/20 px-2 py-1 rounded border border-red-700/50"><i class="fas fa-times"></i> Fehl (${r.result})</span>`;
+                } else if (canRoll) {
+                    status = `<div id="roll-status-${r.id}"><button data-action="roll-specific" data-roll-id="${r.id}" class="${btnClass} px-3 py-1 rounded text-white text-[10px] font-bold shadow-md transition-all">${dt} Werfen</button></div>`;
+                } else {
+                    status = `<span class="text-[9px] text-slate-500 italic animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span>`;
+                }
                 let modHtml = r.stat ? `<span class="bg-slate-800 text-slate-300 px-1 py-0.5 rounded text-[9px] ml-1 font-mono align-middle border border-slate-600/50">${r.stat} ${r.mod >= 0 ? '+' + r.mod : r.mod}</span>` : '';
+                const ownHighlight = isClient && myChar && r.name === myChar.name ? 'border-cyan-700/50' : 'border-slate-700';
 
-                html += `<div class="flex justify-between items-center bg-slate-900/80 border border-slate-700 p-2.5 rounded-lg shadow-sm">
+                html += `<div class="flex justify-between items-center bg-slate-900/80 border ${ownHighlight} p-2.5 rounded-lg shadow-sm">
                     <div class="text-[11px] leading-tight"><span class="text-amber-400 font-bold text-xs">${r.name}</span> <span class="text-[10px] ${textClass} font-mono font-bold">[${dt}]</span>${modHtml}<br><span class="text-slate-300 block mt-1">${r.desc} <span class="text-slate-500 ml-1 font-mono">(DC ${r.dc})</span></span></div>
                     <div>${status}</div>
                 </div>`;
@@ -481,9 +509,15 @@ export const UI = {
             html += '</div>';
 
             if (State.pendingRolls.some(r => !r.rolled)) {
-                html += `<button id="btn-roll-all" data-action="roll-all" class="mt-3 w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"><i class="fas fa-dice mr-1"></i> Alle automatisch auswürfeln</button>`;
+                if (!isClient) {
+                    html += `<button id="btn-roll-all" data-action="roll-all" class="mt-3 w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"><i class="fas fa-dice mr-1"></i> Alle automatisch auswürfeln</button>`;
+                }
             } else {
-                html += `<button data-action="submit-rolls" class="mt-3 w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded text-xs font-bold animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.4)]">Ergebnisse bestätigen & fortfahren</button>`;
+                if (!isClient) {
+                    html += `<button data-action="submit-rolls" class="mt-3 w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded text-xs font-bold animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.4)]">Ergebnisse bestätigen & fortfahren</button>`;
+                } else {
+                    html += `<p class="mt-3 text-center text-[10px] text-amber-400 animate-pulse"><i class="fas fa-hourglass-half mr-1"></i> Warte auf den Host...</p>`;
+                }
             }
             DOM.actionBoxContainer.innerHTML = sanitize(html);
         } else {
@@ -494,26 +528,55 @@ export const UI = {
     },
 
     addChatLog: function (s, t) {
-        const d = document.createElement('div');
-        const isAI = s === 'DM' || s.includes('Orakel'), isSys = s.includes('System') || s.includes('Schicksal');
-        d.className = `p-4 rounded-xl relative fade-in mb-4 ${isAI ? 'bg-black/40 backdrop-blur-md border border-white/10 border-l-4 border-l-purple-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)]' : (isSys ? 'bg-black/30 backdrop-blur-sm border border-white/5 italic text-xs text-slate-400 shadow-inner' : 'bg-purple-900/20 backdrop-blur-sm border border-purple-500/20 ml-12 text-right shadow-[0_4px_15px_rgba(168,85,247,0.1)]')}`;
+        const isAI = s === 'DM' || s.includes('Orakel') || s.includes('Schicksal');
+        const isDice = s.includes('🎲');
+        const isWeather = s.includes('🌦');
+        const isSys = !isAI && !isDice && !isWeather && s.includes('System');
 
         let formattedText = t;
-        // Bold and Italic Markdown
-        formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-amber-300 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)] tracking-wide">$1</strong>');
+        formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-amber-300">$1</strong>');
         formattedText = formattedText.replace(/\*(.*?)\*/g, '<em class="text-slate-300">$1</em>');
-        // Line breaks
         formattedText = formattedText.replace(/\n/g, '<br>');
 
-        const titleSizeClass = isAI ? 'text-[10px] font-bold uppercase mb-2 tracking-[0.2em]' : 'text-[9px] font-bold uppercase mb-1 tracking-wider';
-        const titleColorClass = isAI ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]' : (isSys ? 'text-slate-500' : 'text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]');
-        const textSizeClass = isAI ? 'text-sm md:text-base leading-relaxed text-slate-200' : 'text-sm md:text-base leading-relaxed text-slate-300';
+        if (isSys) {
+            const lastMsg = DOM.storyLog.lastElementChild;
+            if (lastMsg && lastMsg.classList.contains('chat-sys-group')) {
+                const content = lastMsg.querySelector('.sys-lines');
+                if (content) {
+                    const line = document.createElement('div');
+                    line.className = 'text-[10px] text-slate-500 leading-snug';
+                    line.innerHTML = sanitize(formattedText);
+                    content.appendChild(line);
+                    DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
+                    return;
+                }
+            }
+        }
 
-        const ttsBtn = isAI ? `<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>` : '';
-        const safeText = isAI ? sanitizeStrict(formattedText) : formattedText;
-        d.innerHTML = sanitize(`<div class="${titleSizeClass} ${titleColorClass}">${s}${ttsBtn}</div><div class="tts-text ${textSizeClass}">${safeText}</div>`);
+        const d = document.createElement('div');
+
+        if (isAI) {
+            d.className = 'p-4 rounded-xl relative fade-in mb-3 bg-black/40 backdrop-blur-md border border-white/10 border-l-4 border-l-purple-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)]';
+            const ttsBtn = `<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>`;
+            const safeText = sanitizeStrict(formattedText);
+            d.innerHTML = sanitize(`<div class="text-[10px] font-bold uppercase mb-2 tracking-[0.2em] text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">${s}${ttsBtn}</div><div class="tts-text text-sm md:text-base leading-relaxed text-slate-200">${safeText}</div>`);
+        } else if (isDice) {
+            d.className = 'px-3 py-1.5 rounded-lg fade-in mb-1.5 bg-indigo-950/30 border border-indigo-500/20 backdrop-blur-sm';
+            d.innerHTML = sanitize(`<div class="flex items-baseline gap-2"><span class="text-[9px] font-bold uppercase text-indigo-400 shrink-0">${s}</span><span class="tts-text text-[11px] leading-snug text-slate-300 font-mono">${formattedText}</span></div>`);
+        } else if (isWeather) {
+            d.className = 'px-3 py-2 rounded-lg fade-in mb-2 bg-sky-950/25 border border-sky-500/15 backdrop-blur-sm';
+            d.innerHTML = sanitize(`<div class="text-[9px] font-bold uppercase text-sky-400 mb-1">${s}</div><div class="tts-text text-[11px] leading-relaxed text-slate-300">${formattedText}</div>`);
+        } else if (isSys) {
+            d.className = 'chat-sys-group px-3 py-1.5 rounded-md fade-in mb-1 border-l-2 border-l-slate-600/40 bg-black/15';
+            d.innerHTML = sanitize(`<div class="sys-lines"><div class="text-[10px] text-slate-500 leading-snug">${formattedText}</div></div>`);
+        } else {
+            d.className = 'px-3 py-2 rounded-lg fade-in mb-2 bg-slate-800/30 backdrop-blur-sm border border-amber-500/10 border-l-2 border-l-amber-500/60';
+            d.innerHTML = sanitize(`<div class="text-[9px] font-bold uppercase mb-0.5 tracking-wider text-amber-400">${s}</div><div class="tts-text text-sm leading-relaxed text-slate-300">${formattedText}</div>`);
+        }
+
         d.classList.add('tts-msg');
-        DOM.storyLog.appendChild(d); DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
+        DOM.storyLog.appendChild(d);
+        DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
     },
 
     showCreator: function () { DOM.creatorModal.classList.remove('hidden'); },
@@ -593,6 +656,7 @@ export const UI = {
         const effAttrs = PartyManager.getEffectiveAttributes(c);
         const effMaxHp = PartyManager.getEffectiveMaxHp(c);
         const sBadge = c.statPoints > 0 ? `<span class="bg-green-600 px-1.5 py-0.5 rounded text-[8px] animate-pulse ml-2">${c.statPoints} Punkte!</span>` : '';
+        const isPrivateInventory = State._mpRole === 'client' && State._mpMyCharId && c.id !== State._mpMyCharId;
 
         const aHtml = Object.entries(c.attributes).map(([k, v]) => {
             const bonus = effAttrs[k] - v;
@@ -673,15 +737,21 @@ export const UI = {
                 }).join('') + `</div></div>` : ''}
 
             <div><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2">ATTRIBUTE ${sBadge}</h4>${aHtml}</div>
+            ${isPrivateInventory ? `
+            <div class="mt-3 p-3 bg-slate-900/40 rounded-lg border border-slate-700/40 text-center">
+                <i class="fas fa-lock text-slate-600 text-lg mb-1 block"></i>
+                <p class="text-[10px] text-slate-500 italic">Privates Inventar</p>
+            </div>` : `
             <div class="mt-3">
                 <h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-indigo-300">AUSRÜSTUNG</h4>
                 <ul id="equipment-list-${c.id}" class="text-[10px] space-y-1.5 mb-3"></ul>
                 <h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2">INVENTAR</h4>
                 <ul id="inventory-list-${c.id}" class="text-[10px] space-y-1.5"></ul>
                 <button data-action="start-crafting" data-char-id="${c.id}" class="w-full mt-2 bg-indigo-700/40 hover:bg-indigo-600/60 border border-indigo-500/50 text-indigo-200 text-[10px] py-1.5 rounded font-bold shadow-sm transition-all"><i class="fas fa-hammer mr-1"></i> Schmiede / Verzaubern</button>
-            </div>
+            </div>`}
             </div>`);
 
+        if (!isPrivateInventory) {
         const eqMap = new Map();
         (c.equipment || []).forEach(it => { eqMap.set(it, (eqMap.get(it) || 0) + 1); });
 
@@ -714,6 +784,7 @@ export const UI = {
             const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
             return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="false" data-count="${count}" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors" ${titleAttr}><span>• ${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
         }).join('') || '<li class="text-slate-500 italic">Leer</li>');
+        }
 
         DOM.exportHeroBtn.dataset.action = 'export-hero';
         DOM.exportHeroBtn.dataset.charId = c.id;

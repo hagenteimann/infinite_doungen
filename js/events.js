@@ -111,6 +111,21 @@ export function initEvents() {
                 else Network.showModal();
             },
             'mp-save-config': () => Network.saveAdvancedConfig(),
+            'mp-execute-round': () => Network.executeCombatRound(),
+            'mp-skip-player': () => Network.skipPlayer(actionEl.dataset.player),
+            'mp-cast-vote': () => Network.castVote(parseInt(actionEl.dataset.option)),
+            'mp-resolve-vote': () => Network.resolveVote(parseInt(actionEl.dataset.option)),
+            'mp-start-vote': () => {
+                const input = prompt('Abstimmung erstellen:\nFormat: Frage | Option1, Option2, Option3');
+                if (!input) return;
+                const parts = input.split('|').map(s => s.trim());
+                if (parts.length >= 2) {
+                    const question = parts[0];
+                    const options = parts[1].split(',').map(s => s.trim()).filter(Boolean);
+                    if (options.length >= 2) { Network.startVote(question, options); return; }
+                }
+                UI.addChatLog('System', 'Ungültiges Format. Nutze: Frage | Option1, Option2, Option3');
+            },
         };
 
         ACTIONS[action]?.();

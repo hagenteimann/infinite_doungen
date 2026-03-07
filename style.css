@@ -102,6 +102,16 @@
             }
         }
 
+        .chat-sys-group .sys-lines > div + div {
+            margin-top: 2px;
+            padding-top: 2px;
+            border-top: 1px solid rgba(100, 116, 139, 0.15);
+        }
+
+        .chat-sys-group {
+            transition: max-height 0.2s ease;
+        }
+
         .custom-scrollbar::-webkit-scrollbar {
             height: 4px;
             width: 4px;
