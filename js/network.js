@@ -506,16 +506,48 @@ export const Network = {
         this._updateTurnUI();
     },
 
+    registerCharacter(playerName, charId) {
+        if (!this.isHost()) return;
+        this.playerCharMap[playerName] = charId;
+        if (playerName === this.playerName) {
+            State._mpMyCharId = charId;
+        }
+        this._broadcastCharMap();
+    },
+
     assignCharacters() {
         if (!this.isHost()) return;
-        const chars = State.party.filter(c => !c.isSummon);
-        this.playerCharMap = {};
-        this.turnOrder.forEach((player, i) => {
-            if (chars[i]) this.playerCharMap[player] = chars[i].id;
-        });
+        for (const [player, charId] of Object.entries(this.playerCharMap)) {
+            if (!this.turnOrder.includes(player) || !State.party.find(c => c.id === charId)) {
+                delete this.playerCharMap[player];
+            }
+        }
         State._mpMyCharId = this.playerCharMap[this.playerName] || null;
+        this._broadcastCharMap();
+    },
+
+    _broadcastCharMap() {
         const msg = { type: 'CHAR_MAP', map: this.playerCharMap };
         this.connections.forEach(c => this._sendTo(c, msg));
+    },
+
+    canRollFor(rollName) {
+        if (!this.isConnected() || this.turnOrder.length <= 1) return true;
+        const myChar = State.party.find(p => p.id === State._mpMyCharId);
+        if (myChar && myChar.name === rollName) return true;
+        if (this.isHost()) {
+            for (const pn of Object.keys(this.autoPlayers)) {
+                const ch = this._getCharForPlayer(pn);
+                if (ch && ch.name === rollName) return true;
+            }
+            const assignedNames = new Set();
+            for (const cid of Object.values(this.playerCharMap)) {
+                const ch = State.party.find(p => p.id === cid);
+                if (ch) assignedNames.add(ch.name);
+            }
+            if (!assignedNames.has(rollName)) return true;
+        }
+        return false;
     },
 
     autoDistributeLoot() {
@@ -663,7 +695,8 @@ export const Network = {
                     if (!State.party.find(p => p.id === char.id)) {
                         State.party.push(char);
                         UI.addChatLog('System', `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`);
-                        this.assignCharacters();
+                        this.broadcastSystemChat('System', `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`);
+                        this.registerCharacter(msg.playerName, char.id);
                         this.broadcastState();
                         UI.updateAll();
                     }

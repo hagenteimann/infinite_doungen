@@ -378,9 +378,11 @@ export const Engine = {
         if (!action || State.isProcessing) return;
         if (!isStr) DOM.playerInput.value = "";
         let actingName;
-        if (DOM.actingChar.value === 'party') {
+        if (Network.isConnected() && Network.turnOrder.length > 1) {
             const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
-            actingName = myChar ? myChar.name : 'Die Gruppe';
+            actingName = myChar ? myChar.name : DOM.actingChar.value;
+        } else if (DOM.actingChar.value === 'party') {
+            actingName = 'Die Gruppe';
         } else {
             actingName = DOM.actingChar.value;
         }
@@ -446,12 +448,9 @@ export const Engine = {
     rollSpecific: function (id) {
         const roll = State.pendingRolls.find(r => r.id === id);
         if (!roll) return;
-        if (Network.isClient() && Network.isConnected()) {
-            const myChar = State.party.find(p => p.id === State._mpMyCharId);
-            if (!myChar || roll.name !== myChar.name) {
-                UI.addChatLog('System', 'Du kannst nur fuer deinen eigenen Charakter wuerfeln.');
-                return;
-            }
+        if (!Network.canRollFor(roll.name)) {
+            UI.addChatLog('System', 'Du kannst nur fuer deinen eigenen Charakter wuerfeln.');
+            return;
         }
         UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
             roll.rolled = true; roll.result = result; roll.rawRoll = rawRoll;
@@ -464,7 +463,7 @@ export const Engine = {
 
     rollAllPending: async function () {
         if (this._requireHost('Würfeln')) return;
-        const unrolled = State.pendingRolls.filter(r => !r.rolled);
+        const unrolled = State.pendingRolls.filter(r => !r.rolled && Network.canRollFor(r.name));
         if (unrolled.length === 0 || this._isRollingAll) return;
 
         this._isRollingAll = true;
@@ -601,7 +600,7 @@ export const Engine = {
         } else {
             State.party.push(charData);
             if (Network.isHost() && Network.isConnected()) {
-                Network.assignCharacters();
+                Network.registerCharacter(Network.playerName, charData.id);
                 Network.broadcastState();
             }
         }

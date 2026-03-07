@@ -384,13 +384,21 @@ export const UI = {
             return 0;
         });
         DOM.partyList.innerHTML = sanitize(sorted.map(c => UIBuilders.buildHeroCard(c, c.id === myCharId)).join(''));
-        const prevActing = DOM.actingChar.value;
-        DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>' + State.party.filter(p => !p.isSummon && p.hp > 0).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-        if (DOM.actingChar.querySelector(`option[value="${CSS.escape(prevActing)}"]`)) {
-            DOM.actingChar.value = prevActing;
-        } else if (State._mpMyCharId) {
-            const myChar = State.party.find(p => p.id === State._mpMyCharId);
-            if (myChar) DOM.actingChar.value = myChar.name;
+        const isMp = State._mpRole && myCharId;
+        if (isMp) {
+            const myChar = State.party.find(p => p.id === myCharId);
+            if (myChar && myChar.hp > 0) {
+                DOM.actingChar.innerHTML = `<option value="${myChar.name}">${myChar.name}</option>`;
+                DOM.actingChar.value = myChar.name;
+            } else {
+                DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>';
+            }
+        } else {
+            const prevActing = DOM.actingChar.value;
+            DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>' + State.party.filter(p => !p.isSummon && p.hp > 0).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            if (DOM.actingChar.querySelector(`option[value="${CSS.escape(prevActing)}"]`)) {
+                DOM.actingChar.value = prevActing;
+            }
         }
         DOM.enemySection.classList.toggle('hidden', !State.activeEnemies.length && !State.defeatedEnemies.length);
         DOM.enemyHistoryContainer.innerHTML = sanitize(State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join(''));

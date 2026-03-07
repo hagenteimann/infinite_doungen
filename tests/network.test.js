@@ -245,6 +245,46 @@ describe('generateRoomCode', () => {
 // assignCharacters
 // ──────────────────────────────────────────
 
+describe('registerCharacter', () => {
+    it('does nothing when not host', () => {
+        Network.role = 'client';
+        Network.registerCharacter('Player1', 'c1');
+        expect(Network.playerCharMap).toEqual({});
+    });
+
+    it('maps a player to a character explicitly', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.playerName = 'Host';
+        Network.connections = [];
+        Network.registerCharacter('Host', 'c1');
+        expect(Network.playerCharMap['Host']).toBe('c1');
+        expect(State._mpMyCharId).toBe('c1');
+    });
+
+    it('maps a different player without affecting host _mpMyCharId', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.playerName = 'Host';
+        Network.connections = [];
+        Network.registerCharacter('Player1', 'c2');
+        expect(Network.playerCharMap['Player1']).toBe('c2');
+        expect(State._mpMyCharId).toBeNull();
+    });
+
+    it('broadcasts char map to clients', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.playerName = 'Host';
+        const mockConn = { send: vi.fn() };
+        Network.connections = [mockConn];
+        Network.registerCharacter('Host', 'c1');
+        expect(mockConn.send).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'CHAR_MAP', map: { Host: 'c1' } })
+        );
+    });
+});
+
 describe('assignCharacters', () => {
     it('does nothing when not host', () => {
         Network.role = 'client';
@@ -252,7 +292,7 @@ describe('assignCharacters', () => {
         expect(Network.playerCharMap).toEqual({});
     });
 
-    it('maps players to non-summon party members', () => {
+    it('preserves existing explicit mappings', () => {
         Network.role = 'host';
         Network.connState = 'connected';
         Network.playerName = 'Host';
@@ -261,26 +301,37 @@ describe('assignCharacters', () => {
         State.party = [
             makeChar({ id: 'c1', name: 'Gimli' }),
             makeChar({ id: 'c2', name: 'Legolas' }),
-            makeChar({ id: 'summon-1', name: 'Wolf', isSummon: true }),
         ];
+        Network.playerCharMap = { Host: 'c1', Player1: 'c2' };
         Network.assignCharacters();
         expect(Network.playerCharMap['Host']).toBe('c1');
         expect(Network.playerCharMap['Player1']).toBe('c2');
         expect(State._mpMyCharId).toBe('c1');
     });
 
-    it('does not assign summons', () => {
+    it('removes mappings for disconnected players', () => {
         Network.role = 'host';
         Network.connState = 'connected';
         Network.playerName = 'Host';
         Network.turnOrder = ['Host'];
         Network.connections = [];
-        State.party = [
-            makeChar({ id: 'summon-1', isSummon: true }),
-            makeChar({ id: 'c1', name: 'Gimli', isSummon: false }),
-        ];
+        State.party = [makeChar({ id: 'c1' })];
+        Network.playerCharMap = { Host: 'c1', LeftPlayer: 'c2' };
         Network.assignCharacters();
+        expect(Network.playerCharMap['LeftPlayer']).toBeUndefined();
         expect(Network.playerCharMap['Host']).toBe('c1');
+    });
+
+    it('removes mappings for deleted characters', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.playerName = 'Host';
+        Network.turnOrder = ['Host', 'Player1'];
+        Network.connections = [];
+        State.party = [makeChar({ id: 'c1' })];
+        Network.playerCharMap = { Host: 'c1', Player1: 'deleted-id' };
+        Network.assignCharacters();
+        expect(Network.playerCharMap['Player1']).toBeUndefined();
     });
 });
 
@@ -853,6 +904,91 @@ describe('executeCombatRound', () => {
 // ──────────────────────────────────────────
 // _setConnState
 // ──────────────────────────────────────────
+
+// ──────────────────────────────────────────
+// canRollFor
+// ──────────────────────────────────────────
+
+describe('canRollFor', () => {
+    it('always allows when not connected', () => {
+        expect(Network.canRollFor('Anyone')).toBe(true);
+    });
+
+    it('always allows in single player MP', () => {
+        Network.connState = 'connected';
+        Network.turnOrder = ['Host'];
+        expect(Network.canRollFor('Anyone')).toBe(true);
+    });
+
+    it('allows own character', () => {
+        Network.connState = 'connected';
+        Network.turnOrder = ['Host', 'Player1'];
+        Network.playerName = 'Host';
+        State._mpMyCharId = 'c1';
+        State.party = [makeChar({ id: 'c1', name: 'Gimli' })];
+        expect(Network.canRollFor('Gimli')).toBe(true);
+    });
+
+    it('denies other player character for client', () => {
+        Network.role = 'client';
+        Network.connState = 'connected';
+        Network.turnOrder = ['Host', 'Player1'];
+        Network.playerName = 'Player1';
+        State._mpMyCharId = 'c2';
+        State.party = [
+            makeChar({ id: 'c1', name: 'Gimli' }),
+            makeChar({ id: 'c2', name: 'Legolas' }),
+        ];
+        Network.playerCharMap = { Host: 'c1', Player1: 'c2' };
+        expect(Network.canRollFor('Gimli')).toBe(false);
+        expect(Network.canRollFor('Legolas')).toBe(true);
+    });
+
+    it('host can roll for auto-player characters', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.turnOrder = ['Host', 'Player1'];
+        Network.playerName = 'Host';
+        Network.autoPlayers = { Player1: true };
+        Network.playerCharMap = { Host: 'c1', Player1: 'c2' };
+        State._mpMyCharId = 'c1';
+        State.party = [
+            makeChar({ id: 'c1', name: 'Gimli' }),
+            makeChar({ id: 'c2', name: 'Legolas' }),
+        ];
+        expect(Network.canRollFor('Legolas')).toBe(true);
+    });
+
+    it('host can roll for unassigned NPCs', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.turnOrder = ['Host', 'Player1'];
+        Network.playerName = 'Host';
+        Network.playerCharMap = { Host: 'c1', Player1: 'c2' };
+        State._mpMyCharId = 'c1';
+        State.party = [
+            makeChar({ id: 'c1', name: 'Gimli' }),
+            makeChar({ id: 'c2', name: 'Legolas' }),
+            makeChar({ id: 'npc1', name: 'Gandalf', isNPC: true }),
+        ];
+        expect(Network.canRollFor('Gandalf')).toBe(true);
+    });
+
+    it('host cannot roll for other human player characters', () => {
+        Network.role = 'host';
+        Network.connState = 'connected';
+        Network.turnOrder = ['Host', 'Player1'];
+        Network.playerName = 'Host';
+        Network.autoPlayers = {};
+        Network.playerCharMap = { Host: 'c1', Player1: 'c2' };
+        State._mpMyCharId = 'c1';
+        State.party = [
+            makeChar({ id: 'c1', name: 'Gimli' }),
+            makeChar({ id: 'c2', name: 'Legolas' }),
+        ];
+        expect(Network.canRollFor('Legolas')).toBe(false);
+    });
+});
 
 describe('_setConnState', () => {
     it('updates connState and error', () => {
