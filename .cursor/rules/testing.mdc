@@ -1,0 +1,43 @@
+---
+description: Testing conventions for Vitest test files
+globs: tests/*.test.js
+alwaysApply: false
+---
+
+# Testing Rules
+
+## Setup
+
+Tests use Vitest with jsdom environment (configured in `vite.config.js`). Run with `bun run test`. Do NOT use bare `bun test` -- that invokes bun's built-in test runner which has incompatibilities with Vitest's mocking and DOMPurify.
+
+## Conventions
+
+- One test file per module: `tests/<module>.test.js`
+- Reset `State` in `beforeEach` to avoid test pollution -- spread a clean default state
+- When testing dispatch actions, push test entities into `State.party` / `State.activeEnemies` before dispatching
+- Test edge cases: NaN inputs, empty strings, missing targets, XSS payloads in string fields
+
+## When to Add Tests
+
+- Every new dispatch action type in `state.js` needs a corresponding test
+- Every new LLM tag in `tagparser.js` needs tests for: valid input, malformed input, missing target
+- Every new sanitization rule needs a test proving the vector is blocked
+
+## Structure
+
+```javascript
+import { describe, it, expect, beforeEach } from 'vitest';
+import { State, dispatch } from '../js/state.js';
+
+describe('ACTION_NAME', () => {
+    beforeEach(() => {
+        State.party = [];
+        State.activeEnemies = [];
+        // reset relevant state
+    });
+
+    it('handles valid input', () => { /* ... */ });
+    it('ignores missing target', () => { /* ... */ });
+    it('rejects NaN values', () => { /* ... */ });
+});
+```

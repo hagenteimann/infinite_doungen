@@ -1,0 +1,70 @@
+---
+description: JavaScript file patterns and anti-patterns for this project
+globs: js/*.js
+alwaysApply: false
+---
+
+# JS Module Patterns
+
+## DOM Manipulation
+
+```javascript
+// WRONG: innerHTML with untrusted content
+el.innerHTML = llmResponse;
+
+// CORRECT: sanitize first
+import { sanitize } from './sanitize.js';
+el.innerHTML = sanitize(llmResponse);
+```
+
+## Event Handlers
+
+```javascript
+// WRONG: inline handler in template literal
+`<button onclick="App.Engine.doThing('${name}')">Go</button>`
+
+// CORRECT: data-action delegation
+`<button data-action="do-thing" data-name="${sanitize(name)}">Go</button>`
+// Then handle in js/events.js
+```
+
+## State Mutations
+
+```javascript
+// WRONG: silent mutation
+State.gold += 50;
+
+// CORRECT: dispatch for observable changes
+dispatch({ type: 'ADD_GOLD', amount: 50 });
+
+// Direct mutation is OK for transient state like:
+State.isProcessing = true;
+State.tempPortraitData = dataUrl;
+```
+
+## Error Handling
+
+```javascript
+// WRONG
+try { await api.call(); } catch (e) {}
+
+// CORRECT
+try {
+    await api.call();
+} catch (e) {
+    console.error('API call failed:', e);
+    UI.addChatLog('System', 'Anfrage fehlgeschlagen: ' + e.message);
+}
+```
+
+## Numeric Parsing from LLM Tags
+
+```javascript
+// WRONG: unvalidated parseInt
+const dmg = parseInt(parts[1]);
+char.hp -= dmg; // NaN if malformed
+
+// CORRECT: validate before use
+const dmg = parseInt(parts[1], 10);
+if (isNaN(dmg) || dmg < 0) return;
+```
