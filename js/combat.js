@@ -129,6 +129,7 @@ export const CombatManager = {
         }
 
         State.activeEnemies = [];
+        State.defeatedEnemies = [];
 
         if ((State.fate || 0) >= FATE_BOSS_THRESHOLD) {
             dispatch({ type: 'SET_FATE', value: 0 });

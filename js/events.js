@@ -89,27 +89,9 @@ export function initEvents() {
             'play-prompt': () => Engine.playPrompt(parseInt(actionEl.dataset.idx)),
             'delete-prompt': () => Engine.deletePrompt(parseInt(actionEl.dataset.idx)),
             'show-details': () => UI.showDetails(actionEl.dataset.charId),
-            'submit-combat-action': () => Engine.submitCombatAction(),
-            'execute-combat-round': () => Engine.executeCombatRound(),
-            'start-vote': () => Engine.startVoteDialog(),
-            'submit-vote-creation': () => Engine.submitVoteCreation(),
-            'cast-vote': () => Network.castVote(parseInt(actionEl.dataset.idx)),
-            'resolve-vote': () => Engine.resolveVote(parseInt(actionEl.dataset.idx)),
-            'skip-vote-player': () => Engine.skipVotePlayer(actionEl.dataset.name),
-            'set-leader': () => Engine.setLeader(actionEl.dataset.name),
-            'assign-character': () => Engine.requestAssignCharacter(actionEl.dataset.charId),
-            'add-vote-option': () => {
-                const list = document.getElementById('vote-options-list');
-                if (!list) return;
-                const count = list.querySelectorAll('.vote-option-input').length + 1;
-                const inp = document.createElement('input');
-                inp.type = 'text'; inp.placeholder = `Option ${count}`;
-                inp.className = 'vote-option-input w-full bg-black/50 border border-slate-700/50 rounded-lg p-2 text-sm text-slate-200 outline-none focus:border-purple-500/50';
-                list.appendChild(inp);
-            },
             'show-multiplayer': () => Network.showModal(),
             'mp-host': () => {
-                const name = document.getElementById('mp-player-name')?.value.trim() || 'DM';
+                const name = document.getElementById('mp-player-name')?.value.trim() || 'Host';
                 Network.host(name);
             },
             'mp-join': () => {
@@ -129,6 +111,22 @@ export function initEvents() {
                 else Network.showModal();
             },
             'mp-save-config': () => Network.saveAdvancedConfig(),
+            'mp-execute-round': () => Network.executeCombatRound(),
+            'mp-skip-player': () => Network.skipPlayer(actionEl.dataset.player),
+            'mp-toggle-auto': () => Network.toggleAutoPlayer(actionEl.dataset.player),
+            'mp-cast-vote': () => Network.castVote(parseInt(actionEl.dataset.option)),
+            'mp-resolve-vote': () => Network.resolveVote(parseInt(actionEl.dataset.option)),
+            'mp-start-vote': () => {
+                const input = prompt('Abstimmung erstellen:\nFormat: Frage | Option1, Option2, Option3');
+                if (!input) return;
+                const parts = input.split('|').map(s => s.trim());
+                if (parts.length >= 2) {
+                    const question = parts[0];
+                    const options = parts[1].split(',').map(s => s.trim()).filter(Boolean);
+                    if (options.length >= 2) { Network.startVote(question, options); return; }
+                }
+                UI.addChatLog('System', 'Ungültiges Format. Nutze: Frage | Option1, Option2, Option3');
+            },
         };
 
         ACTIONS[action]?.();

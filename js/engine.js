@@ -79,6 +79,10 @@ export const Engine = {
 
     interactWithAI: async function (actionMsg) {
         if (State.isProcessing) return;
+        if (State.combatEnded) {
+            State.defeatedEnemies = [];
+            State.combatEnded = false;
+        }
 
         try {
             State.undoSnapshot = JSON.parse(JSON.stringify({
@@ -159,9 +163,12 @@ export const Engine = {
 
         try {
             const aiResponse = await API.generateText(context);
-            State.lastStoryPart = aiResponse;
+            const cleanStory = aiResponse
+                .replace(/\[(?:Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave|Schaden|GegnerSchaden|Heilung|Probe|Route).*?\]/gi, '')
+                .replace(/\n{3,}/g, '\n\n').trim();
+            State.lastStoryPart = cleanStory.substring(0, 1500);
             Weather.randomChange();
-            State.chatHistory.push(aiResponse.substring(0, CHAT_CONTEXT_CHAR_LIMIT));
+            State.chatHistory.push(cleanStory.substring(0, CHAT_CONTEXT_CHAR_LIMIT));
             if (State.chatHistory.length > CHAT_HISTORY_MAX) State.chatHistory.shift();
             let cleanText = aiResponse;
 
@@ -269,10 +276,26 @@ export const Engine = {
             });
 
             cleanText = cleanText.replace(/\[(Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave).*?\]/gi, '').trim();
+            const suggestionClass = 'mt-1.5 suggestion-option flex items-center gap-2 w-full text-left bg-slate-800/70 hover:bg-indigo-900/40 border border-slate-600/40 hover:border-indigo-500/50 text-indigo-200 hover:text-indigo-100 rounded-lg px-3 py-2.5 cursor-pointer transition-all shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.2)] text-xs';
             cleanText = cleanText.replace(/(?:^|\n)(?:-|\*)\s+([^\n]+)/g, (m, p1) => {
                 const safeValue = p1.replace(/"/g, '&quot;');
-                return `<div class="mt-2 suggestion-option block w-full text-left bg-slate-800/60 hover:bg-slate-700/80 border border-slate-600/50 hover:border-indigo-500/50 text-indigo-200 rounded-md px-3 py-2 cursor-pointer transition-all shadow-sm text-xs group" data-prompt="${safeValue}"><span class="leading-relaxed">${p1}</span></div>`;
+                return `<div class="${suggestionClass}" data-prompt="${safeValue}"><span class="leading-relaxed">${p1}</span></div>`;
             });
+
+            const hasSuggestions = cleanText.includes('suggestion-option');
+            const hasPendingRolls = State.pendingRolls.some(r => !r.rolled);
+            if (!hasSuggestions && !hasPendingRolls) {
+                const inCombat = State.activeEnemies.some(e => e.hp > 0);
+                const hasLoot = State.lootDrops && State.lootDrops.length > 0;
+                const fallback = inCombat
+                    ? [['⚔️', 'Angreifen'], ['🛡️', 'Verteidigen'], ['🏃', 'Fliehen']]
+                    : hasLoot
+                        ? [['🤚', 'Beute einsammeln'], ['🔍', 'Umgebung untersuchen'], ['🚶', 'Weiter erkunden']]
+                        : [['🔍', 'Umgebung untersuchen'], ['🚶', 'Weiter erkunden'], ['⛺', 'Lager aufschlagen']];
+                cleanText += '<div class="mt-3">' + fallback.map(([emoji, text]) =>
+                    `<div class="${suggestionClass}" data-prompt="${text}"><span>${emoji} ${text}</span></div>`
+                ).join('') + '</div>';
+            }
 
             if (cleanText.length > 0) {
                 UI.addChatLog("DM", cleanText);
@@ -283,6 +306,9 @@ export const Engine = {
         finally {
             State.isProcessing = false; UI.showLoader(false);
             CombatManager.cleanupDead();
+            if (Network.isHost() && Network.isConnected() && State.lootDrops.length > 0) {
+                Network.autoDistributeLoot();
+            }
             try {
                 const saveData = JSON.parse(JSON.stringify(State));
                 saveData._autoSaveTime = new Date().toISOString();
@@ -291,7 +317,12 @@ export const Engine = {
             UI.updateAll();
             if (Network.isHost() && Network.isConnected()) {
                 Network.broadcastState();
-                Network.advanceTurn();
+                Network.autoRollPending();
+                if (Network.isInCombat()) {
+                    Network.startNewCombatRound();
+                } else {
+                    Network.advanceTurn();
+                }
             }
         }
     },
@@ -299,8 +330,7 @@ export const Engine = {
     chooseRoute: function (route) {
         DOM.actionBoxContainer.innerHTML = ''; DOM.actionBoxContainer.classList.add('hidden');
         UI.updateAll();
-        let actionText = `Die Gruppe wählt den Weg: ${route}.`;
-        this.submitPlayerAction(actionText);
+        this.submitPlayerAction(`wählt den Weg: ${route}.`);
     },
 
     camp: function () {
@@ -335,6 +365,7 @@ export const Engine = {
 
     submitPlayerAction: function (actionOverride) {
         if (State.pendingRolls.length > 0) return;
+        if (Network.isConnected() && !Network.isMyTurn()) return;
 
         if (State.combatEnded) {
             State.defeatedEnemies = [];
@@ -346,7 +377,36 @@ export const Engine = {
         const action = isStr ? actionOverride.trim() : DOM.playerInput.value.trim();
         if (!action || State.isProcessing) return;
         if (!isStr) DOM.playerInput.value = "";
-        const actingName = DOM.actingChar.value === 'party' ? 'Die Gruppe' : DOM.actingChar.value;
+        let actingName;
+        if (Network.isConnected() && Network.turnOrder.length > 1) {
+            const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
+            actingName = myChar ? myChar.name : DOM.actingChar.value;
+        } else if (DOM.actingChar.value === 'party') {
+            actingName = 'Die Gruppe';
+        } else {
+            actingName = DOM.actingChar.value;
+        }
+
+        if (action.startsWith('/vote ') && Network.isHost() && Network.isConnected()) {
+            const parts = action.substring(6).split('|').map(s => s.trim());
+            if (parts.length >= 2) {
+                const question = parts[0];
+                const options = parts[1].split(',').map(s => s.trim()).filter(Boolean);
+                if (options.length >= 2) {
+                    Network.startVote(question, options);
+                    return;
+                }
+            }
+            UI.addChatLog('System', 'Syntax: /vote Frage | Option1, Option2, Option3');
+            return;
+        }
+
+        if (Network.isInCombat()) {
+            UI.addChatLog(actingName, action);
+            Network.submitCombatAction(action, actingName);
+            return;
+        }
+
         UI.addChatLog(actingName, action);
 
         if (Network.isClient() && Network.isConnected()) {
@@ -360,95 +420,6 @@ export const Engine = {
         UI.updateAll();
 
         this.interactWithAI(action);
-    },
-
-    // ── Combat Round (Multiplayer) ──────────────────────────────
-    submitCombatAction: function () {
-        const action = DOM.playerInput.value.trim();
-        if (!action) { UI.addChatLog('System', '⚠️ Bitte eine Aktion eingeben.'); return; }
-
-        const actingChar = Network.getMyChar();
-        const actingName = actingChar ? actingChar.name : (DOM.actingChar.value === 'party' ? 'Die Gruppe' : DOM.actingChar.value);
-        const fullAction = `${actingName}: ${action}`;
-
-        Network.submitCombatAction(fullAction);
-        Sound.play('bling');
-        DOM.playerInput.value = '';
-        UI.addChatLog(actingName, `[Kampfaktion eingereicht] ${action}`);
-        UI.updateAll();
-    },
-
-    executeCombatRound: function () {
-        if (!Network.isLeader()) { UI.addChatLog('System', '⚠️ Nur der Leader kann die Runde ausführen.'); return; }
-        const actions = State.combatActions;
-        if (Object.keys(actions).length === 0) { UI.addChatLog('System', '⚠️ Keine Kampfaktionen eingereicht.'); return; }
-
-        const actionLines = Object.entries(actions).map(([player, action]) => `• ${action}`).join('\n');
-        const roundPrompt = `Kampfrunde - alle Aktionen der Gruppe:\n${actionLines}`;
-
-        UI.addChatLog('System', `⚔️ **Kampfrunde wird ausgeführt!**\n${actionLines}`);
-        Network.clearCombatActions();
-        this.interactWithAI(roundPrompt);
-    },
-
-    // ── Leader ─────────────────────────────────────────────────
-    setLeader: function (name) {
-        if (this._requireHost('Leader setzen')) return;
-        Network.setLeader(name);
-    },
-
-    // ── Voting ─────────────────────────────────────────────────
-    startVoteDialog: function () {
-        if (this._requireHost('Abstimmung starten')) return;
-        const modal = document.getElementById('vote-create-modal');
-        if (modal) { modal.classList.remove('hidden'); return; }
-        // Inject modal if not present
-        const div = document.createElement('div');
-        div.id = 'vote-create-modal';
-        div.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[200]';
-        div.innerHTML = `
-            <div class="bg-slate-900 border border-purple-500/40 rounded-xl p-5 w-80 space-y-3 shadow-2xl">
-                <h3 class="text-purple-300 font-bold cinzel text-sm uppercase tracking-wider">🗳️ Abstimmung erstellen</h3>
-                <input id="vote-question" type="text" placeholder="Frage / Beschreibung" class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2 text-sm text-slate-200 outline-none focus:border-purple-500/50">
-                <div id="vote-options-list" class="space-y-1.5">
-                    <input type="text" placeholder="Option 1" class="vote-option-input w-full bg-black/50 border border-slate-700/50 rounded-lg p-2 text-sm text-slate-200 outline-none focus:border-purple-500/50">
-                    <input type="text" placeholder="Option 2" class="vote-option-input w-full bg-black/50 border border-slate-700/50 rounded-lg p-2 text-sm text-slate-200 outline-none focus:border-purple-500/50">
-                </div>
-                <button data-action="add-vote-option" class="text-[11px] text-slate-400 hover:text-purple-300 transition-colors">+ Option hinzufügen</button>
-                <div class="flex gap-2">
-                    <button data-action="submit-vote-creation" class="flex-1 bg-purple-700/80 hover:bg-purple-600 text-white py-2 rounded-lg text-xs font-bold border border-purple-500/40">Abstimmung starten</button>
-                    <button data-close-modal="vote-create-modal" class="flex-1 bg-slate-700/80 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold border border-slate-500/40">Abbrechen</button>
-                </div>
-            </div>`;
-        document.body.appendChild(div);
-    },
-
-    submitVoteCreation: function () {
-        const question = document.getElementById('vote-question')?.value.trim();
-        const options = [...document.querySelectorAll('.vote-option-input')]
-            .map(i => i.value.trim()).filter(v => v);
-        if (!question || options.length < 2) { UI.addChatLog('System', '⚠️ Frage und mindestens 2 Optionen erforderlich.'); return; }
-        Network.startVote(question, options);
-        document.getElementById('vote-create-modal')?.remove();
-    },
-
-    resolveVote: function (optionIdx) {
-        const chosen = Network.resolveVote(optionIdx);
-        if (!chosen) return;
-        UI.addChatLog('System', `✅ **Abstimmung entschieden:** ${chosen}`);
-        this.interactWithAI(`Die Gruppe hat entschieden: ${chosen}`);
-        UI.updateAll();
-    },
-
-    skipVotePlayer: function (playerName) {
-        Network.skipVotePlayer(playerName);
-        UI.updateAll();
-    },
-
-    // ── Character Assignment ────────────────────────────────────
-    requestAssignCharacter: function (charId) {
-        Network.requestCharacterAssign(charId);
-        UI.updateAll();
     },
 
     proposeTrade: function (safeId, merchantName) {
@@ -477,14 +448,22 @@ export const Engine = {
     rollSpecific: function (id) {
         const roll = State.pendingRolls.find(r => r.id === id);
         if (!roll) return;
+        if (!Network.canRollFor(roll.name)) {
+            UI.addChatLog('System', 'Du kannst nur fuer deinen eigenen Charakter wuerfeln.');
+            return;
+        }
         UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
             roll.rolled = true; roll.result = result; roll.rawRoll = rawRoll;
+            if (Network.isClient() && Network.isConnected()) {
+                Network.sendDiceResult(roll.id, result, rawRoll);
+            }
             UI.updateActionBox();
         }, true, roll.diceType);
     },
 
     rollAllPending: async function () {
-        const unrolled = State.pendingRolls.filter(r => !r.rolled);
+        if (this._requireHost('Würfeln')) return;
+        const unrolled = State.pendingRolls.filter(r => !r.rolled && Network.canRollFor(r.name));
         if (unrolled.length === 0 || this._isRollingAll) return;
 
         this._isRollingAll = true;
@@ -507,6 +486,7 @@ export const Engine = {
     },
 
     submitPendingRolls: function () {
+        if (this._requireHost('Ergebnisse bestätigen')) return;
         const rollsCopy = [...State.pendingRolls];
         let resText = "Die Würfel sind gefallen:\n";
         State.pendingRolls.forEach(r => {
@@ -542,6 +522,7 @@ export const Engine = {
     },
 
     submitManualDiceRoll: function () {
+        if (this._requireHost('Würfeln')) return;
         const r = DOM.diceResult.innerText;
         const name = DOM.diceRollerName.innerText;
         DOM.diceModal.classList.add('hidden');
@@ -613,7 +594,16 @@ export const Engine = {
         const preset = PRESETS[name]; const attrs = preset ? { ...preset.attributes } : { STR: 10, DEX: 10, INT: 10, CON: 10 };
         const tempChar = { id: Utils.generateId(), name, class: cls, level: 1, hp: 20, maxHp: 20, attributes: attrs, equipment: [] };
         const startHp = PartyManager.getEffectiveMaxHp(tempChar);
-        State.party.push(Utils.sanitizeCharacter({ ...tempChar, hp: startHp, maxHp: startHp, portrait: State.tempPortraitData, imagePrompt: State.tempImagePrompt, inventory: [DOM.startItem.value], isNPC: false }));
+        const charData = Utils.sanitizeCharacter({ ...tempChar, hp: startHp, maxHp: startHp, portrait: State.tempPortraitData, imagePrompt: State.tempImagePrompt, inventory: [DOM.startItem.value], isNPC: false });
+        if (Network.isClient() && Network.isConnected()) {
+            Network.sendCharacterCreate(charData);
+        } else {
+            State.party.push(charData);
+            if (Network.isHost() && Network.isConnected()) {
+                Network.registerCharacter(Network.playerName, charData.id);
+                Network.broadcastState();
+            }
+        }
         State.tempPortraitData = ""; State.tempImagePrompt = ""; UI.closeCreator(); UI.updateAll();
     },
 

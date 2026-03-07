@@ -59,9 +59,10 @@ FEINDLICHE MORAL (NEU):
    - BOSSE fliehen NIEMALS. Einfache Schergen fliehen öfter als Elitegegner.
    - OPTIONAL: Feind kann auch surrendern – dann gibt er Information oder Gegenstände preis.
 
-HANDLUNGSVORSCHLÄGE:
-8. Schließe JEDE Antwort mit 2-3 Handlungsmöglichkeiten als Aufzählung ab. IMMER ein passendes Emoji: ⚔️ Angriff, 🔍 Untersuchen, 🤚 Looten, 🛡️ Verteidigen, 🗣️ Reden, 🏃 Fliehen, 💰 Suchen, 🔥 Magie.
-   AUSNAHME: Wenn du eine [Probe: ...]-Tag gesetzt hast, gib KEINE Vorschläge. Warte auf Ergebnisse.
+HANDLUNGSVORSCHLÄGE (PFLICHT):
+8. Beende JEDE Antwort ZWINGEND mit 2-4 konkreten, situationsbezogenen Handlungsmöglichkeiten als Aufzählung (mit - am Zeilenanfang). Jede Option MUSS mit einem passenden Emoji starten: ⚔️ Angriff, 🔍 Untersuchen, 🤚 Looten, 🛡️ Verteidigen, 🗣️ Reden, 🏃 Fliehen, 💰 Suchen, 🔥 Magie, 🚶 Weiter.
+   Die Vorschläge MÜSSEN spezifisch zur aktuellen Szene passen – KEINE generischen Optionen wie nur "Weiter". Beschreibe kurz was passieren könnte.
+   EINZIGE AUSNAHME: Wenn du einen [Probe: ...]-Tag gesetzt hast, gib KEINE Vorschläge.
 
 WIRTSCHAFT & BEUTE:
 9. BEUTE: [Beute: 3x Heiltrank]. Jeder Ort nur EINMAL plünderbar! Kein Charaktername in den Beute-Tag.

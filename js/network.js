@@ -3,6 +3,8 @@ import { State, subscribe, dispatch } from './state.js';
 import { UI, DOM } from './ui.js';
 import { Engine } from './engine.js';
 import { Sound } from './sound.js';
+import { PartyManager } from './party.js';
+import { validateHeroData } from './sanitize.js';
 
 const ROOM_PREFIX = 'infdung-';
 const CONNECT_TIMEOUT_MS = 10000;
@@ -21,8 +23,7 @@ const SYNC_KEYS = [
     'lastStoryPart', 'gameStarted', 'combatEnded', 'activeMerchant',
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
     'isBossFight', 'dungeonLevel', 'weather', 'gold', 'momentum',
-    'pendingRolls', 'pendingAbilityLearning',
-    'combatActions', 'votingSession', 'leaderName', 'playerAssignments',
+    'pendingRolls', 'pendingAbilityLearning', 'quickplayEnabled',
 ];
 
 export const Network = {
@@ -37,19 +38,26 @@ export const Network = {
     _lastError: '',
     turnOrder: [],
     currentTurnIndex: 0,
+    combatActions: {},
+    _combatStatus: {},
+    playerCharMap: {},
+    currentVote: null,
+    _mySubmittedAction: null,
+    autoPlayers: {},
 
     isHost() { return this.role === 'host'; },
     isClient() { return this.role === 'client'; },
     isConnected() { return this.connState === 'connected'; },
-    isLeader() {
-        if (!this.isConnected()) return true;
-        const leader = State.leaderName;
-        return leader ? leader === this.playerName : this.isHost();
+    isInCombat() {
+        return this.isConnected() && this.turnOrder.length > 1 &&
+            State.activeEnemies && State.activeEnemies.length > 0;
     },
-    getMyCharId() { return State.playerAssignments[this.playerName]; },
-    getMyChar() { return State.party.find(c => c.id === this.getMyCharId()); },
+    getMyCharId() {
+        return this.playerCharMap[this.playerName] || null;
+    },
     isMyTurn() {
         if (!this.isConnected() || this.turnOrder.length <= 1) return true;
+        if (this.isInCombat()) return !this._mySubmittedAction;
         return this.turnOrder[this.currentTurnIndex] === this.playerName;
     },
 
@@ -111,10 +119,10 @@ export const Network = {
 
     host(playerName) {
         if (this.peer) this.disconnect();
-        this.playerName = playerName || 'DM';
-        dispatch({ type: 'BULK_UPDATE', updates: { localPlayerName: this.playerName, leaderName: this.playerName } });
+        this.playerName = playerName || 'Host';
         this.roomCode = this.generateRoomCode();
         this.role = 'host';
+        State._mpRole = 'host';
         this._setConnState('connecting');
         this._startConnectTimeout();
 
@@ -141,6 +149,8 @@ export const Network = {
                 this._updateUI();
                 this._sendTo(conn, { type: 'STATE_SYNC', state: this._getSyncState() });
                 this.broadcastTurnState();
+                this.assignCharacters();
+                if (this.isInCombat()) this._broadcastCombatStatus();
             });
 
             conn.on('data', (msg) => this._handleClientMessage(conn, msg));
@@ -192,9 +202,9 @@ export const Network = {
     join(roomCode, playerName) {
         if (this.peer) this.disconnect();
         this.playerName = playerName || 'Spieler';
-        dispatch({ type: 'BULK_UPDATE', updates: { localPlayerName: this.playerName } });
         this.roomCode = roomCode.toUpperCase();
         this.role = 'client';
+        State._mpRole = 'client';
         this._setConnState('connecting');
         this._startConnectTimeout();
 
@@ -265,6 +275,14 @@ export const Network = {
         this.roomCode = null;
         this.turnOrder = [];
         this.currentTurnIndex = 0;
+        this.combatActions = {};
+        this._combatStatus = {};
+        this.playerCharMap = {};
+        this.currentVote = null;
+        this._mySubmittedAction = null;
+        this.autoPlayers = {};
+        State._mpRole = null;
+        State._mpMyCharId = null;
         this._setConnState('idle');
         const turnEl = document.getElementById('mp-turn-indicator');
         if (turnEl) turnEl.classList.add('hidden');
@@ -287,6 +305,15 @@ export const Network = {
             rollId,
             result,
             rawRoll,
+            playerName: this.playerName,
+        });
+    },
+
+    sendCharacterCreate(charData) {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], {
+            type: 'CHARACTER_CREATE',
+            charData,
             playerName: this.playerName,
         });
     },
@@ -318,6 +345,20 @@ export const Network = {
         this.currentTurnIndex = (this.currentTurnIndex + 1) % this.turnOrder.length;
         this.broadcastTurnState();
         this._updateTurnUI();
+        const currentPlayer = this.turnOrder[this.currentTurnIndex];
+        if (currentPlayer && this.autoPlayers[currentPlayer]) {
+            const char = this._getCharForPlayer(currentPlayer);
+            if (char && char.hp > 0) {
+                setTimeout(() => {
+                    const action = this._generateAutoAction(char);
+                    UI.addChatLog(char.name, action);
+                    this.connections.forEach(c => {
+                        this._sendTo(c, { type: 'PLAYER_CHAT', sender: char.name, text: action });
+                    });
+                    Engine.interactWithAI(action);
+                }, 600);
+            }
+        }
     },
 
     broadcastTurnState() {
@@ -331,103 +372,241 @@ export const Network = {
         this._updateTurnUI();
     },
 
-    // ── Combat Round ──────────────────────────────────────────────
-    submitCombatAction(action) {
-        if (this.isHost()) {
-            dispatch({ type: 'SET_COMBAT_ACTION', playerName: this.playerName, action });
-            this.broadcastState();
+    submitCombatAction(action, charName) {
+        if (this._mySubmittedAction) return;
+        this._mySubmittedAction = { action, charName };
+        Sound.play('turn');
+        if (this.isClient()) {
+            this._sendTo(this.connections[0], {
+                type: 'COMBAT_ACTION', action, charName, playerName: this.playerName,
+            });
         } else {
-            this._sendTo(this.connections[0], { type: 'COMBAT_ACTION_SUBMIT', action, playerName: this.playerName });
+            this.combatActions[this.playerName] = { action, charName };
+            this._broadcastCombatStatus();
+        }
+        this._updateTurnUI();
+    },
+
+    executeCombatRound() {
+        if (!this.isHost()) return;
+        const entries = Object.entries(this.combatActions);
+        if (entries.length === 0) return;
+        const actions = entries.map(([, d]) => `${d.charName}: ${d.action}`).join('\n');
+        UI.addChatLog('System', `**Kampfrunde gestartet!** ${entries.length} Aktionen werden ausgefuehrt...`);
+        this.broadcastSystemChat('System', `**Kampfrunde gestartet!** ${entries.length} Aktionen werden ausgefuehrt...`);
+        this.combatActions = {};
+        this._mySubmittedAction = null;
+        this._broadcastCombatStatus();
+        Engine.interactWithAI(`Kampfrunde – Alle Aktionen der Gruppe:\n${actions}\n\nFuehre alle Aktionen gleichzeitig aus. Beschreibe Proben, Ergebnisse, Schaden.`);
+    },
+
+    skipPlayer(playerName) {
+        if (!this.isHost() || this.combatActions[playerName]) return;
+        this.combatActions[playerName] = { action: 'wartet ab (uebersprungen)', charName: playerName };
+        UI.addChatLog('System', `**${playerName}** wurde uebersprungen.`);
+        this.broadcastSystemChat('System', `**${playerName}** wurde uebersprungen.`);
+        this._broadcastCombatStatus();
+    },
+
+    startNewCombatRound() {
+        if (!this.isHost()) return;
+        this.combatActions = {};
+        this._mySubmittedAction = null;
+        this._broadcastCombatStatus();
+        this._scheduleAutoActions();
+    },
+
+    toggleAutoPlayer(playerName) {
+        if (!this.isHost()) return;
+        if (this.autoPlayers[playerName]) {
+            delete this.autoPlayers[playerName];
+            UI.addChatLog('System', `**${playerName}** wird wieder manuell gesteuert.`);
+        } else {
+            this.autoPlayers[playerName] = true;
+            UI.addChatLog('System', `**${playerName}** wird jetzt automatisch (KI) gesteuert.`);
+        }
+        this.broadcastSystemChat('System', `**${playerName}** ist jetzt ${this.autoPlayers[playerName] ? 'KI-gesteuert' : 'manuell'}.`);
+        this._updateTurnUI();
+    },
+
+    _getCharForPlayer(playerName) {
+        const charId = this.playerCharMap[playerName];
+        return charId ? State.party.find(p => p.id === charId) : null;
+    },
+
+    _generateAutoAction(char) {
+        const enemy = State.activeEnemies.find(e => e.hp > 0);
+        const hurt = State.party
+            .filter(p => p.hp > 0 && !p.isSummon && p.hp < PartyManager.getEffectiveMaxHp(p) * 0.5)
+            .sort((a, b) => a.hp / PartyManager.getEffectiveMaxHp(a) - b.hp / PartyManager.getEffectiveMaxHp(b))[0];
+
+        if (State.activeEnemies.some(e => e.hp > 0)) {
+            const cls = (char.class || '').toLowerCase();
+            if ((cls === 'kleriker' || cls === 'heiler') && hurt) return `${char.name} heilt ${hurt.name}`;
+            if (cls === 'magier' && enemy) return `${char.name} wirkt einen Zauber gegen ${enemy.name}`;
+            if ((cls.includes('wald')) && enemy) return `${char.name} schiesst einen Pfeil auf ${enemy.name}`;
+            if (cls === 'schurke' && enemy) return `${char.name} schleicht sich an ${enemy.name} heran und attackiert`;
+            if (enemy) return `${char.name} greift ${enemy.name} an`;
+            return `${char.name} verteidigt sich`;
+        }
+        return `${char.name} folgt der Gruppe`;
+    },
+
+    _scheduleAutoActions() {
+        if (!this.isHost() || !this.isInCombat()) return;
+        setTimeout(() => {
+            let submitted = false;
+            for (const playerName of Object.keys(this.autoPlayers)) {
+                if (this.combatActions[playerName]) continue;
+                const char = this._getCharForPlayer(playerName);
+                if (!char || char.hp <= 0) continue;
+                const action = this._generateAutoAction(char);
+                this.combatActions[playerName] = { action, charName: char.name };
+                this.connections.forEach(c => {
+                    this._sendTo(c, { type: 'PLAYER_CHAT', sender: char.name, text: action });
+                });
+                UI.addChatLog(char.name, action);
+                submitted = true;
+            }
+            if (submitted) this._broadcastCombatStatus();
+        }, 800);
+    },
+
+    autoRollPending() {
+        if (!this.isHost()) return;
+        const autoCharNames = new Set();
+        for (const playerName of Object.keys(this.autoPlayers)) {
+            const char = this._getCharForPlayer(playerName);
+            if (char) autoCharNames.add(char.name);
+        }
+        let rolled = false;
+        for (const r of State.pendingRolls) {
+            if (r.rolled || !autoCharNames.has(r.name)) continue;
+            const diceMax = r.diceType === 'W6' ? 6 : (r.diceType === 'W100' ? 100 : 20);
+            r.rawRoll = Math.floor(Math.random() * diceMax) + 1;
+            r.result = r.rawRoll + (r.mod || 0);
+            r.rolled = true;
+            rolled = true;
+        }
+        if (rolled) {
+            UI.updateActionBox();
+            if (this.isConnected()) this.broadcastState();
         }
     },
 
-    clearCombatActions() {
-        dispatch({ type: 'CLEAR_COMBAT_ACTIONS' });
-        if (this.isHost()) this.broadcastState();
+    _broadcastCombatStatus() {
+        if (!this.isHost()) return;
+        const submitted = {};
+        this.turnOrder.forEach(p => {
+            submitted[p] = this.combatActions[p] ? this.combatActions[p].charName : null;
+        });
+        this.connections.forEach(c => {
+            this._sendTo(c, { type: 'COMBAT_STATUS', submitted, inCombat: this.isInCombat() });
+        });
+        this._updateTurnUI();
     },
 
-    // ── Voting ────────────────────────────────────────────────────
+    registerCharacter(playerName, charId) {
+        if (!this.isHost()) return;
+        this.playerCharMap[playerName] = charId;
+        if (playerName === this.playerName) {
+            State._mpMyCharId = charId;
+        }
+        this._broadcastCharMap();
+    },
+
+    assignCharacters() {
+        if (!this.isHost()) return;
+        for (const [player, charId] of Object.entries(this.playerCharMap)) {
+            if (!this.turnOrder.includes(player) || !State.party.find(c => c.id === charId)) {
+                delete this.playerCharMap[player];
+            }
+        }
+        State._mpMyCharId = this.playerCharMap[this.playerName] || null;
+        this._broadcastCharMap();
+    },
+
+    _broadcastCharMap() {
+        const msg = { type: 'CHAR_MAP', map: this.playerCharMap };
+        this.connections.forEach(c => this._sendTo(c, msg));
+    },
+
+    canRollFor(rollName) {
+        if (!this.isConnected() || this.turnOrder.length <= 1) return true;
+        const myChar = State.party.find(p => p.id === State._mpMyCharId);
+        if (myChar && myChar.name === rollName) return true;
+        if (this.isHost()) {
+            for (const pn of Object.keys(this.autoPlayers)) {
+                const ch = this._getCharForPlayer(pn);
+                if (ch && ch.name === rollName) return true;
+            }
+            const assignedNames = new Set();
+            for (const cid of Object.values(this.playerCharMap)) {
+                const ch = State.party.find(p => p.id === cid);
+                if (ch) assignedNames.add(ch.name);
+            }
+            if (!assignedNames.has(rollName)) return true;
+        }
+        return false;
+    },
+
+    autoDistributeLoot() {
+        if (!this.isHost() || !this.isConnected() || State.lootDrops.length === 0) return;
+        const chars = State.party.filter(c => !c.isSummon && c.hp > 0);
+        if (chars.length === 0) return;
+        const distributed = [];
+        for (const item of State.lootDrops) {
+            const recipient = chars[Math.floor(Math.random() * chars.length)];
+            recipient.inventory.push(item);
+            distributed.push(`**${recipient.name}** erhaelt: ${item}`);
+        }
+        State.lootDrops = [];
+        UI.addChatLog('System', `**Beute verteilt:**\n${distributed.join('\n')}`);
+        this.broadcastSystemChat('System', `**Beute verteilt:**\n${distributed.join('\n')}`);
+    },
+
     startVote(question, options) {
         if (!this.isHost()) return;
-        const session = { id: Date.now().toString(), question, options, votes: {} };
-        dispatch({ type: 'START_VOTE', session });
-        this.broadcastState();
-        UI.addChatLog('System', `🗳️ **Abstimmung:** ${question}`);
-        this.broadcastSystemChat('System', `🗳️ **Abstimmung:** ${question}`);
+        this.currentVote = { question, options, votes: {}, resolved: false };
+        const msg = { type: 'VOTE_START', question, options };
+        this.connections.forEach(c => this._sendTo(c, msg));
+        this._updateTurnUI();
     },
 
-    castVote(optionIdx) {
-        if (this.isHost()) {
-            dispatch({ type: 'CAST_VOTE', playerName: this.playerName, optionIdx });
-            this.broadcastState();
+    castVote(optionIndex) {
+        if (!this.currentVote || this.currentVote.resolved) return;
+        if (this.isClient()) {
+            this._sendTo(this.connections[0], {
+                type: 'VOTE_CAST', option: optionIndex, playerName: this.playerName,
+            });
         } else {
-            this._sendTo(this.connections[0], { type: 'VOTE_CAST', optionIdx, playerName: this.playerName });
+            this.currentVote.votes[this.playerName] = optionIndex;
+            this._broadcastVoteStatus();
         }
+        this._updateTurnUI();
     },
 
-    resolveVote(optionIdx) {
-        if (!this.isLeader()) return;
-        const session = State.votingSession;
-        if (!session) return;
-        const chosen = session.options[optionIdx];
-        dispatch({ type: 'END_VOTE' });
-        if (this.isHost()) this.broadcastState();
-        return chosen;
+    _broadcastVoteStatus() {
+        if (!this.isHost() || !this.currentVote) return;
+        const msg = {
+            type: 'VOTE_STATUS',
+            question: this.currentVote.question,
+            options: this.currentVote.options,
+            votes: this.currentVote.votes,
+            totalPlayers: this.turnOrder.length,
+        };
+        this.connections.forEach(c => this._sendTo(c, msg));
     },
 
-    skipVotePlayer(playerName) {
-        if (!this.isHost()) return;
-        dispatch({ type: 'CAST_VOTE', playerName, optionIdx: -1 });
-        this.broadcastState();
-        UI.addChatLog('System', `⏭️ **${playerName}** wurde in der Abstimmung übersprungen.`);
-    },
-
-    // ── Leader ────────────────────────────────────────────────────
-    setLeader(name) {
-        if (!this.isHost()) return;
-        dispatch({ type: 'SET_LEADER', name });
-        this.broadcastState();
-        UI.addChatLog('System', `👑 **${name}** ist jetzt der Gruppenleader.`);
-        this.broadcastSystemChat('System', `👑 **${name}** ist jetzt der Gruppenleader.`);
-    },
-
-    // ── Character Assignment ──────────────────────────────────────
-    assignCharacterToPlayer(playerName, charId) {
-        if (!this.isHost()) return;
-        dispatch({ type: 'ASSIGN_PLAYER', playerName, charId });
-        this.broadcastState();
-        const char = State.party.find(c => c.id === charId);
-        UI.addChatLog('System', `🎭 **${playerName}** spielt jetzt **${char?.name || charId}**.`);
-    },
-
-    requestCharacterAssign(charId) {
-        if (this.isHost()) {
-            this.assignCharacterToPlayer(this.playerName, charId);
-        } else {
-            this._sendTo(this.connections[0], { type: 'CHARACTER_ASSIGN_REQUEST', charId, playerName: this.playerName });
-        }
-    },
-
-    // ── Item Transfer ─────────────────────────────────────────────
-    giveItemToChar(fromCharId, itemName, toCharId) {
-        if (this.isHost()) {
-            this._executeItemGive(fromCharId, itemName, toCharId);
-        } else {
-            this._sendTo(this.connections[0], { type: 'ITEM_GIVE_REQUEST', fromCharId, itemName, toCharId });
-        }
-    },
-
-    _executeItemGive(fromCharId, itemName, toCharId) {
-        const from = State.party.find(c => c.id === fromCharId);
-        const to = State.party.find(c => c.id === toCharId);
-        if (!from || !to) return;
-        const idx = from.inventory.findIndex(i => i === itemName);
-        if (idx === -1) return;
-        from.inventory.splice(idx, 1);
-        to.inventory.push(itemName);
-        dispatch({ type: 'BULK_UPDATE', updates: {} }); // trigger listeners
-        if (this.isHost()) this.broadcastState();
-        UI.addChatLog('System', `📦 **${from.name}** gibt **${itemName}** an **${to.name}** weiter.`);
+    resolveVote(chosenIndex) {
+        if (!this.isHost() || !this.currentVote) return;
+        const chosen = this.currentVote.options[chosenIndex] || 'Unbekannt';
+        UI.addChatLog('System', `**Abstimmung beendet:** "${chosen}" wurde gewaehlt.`);
+        this.broadcastSystemChat('System', `**Abstimmung beendet:** "${chosen}" wurde gewaehlt.`);
+        const msg = { type: 'VOTE_RESULT', chosen, chosenIndex };
+        this.connections.forEach(c => this._sendTo(c, msg));
+        this.currentVote = null;
+        this._updateTurnUI();
     },
 
     saveAdvancedConfig() {
@@ -499,6 +678,41 @@ export const Network = {
                 Engine.interactWithAI(msg.action);
                 break;
             }
+            case 'COMBAT_ACTION': {
+                Sound.play('turn');
+                this.combatActions[msg.playerName] = { action: msg.action, charName: msg.charName };
+                const combatSender = msg.charName || msg.playerName;
+                this.connections.forEach(c => {
+                    this._sendTo(c, { type: 'PLAYER_CHAT', sender: combatSender, text: msg.action });
+                });
+                UI.addChatLog(combatSender, msg.action);
+                this._broadcastCombatStatus();
+                break;
+            }
+            case 'CHARACTER_CREATE': {
+                try {
+                    const char = validateHeroData(msg.charData);
+                    if (!State.party.find(p => p.id === char.id)) {
+                        State.party.push(char);
+                        UI.addChatLog('System', `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`);
+                        this.broadcastSystemChat('System', `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`);
+                        this.registerCharacter(msg.playerName, char.id);
+                        this.broadcastState();
+                        UI.updateAll();
+                    }
+                } catch (e) {
+                    console.warn('Invalid character data from client:', e);
+                }
+                break;
+            }
+            case 'VOTE_CAST': {
+                if (this.currentVote && !this.currentVote.resolved) {
+                    this.currentVote.votes[msg.playerName] = msg.option;
+                    this._broadcastVoteStatus();
+                    this._updateTurnUI();
+                }
+                break;
+            }
             case 'DICE_RESULT': {
                 const roll = State.pendingRolls.find(r => r.id === msg.rollId);
                 if (roll) {
@@ -507,28 +721,6 @@ export const Network = {
                     roll.rawRoll = msg.rawRoll;
                     UI.updateActionBox();
                 }
-                break;
-            }
-            case 'COMBAT_ACTION_SUBMIT': {
-                dispatch({ type: 'SET_COMBAT_ACTION', playerName: msg.playerName || name, action: msg.action });
-                this.broadcastState();
-                Sound.play('bling');
-                UI.addChatLog('System', `⚔️ **${msg.playerName || name}** hat eine Kampfaktion eingereicht.`);
-                UI.updateAll();
-                break;
-            }
-            case 'VOTE_CAST': {
-                dispatch({ type: 'CAST_VOTE', playerName: msg.playerName || name, optionIdx: msg.optionIdx });
-                this.broadcastState();
-                UI.updateAll();
-                break;
-            }
-            case 'CHARACTER_ASSIGN_REQUEST': {
-                this.assignCharacterToPlayer(msg.playerName || name, msg.charId);
-                break;
-            }
-            case 'ITEM_GIVE_REQUEST': {
-                this._executeItemGive(msg.fromCharId, msg.itemName, msg.toCharId);
                 break;
             }
             default:
@@ -544,10 +736,19 @@ export const Network = {
                 const incoming = msg.state;
                 const wasStarted = State.gameStarted;
                 SYNC_KEYS.forEach(k => {
-                    if (incoming[k] !== undefined) State[k] = incoming[k];
+                    if (incoming[k] === undefined) return;
+                    if (k === 'pendingRolls' && Array.isArray(incoming[k])) {
+                        State[k] = incoming[k].map(r => {
+                            const local = State.pendingRolls.find(lr => lr.id === r.id);
+                            return (local && local.rolled && !r.rolled) ? local : r;
+                        });
+                    } else {
+                        State[k] = incoming[k];
+                    }
                 });
                 if (State.gameStarted && !wasStarted) UI.toggleViews(true);
                 UI.updateAll();
+                this._updateTurnUI();
                 break;
             }
             case 'DM_MESSAGE':
@@ -567,6 +768,34 @@ export const Network = {
                 State.isProcessing = false;
                 UI.showLoader(false);
                 if (wasProcessing && this.isMyTurn()) Sound.play('turn');
+                this._updateTurnUI();
+                break;
+            }
+            case 'COMBAT_STATUS': {
+                this._combatStatus = msg.submitted || {};
+                this._mySubmittedAction = this._combatStatus[this.playerName] ? { submitted: true } : null;
+                this._updateTurnUI();
+                break;
+            }
+            case 'CHAR_MAP': {
+                this.playerCharMap = msg.map || {};
+                State._mpMyCharId = this.playerCharMap[this.playerName] || null;
+                UI.updateAll();
+                break;
+            }
+            case 'VOTE_START': {
+                this.currentVote = { question: msg.question, options: msg.options, votes: {}, resolved: false };
+                this._updateTurnUI();
+                break;
+            }
+            case 'VOTE_STATUS': {
+                if (this.currentVote) this.currentVote.votes = msg.votes || {};
+                this._updateTurnUI();
+                break;
+            }
+            case 'VOTE_RESULT': {
+                UI.addChatLog('System', `**Abstimmung beendet:** "${msg.chosen}" wurde gewaehlt.`);
+                this.currentVote = null;
                 this._updateTurnUI();
                 break;
             }
@@ -648,39 +877,19 @@ export const Network = {
 
         if (this.connState === 'connected') {
             const count = this.connections.length;
-            const roleLabel = this.isHost() ? 'Host (DM)' : 'Spieler';
-            const leaderName = State.leaderName || this.playerName;
-            const allPlayers = this.isHost()
-                ? [{ name: this.playerName, isHost: true }, ...this.connections.map(c => ({ name: c.metadata?.name || 'Unbekannt', conn: c }))]
-                : [];
-
-            const playersListHtml = this.isHost()
-                ? allPlayers.map(p => {
-                    const isLeader = leaderName === p.name;
-                    const assignment = Object.entries(State.playerAssignments).find(([pn]) => pn === p.name);
-                    const charName = assignment ? State.party.find(c => c.id === assignment[1])?.name || '' : '';
-                    return `<li class="flex items-center justify-between text-xs py-0.5">
-                        <span class="${isLeader ? 'text-amber-300 font-bold' : 'text-green-300'}">
-                            ${isLeader ? '<i class="fas fa-crown text-amber-400 mr-1"></i>' : '<i class="fas fa-user text-slate-500 mr-1"></i>'}
-                            ${p.name}${charName ? ` <span class="text-slate-500 font-normal">(${charName})</span>` : ''}
-                        </span>
-                        ${!isLeader ? `<button data-action="set-leader" data-name="${p.name}" class="text-[9px] text-slate-500 hover:text-amber-400 transition-colors ml-2">👑</button>` : ''}
-                    </li>`;
-                }).join('')
-                : `<li class="text-green-300 text-xs">Leader: <span class="text-amber-400 font-bold">${leaderName}</span></li>`;
+            const roleLabel = this.isHost() ? 'Host' : 'Spieler';
+            const playersList = this.isHost()
+                ? this.connections.map(c => `<li class="text-green-300 text-xs"><i class="fas fa-user mr-1"></i> ${c.metadata?.name || 'Unbekannt'}</li>`).join('')
+                : '';
 
             content.innerHTML = `
-                <div class="space-y-3">
+                <div class="space-y-4">
                     <div class="bg-green-900/30 border border-green-500/40 rounded-lg p-3">
                         <p class="text-green-300 text-sm font-bold"><i class="fas fa-check-circle mr-1"></i> Verbunden als ${roleLabel}</p>
                         ${this.isHost() ? `<p class="text-slate-400 text-xs mt-1">Raum-Code: <span class="text-amber-400 font-mono font-bold text-sm select-all">${this.roomCode}</span></p>` : `<p class="text-slate-400 text-xs mt-1">Raum: <span class="text-amber-400 font-mono">${this.roomCode}</span></p>`}
                         <p class="text-slate-400 text-xs mt-1">${count} Spieler verbunden</p>
-                        <ul class="mt-2 space-y-1">${playersListHtml}</ul>
+                        ${playersList ? `<ul class="mt-2 space-y-1">${playersList}</ul>` : ''}
                     </div>
-                    ${this.isHost() ? `
-                    <button data-action="start-vote" class="w-full bg-purple-800/60 hover:bg-purple-700 text-purple-200 py-1.5 rounded-lg text-xs font-bold transition-all border border-purple-500/40">
-                        <i class="fas fa-vote-yea mr-1"></i> Abstimmung starten
-                    </button>` : ''}
                     <button data-action="mp-disconnect" class="w-full bg-red-700/80 hover:bg-red-600 text-white py-2 rounded-lg text-xs font-bold transition-all border border-red-500/40">
                         <i class="fas fa-sign-out-alt mr-1"></i> Trennen
                     </button>
@@ -705,7 +914,7 @@ export const Network = {
                     <button data-action="mp-host" class="bg-purple-700/80 hover:bg-purple-600 text-white py-3 rounded-lg text-xs font-bold transition-all border border-purple-500/40 flex flex-col items-center gap-1">
                         <i class="fas fa-crown text-amber-400 text-lg"></i>
                         <span>Raum erstellen</span>
-                        <span class="text-[10px] text-slate-400 font-normal">(als DM/Host)</span>
+                        <span class="text-[10px] text-slate-400 font-normal">(als Host)</span>
                     </button>
                     <div class="flex flex-col gap-2">
                         <input id="mp-room-code" type="text" placeholder="RAUM-CODE" maxlength="6" class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2 text-sm text-center font-mono uppercase text-amber-400 outline-none focus:border-indigo-500/50 tracking-widest placeholder-slate-600">
@@ -769,25 +978,197 @@ export const Network = {
 
         if (!this.isConnected() || this.turnOrder.length <= 1) {
             el.classList.add('hidden');
+            this._setQuickActionsEnabled(true);
+            return;
+        }
+
+        const playerInput = document.getElementById('player-input');
+        const sendBtn = document.getElementById('send-btn');
+        const hasPendingRolls = State.pendingRolls && State.pendingRolls.length > 0;
+
+        if (this.currentVote && !this.currentVote.resolved) {
+            el.classList.remove('hidden');
+            el.className = 'px-3 py-2 bg-black/40 border border-purple-900/50 rounded-lg backdrop-blur-sm shadow-[0_0_15px_rgba(168,85,247,0.15)]';
+            this._renderVotePanel(el);
+            playerInput.disabled = true;
+            sendBtn.disabled = true;
+            this._setQuickActionsEnabled(false);
+            return;
+        }
+
+        if (this.isInCombat() && !hasPendingRolls) {
+            el.classList.remove('hidden');
+            el.className = 'px-3 py-2 bg-black/40 border border-red-900/50 rounded-lg backdrop-blur-sm shadow-[0_0_15px_rgba(239,68,68,0.15)]';
+            this._renderCombatRoundPanel(el);
+            const submitted = !!this._mySubmittedAction;
+            playerInput.disabled = submitted || State.isProcessing;
+            sendBtn.disabled = submitted || State.isProcessing;
+            playerInput.placeholder = submitted
+                ? 'Aktion eingereicht – warte auf andere...'
+                : 'Deine Kampfaktion eingeben...';
+            this._setQuickActionsEnabled(false);
+            return;
+        }
+
+        if (hasPendingRolls) {
+            el.classList.remove('hidden');
+            el.className = 'text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
+            if (this.isClient()) {
+                const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
+                const hasOwnRolls = myChar && State.pendingRolls.some(r => !r.rolled && r.name === myChar.name);
+                el.innerHTML = hasOwnRolls
+                    ? '<i class="fas fa-dice-d20 text-green-400 mr-1.5 animate-pulse"></i> <span class="text-green-300 font-bold">Deine Proben wuerfeln!</span>'
+                    : '<i class="fas fa-dice-d20 text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300">Warte auf Probenergebnisse...</span>';
+            } else {
+                el.innerHTML = '<i class="fas fa-dice-d20 text-indigo-400 mr-1.5 animate-pulse"></i> <span class="text-indigo-300 font-bold">Proben ausstehend...</span>';
+            }
+            playerInput.disabled = true;
+            sendBtn.disabled = true;
+            this._setQuickActionsEnabled(false);
             return;
         }
 
         const currentPlayer = this.turnOrder[this.currentTurnIndex] || '';
         const myTurn = this.isMyTurn();
         el.classList.remove('hidden');
-        el.innerHTML = myTurn
-            ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span> <span class="text-slate-500 text-[9px] ml-2">Reihenfolge: ${this.turnOrder.join(' \u2192 ')}</span>`
-            : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayer}</b> ist am Zug...</span>`;
+        el.className = 'text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
+        const voteBtn = this.isHost() ? ' <button data-action="mp-start-vote" class="ml-2 text-purple-400 hover:text-purple-300 transition-colors" title="Abstimmung starten"><i class="fas fa-poll"></i></button>' : '';
+        const isAutoTurn = this.autoPlayers[currentPlayer];
+        const turnOrderHtml = this.turnOrder.map(p => {
+            const isAuto = this.autoPlayers[p];
+            const label = isAuto ? `<span class="text-cyan-400">${p} <i class="fas fa-robot text-[8px]"></i></span>` : p;
+            return p === this.playerName ? `<b>${label}</b>` : label;
+        }).join(' \u2192 ');
+        const autoToggleHtml = this.isHost() ? this.turnOrder.filter(p => p !== this.playerName).map(p => {
+            const isAuto = !!this.autoPlayers[p];
+            return `<button data-action="mp-toggle-auto" data-player="${p}" class="text-[9px] px-1.5 py-0.5 rounded ${isAuto ? 'bg-cyan-900/40 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800/60 text-slate-500 border border-slate-600/30'} hover:text-cyan-300 transition-all" title="${p}: KI ${isAuto ? 'aus' : 'an'}"><i class="fas fa-robot mr-0.5"></i>${p}</button>`;
+        }).join(' ') : '';
+        el.innerHTML = (myTurn
+            ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span>${voteBtn}`
+            : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayer}</b>${isAutoTurn ? ' <i class="fas fa-robot text-[9px]"></i>' : ''} ist am Zug...</span>`)
+            + `<div class="text-slate-500 text-[9px] mt-1">${turnOrderHtml}</div>`
+            + (autoToggleHtml ? `<div class="flex flex-wrap gap-1 mt-1.5 justify-center">${autoToggleHtml}</div>` : '');
+        playerInput.disabled = !myTurn;
+        sendBtn.disabled = !myTurn;
+        playerInput.placeholder = myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayer}...`;
+        this._setQuickActionsEnabled(myTurn);
+    },
 
-        const playerInput = document.getElementById('player-input');
-        const sendBtn = document.getElementById('send-btn');
-        const hasPendingRolls = State.pendingRolls && State.pendingRolls.length > 0;
-        if (playerInput && !hasPendingRolls) {
-            playerInput.disabled = !myTurn;
-            playerInput.placeholder = myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayer}...`;
+    _renderCombatRoundPanel(el) {
+        const submitted = this.isHost()
+            ? Object.fromEntries(this.turnOrder.map(p => [p, !!this.combatActions[p]]))
+            : this._combatStatus;
+        const totalPlayers = this.turnOrder.length;
+        const submittedCount = Object.values(submitted).filter(Boolean).length;
+
+        const playersHtml = this.turnOrder.map(p => {
+            const done = !!submitted[p];
+            const isMe = p === this.playerName;
+            const isAuto = !!this.autoPlayers[p];
+            const icon = isAuto
+                ? '<i class="fas fa-robot text-cyan-400"></i>'
+                : done
+                    ? '<i class="fas fa-check-circle text-green-400"></i>'
+                    : '<i class="fas fa-hourglass-half text-amber-400 animate-pulse"></i>';
+            const nameClass = isMe ? 'text-cyan-300 font-bold' : (isAuto ? 'text-cyan-400' : 'text-slate-300');
+            const autoLabel = isAuto ? ' <span class="text-[8px] text-cyan-500">(KI)</span>' : '';
+            let actions = '';
+            if (this.isHost() && !isMe) {
+                const autoBtn = `<button data-action="mp-toggle-auto" data-player="${p}" class="text-[9px] ${isAuto ? 'text-cyan-400 hover:text-cyan-300' : 'text-slate-500 hover:text-cyan-400'} ml-1" title="${isAuto ? 'KI deaktivieren' : 'KI aktivieren'}"><i class="fas fa-robot"></i></button>`;
+                const skipBtn = !done && !isAuto
+                    ? ` <button data-action="mp-skip-player" data-player="${p}" class="text-[9px] text-red-400 hover:text-red-300 ml-1 underline">Skip</button>`
+                    : '';
+                actions = autoBtn + skipBtn;
+            }
+            return `<div class="flex items-center gap-1.5 text-[10px]">${icon} <span class="${nameClass}">${isMe ? 'Du' : p}</span>${autoLabel}${actions}</div>`;
+        }).join('');
+
+        const canExecute = submittedCount > 0 && !State.isProcessing;
+        const executeBtn = this.isHost()
+            ? `<button data-action="mp-execute-round" class="mt-2 w-full ${canExecute ? 'bg-red-700 hover:bg-red-600 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'} text-white py-1.5 rounded-lg text-[10px] font-bold border transition-all" ${canExecute ? '' : 'disabled'}><i class="fas fa-fist-raised mr-1"></i> Runde ausfuehren (${submittedCount}/${totalPlayers})</button>`
+            : '';
+
+        el.innerHTML = `<div class="text-left space-y-1.5">
+            <div class="flex items-center gap-2 mb-1">
+                <i class="fas fa-khanda text-red-400"></i>
+                <span class="text-red-300 font-bold text-[11px] uppercase tracking-wider">Kampfrunde</span>
+                <span class="text-slate-500 text-[9px] ml-auto">${submittedCount}/${totalPlayers} bereit</span>
+            </div>
+            <div class="space-y-1 pl-1">${playersHtml}</div>
+            ${executeBtn}
+        </div>`;
+    },
+
+    _renderVotePanel(el) {
+        const vote = this.currentVote;
+        if (!vote) return;
+        const myVote = vote.votes[this.playerName];
+        const voteCounts = {};
+        vote.options.forEach((_, i) => { voteCounts[i] = 0; });
+        Object.values(vote.votes).forEach(v => { voteCounts[v] = (voteCounts[v] || 0) + 1; });
+
+        const optionsHtml = vote.options.map((opt, i) => {
+            const count = voteCounts[i] || 0;
+            const isMyChoice = myVote === i;
+            const btnClass = isMyChoice
+                ? 'bg-purple-700 border-purple-400 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]'
+                : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:border-purple-500/50';
+            const disabled = myVote !== undefined ? 'pointer-events-none' : '';
+            return `<button data-action="mp-cast-vote" data-option="${i}" class="${btnClass} ${disabled} w-full text-left py-1.5 px-2.5 rounded-lg text-[10px] font-medium border transition-all flex justify-between items-center">
+                <span>${opt}</span>
+                <span class="text-[9px] text-slate-400">${count} Stimme${count !== 1 ? 'n' : ''}</span>
+            </button>`;
+        }).join('');
+
+        const resolveBtn = this.isHost()
+            ? `<div class="mt-2 flex gap-1.5">${vote.options.map((opt, i) => {
+                const count = voteCounts[i] || 0;
+                return `<button data-action="mp-resolve-vote" data-option="${i}" class="flex-1 bg-amber-800/60 hover:bg-amber-700 text-amber-200 py-1 rounded text-[9px] font-bold border border-amber-600/40 transition-all">${opt} (${count})</button>`;
+            }).join('')}</div>`
+            : '';
+
+        el.innerHTML = `<div class="text-left space-y-1.5">
+            <div class="flex items-center gap-2 mb-1">
+                <i class="fas fa-poll text-purple-400"></i>
+                <span class="text-purple-300 font-bold text-[11px] uppercase tracking-wider">Abstimmung</span>
+                <span class="text-slate-500 text-[9px] ml-auto">${Object.keys(vote.votes).length}/${this.turnOrder.length}</span>
+            </div>
+            <p class="text-slate-200 text-[11px] font-medium">${vote.question}</p>
+            <div class="space-y-1">${optionsHtml}</div>
+            ${resolveBtn}
+        </div>`;
+    },
+
+    _showClientRollView() {
+        const actionBox = document.getElementById('action-box-container');
+        if (!actionBox || actionBox.classList.contains('hidden')) return;
+
+        actionBox.querySelectorAll(
+            'button[data-action="roll-specific"], button[data-action="roll-all"], button[data-action="submit-rolls"]'
+        ).forEach(btn => btn.remove());
+
+        if (!actionBox.querySelector('.mp-waiting-rolls')) {
+            const msg = document.createElement('p');
+            msg.className = 'mp-waiting-rolls text-center text-[10px] text-amber-400 mt-2 animate-pulse';
+            msg.innerHTML = '<i class="fas fa-dice-d20 mr-1"></i> Der Host würfelt die Proben...';
+            actionBox.appendChild(msg);
         }
-        if (sendBtn && !hasPendingRolls) {
-            sendBtn.disabled = !myTurn;
-        }
+    },
+
+    _setQuickActionsEnabled(enabled) {
+        const selectors = [
+            '[data-action="submit-action"]',
+            '[data-action="camp"]',
+            '[data-action="ask-oracle"]',
+            '[data-action="plot-twist"]',
+            '[data-action="generate-npc"]',
+            '[data-action="check-enemies"]',
+            '[data-action="toggle-quickplay"]',
+        ];
+        document.querySelectorAll(selectors.join(',')).forEach(btn => {
+            btn.disabled = !enabled;
+            btn.classList.toggle('opacity-40', !enabled);
+            btn.classList.toggle('pointer-events-none', !enabled);
+        });
     },
 };
