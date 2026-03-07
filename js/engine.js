@@ -459,6 +459,9 @@ export const Engine = {
             roll.rolled = true; roll.result = result; roll.rawRoll = rawRoll;
             if (Network.isClient() && Network.isConnected()) {
                 Network.sendDiceResult(roll.id, result, rawRoll);
+            } else if (Network.isHost() && Network.isConnected()) {
+                // Host-Würfelwurf sofort an Clients senden (kein 3s Heartbeat-Warten)
+                Network.broadcastState();
             }
             UI.updateActionBox();
             // Auto-submit wenn alle Würfe erledigt sind (Host oder Single-Player)
@@ -488,7 +491,9 @@ export const Engine = {
             await new Promise(resolve => {
                 UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
                     roll.rolled = true; roll.result = result; roll.rawRoll = rawRoll;
-                    UI.updateActionBox(); resolve();
+                    UI.updateActionBox();
+                    if (Network.isHost() && Network.isConnected()) Network.broadcastState();
+                    resolve();
                 }, isLast, roll.diceType);
             });
             if (!isLast) await new Promise(r => setTimeout(r, 400));

@@ -739,7 +739,7 @@ export const Network = {
             if (this.isHost() && this.isConnected() && this._syncDirty) {
                 this.fullSync();
             }
-        }, 3000);
+        }, 1000);
     },
 
     _stopHeartbeat() {
