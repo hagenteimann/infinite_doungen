@@ -58,6 +58,11 @@ FEINDLICHE MORAL (NEU):
    - Nutze dann [GegnerFlucht: Name]. Der Feind verschwindet ohne Beute.
    - BOSSE fliehen NIEMALS. Einfache Schergen fliehen öfter als Elitegegner.
    - OPTIONAL: Feind kann auch surrendern – dann gibt er Information oder Gegenstände preis.
+   GEGNER-ZIELSETZUNG: Feinde sind taktisch intelligent!
+   - Heiler und Kleriker werden BEVORZUGT angegriffen (schädlichste Unterstützer eliminieren).
+   - Sehr schwache Charaktere (unter 25% HP) locken ebenfalls Angriffe an (leichte Beute).
+   - Starke Krieger werden gemieden, wenn weichere Ziele verfügbar sind.
+   - Bosse greifen grundsätzlich den HP-stärksten Charakter an (Stärke messen).
 
 HANDLUNGSVORSCHLÄGE (PFLICHT):
 8. Beende JEDE Antwort ZWINGEND mit 2-4 konkreten, situationsbezogenen Handlungsmöglichkeiten als Aufzählung (mit - am Zeilenanfang). Jede Option MUSS mit einem passenden Emoji starten: ⚔️ Angriff, 🔍 Untersuchen, 🤚 Looten, 🛡️ Verteidigen, 🗣️ Reden, 🏃 Fliehen, 💰 Suchen, 🔥 Magie, 🚶 Weiter.

@@ -449,15 +449,24 @@ export const Engine = {
         const roll = State.pendingRolls.find(r => r.id === id);
         if (!roll) return;
         if (!Network.canRollFor(roll.name)) {
-            UI.addChatLog('System', 'Du kannst nur fuer deinen eigenen Charakter wuerfeln.');
+            UI.addChatLog('System', 'Du kannst nur für deinen eigenen Charakter würfeln.');
             return;
         }
+        if (Network.isConnected()) Network.broadcastDiceShow(roll);
         UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
             roll.rolled = true; roll.result = result; roll.rawRoll = rawRoll;
             if (Network.isClient() && Network.isConnected()) {
                 Network.sendDiceResult(roll.id, result, rawRoll);
             }
             UI.updateActionBox();
+            // Auto-submit wenn alle Würfe erledigt sind (Host oder Single-Player)
+            if (!Network.isClient() && State.pendingRolls.length > 0 && State.pendingRolls.every(r => r.rolled) && !State.isProcessing) {
+                setTimeout(() => {
+                    if (State.pendingRolls.every(r => r.rolled) && !State.isProcessing) {
+                        Engine.submitPendingRolls();
+                    }
+                }, 800);
+            }
         }, true, roll.diceType);
     },
 
@@ -534,6 +543,46 @@ export const Engine = {
         } else {
             this.interactWithAI(`[${name} würfelt frei eine ${r}]`);
         }
+    },
+
+    askPartyMember: async function (charName, question) {
+        const char = State.party.find(c => c.name === charName);
+        if (!char || !question.trim()) return;
+        UI.showLoader(true, `${char.name} antwortet...`);
+        try {
+            const ctx = State.lastStoryPart ? `\n\nAktueller Kontext: "${State.lastStoryPart.substring(0, 300)}"` : '';
+            const ans = await API.generateText(
+                `Beantworte diese Frage aus der Perspektive von ${char.name}: "${question}"${ctx}`,
+                `Du bist ${char.name}, ein ${char.class} (Level ${char.level}). Antworte NUR als diese Figur – in ihrer Stimme, Persönlichkeit und mit ihrem Wissen. Deutsch, 1-3 Sätze, kein Metakommentar.`
+            );
+            UI.addChatLog(char.name, ans);
+        } catch (e) {
+            UI.addChatLog('System', `⚠️ Fehler beim Befragen von ${char.name}.`);
+        } finally {
+            UI.showLoader(false);
+        }
+    },
+
+    showAskPartyDialog: function () {
+        const chars = State.party.filter(p => !p.isSummon && p.hp > 0);
+        if (chars.length === 0) { UI.addChatLog('System', 'Keine Charaktere verfügbar.'); return; }
+        const existing = document.getElementById('ask-party-modal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'ask-party-modal';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4';
+        const opts = chars.map(c => `<option value="${c.name.replace(/"/g, '&quot;')}">${c.name} (${c.class})</option>`).join('');
+        modal.innerHTML = `<div class="bg-slate-900 border border-slate-700 rounded-xl p-5 w-full max-w-sm shadow-2xl">
+            <h3 class="text-amber-400 font-bold text-sm mb-3 uppercase tracking-wider"><i class="fas fa-comments mr-2"></i>Mitspieler befragen</h3>
+            <select id="ask-party-char" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-slate-200 mb-3 outline-none focus:border-amber-500">${opts}</select>
+            <textarea id="ask-party-question" rows="3" placeholder="Deine Frage..." class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-sm text-slate-200 mb-3 outline-none focus:border-amber-500 resize-none"></textarea>
+            <div class="flex gap-2">
+                <button data-action="submit-ask-party" class="flex-1 bg-amber-700 hover:bg-amber-600 text-white py-2 rounded-lg text-xs font-bold transition-all"><i class="fas fa-paper-plane mr-1"></i> Fragen</button>
+                <button data-action="close-ask-party" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-all">Abbrechen</button>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+        setTimeout(() => document.getElementById('ask-party-question')?.focus(), 100);
     },
 
     askOracle: function () { if (this._requireHost('Orakel')) return; DOM.oracleInput.value = ""; DOM.oracleModal.classList.remove('hidden'); setTimeout(() => DOM.oracleInput.focus(), 100); },

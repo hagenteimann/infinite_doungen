@@ -117,6 +117,14 @@ export function initEvents() {
             'mp-toggle-auto': () => Network.toggleAutoPlayer(actionEl.dataset.player),
             'mp-cast-vote': () => Network.castVote(parseInt(actionEl.dataset.option)),
             'mp-resolve-vote': () => Network.resolveVote(parseInt(actionEl.dataset.option)),
+            'ask-party-member': () => Engine.showAskPartyDialog(),
+            'submit-ask-party': () => {
+                const charName = document.getElementById('ask-party-char')?.value;
+                const question = document.getElementById('ask-party-question')?.value.trim();
+                document.getElementById('ask-party-modal')?.remove();
+                if (charName && question) Engine.askPartyMember(charName, question);
+            },
+            'close-ask-party': () => document.getElementById('ask-party-modal')?.remove(),
             'mp-start-vote': () => {
                 const input = prompt('Abstimmung erstellen:\nFormat: Frage | Option1, Option2, Option3');
                 if (!input) return;

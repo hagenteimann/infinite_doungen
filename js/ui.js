@@ -530,7 +530,7 @@ export const UI = {
             DOM.actionBoxContainer.innerHTML = sanitize(html);
         } else {
             DOM.actionBoxContainer.classList.add('hidden');
-            DOM.playerInput.disabled = false; DOM.sendBtn.disabled = false;
+            DOM.playerInput.disabled = false; DOM.sendBtn.disabled = !!State.isProcessing;
             DOM.playerInput.placeholder = "Was tut ihr?";
         }
     },
@@ -544,7 +544,13 @@ export const UI = {
         let formattedText = t;
         formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-amber-300">$1</strong>');
         formattedText = formattedText.replace(/\*(.*?)\*/g, '<em class="text-slate-300">$1</em>');
-        formattedText = formattedText.replace(/\n/g, '<br>');
+        if (isAI) {
+            formattedText = formattedText.replace(/\n\n+/g, '</p><p class="mt-2 leading-relaxed">');
+            formattedText = formattedText.replace(/\n/g, '<br>');
+            formattedText = `<p class="leading-relaxed">${formattedText}</p>`;
+        } else {
+            formattedText = formattedText.replace(/\n/g, '<br>');
+        }
 
         if (isSys) {
             const lastMsg = DOM.storyLog.lastElementChild;
@@ -799,11 +805,30 @@ export const UI = {
     },
     hideDetails: function () { DOM.charDetails.classList.add('hidden'); DOM.partyList.classList.remove('hidden'); },
 
-    showAnimatedDiceModal: function (name, targetDC, modifier, callback, closeAfter = true, diceType = 'W20') {
+    showAnimatedDiceModal: function (name, targetDC, modifier, callback, closeAfter = true, diceType = 'W20', watchMode = false) {
         Sound.play('dice');
         let sides = 20;
         if (diceType && diceType.toUpperCase().startsWith('W')) {
             sides = parseInt(diceType.substring(1)) || 20;
+        }
+
+        // Watch mode: show animation but don't execute callback (another player is rolling)
+        if (watchMode) {
+            DOM.diceRollerName.innerText = name;
+            DOM.diceTargetDc.innerText = `Ziel: DC ${targetDC}`; DOM.diceTargetDc.classList.remove('hidden');
+            DOM.diceAcceptBtn.classList.add('hidden'); DOM.diceModal.classList.remove('hidden');
+            DOM.diceQualityLabel.innerText = "Würfelt..."; DOM.diceQualityLabel.className = "text-xl cinzel text-slate-400 tracking-widest mb-4 animate-pulse h-8";
+            DOM.diceResult.className = "text-9xl font-bold cinzel mb-6 mt-4 text-white inline-block dice-rolling";
+            let wc = 0;
+            const wival = setInterval(() => {
+                DOM.diceResult.innerText = Math.floor(Math.random() * sides) + 1; wc++;
+                if (wc > DICE_ANIMATION_TICKS + 5) {
+                    clearInterval(wival);
+                    DOM.diceQualityLabel.innerText = "Ergebnis ausstehend...";
+                    setTimeout(() => DOM.diceModal.classList.add('hidden'), 1800);
+                }
+            }, DICE_ANIMATION_INTERVAL_MS);
+            return;
         }
 
         if (DOM.diceRollerPortrait) {

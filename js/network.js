@@ -346,6 +346,22 @@ export const Network = {
         });
     },
 
+    // Helper: addChatLog lokal + broadcastSystemChat in einem Schritt (verhindert Doppelnachrichten)
+    _sysMsgBroadcast(text) {
+        UI.addChatLog('System', text);
+        this.broadcastSystemChat('System', text);
+    },
+
+    broadcastDiceShow(roll) {
+        if (!this.isConnected()) return;
+        const msg = { charName: roll.name, dc: roll.dc, mod: roll.mod || 0, diceType: roll.diceType || 'W20' };
+        if (this.isHost()) {
+            this.connections.forEach(c => this._sendTo(c, { type: 'DICE_SHOW', ...msg }));
+        } else if (this.connections.length > 0) {
+            this._sendTo(this.connections[0], { type: 'DICE_SHOW_RELAY', ...msg });
+        }
+    },
+
     advanceTurn() {
         if (!this.isHost() || this.turnOrder.length <= 1) return;
         this.currentTurnIndex = (this.currentTurnIndex + 1) % this.turnOrder.length;
@@ -393,8 +409,7 @@ export const Network = {
         const entries = Object.entries(this.combatActions);
         if (entries.length === 0) return;
         const actions = entries.map(([, d]) => `${d.charName}: ${d.action}`).join('\n');
-        UI.addChatLog('System', `**Kampfrunde gestartet!** ${entries.length} Aktionen werden ausgefuehrt...`);
-        this.broadcastSystemChat('System', `**Kampfrunde gestartet!** ${entries.length} Aktionen werden ausgefuehrt...`);
+        this._sysMsgBroadcast(`**Kampfrunde gestartet!** ${entries.length} Aktionen werden ausgeführt...`);
         this.combatActions = {};
         this._mySubmittedAction = null;
         this._broadcastCombatStatus();
@@ -404,8 +419,7 @@ export const Network = {
     skipPlayer(playerName) {
         if (!this.isHost() || this.combatActions[playerName]) return;
         this.combatActions[playerName] = { action: 'wartet ab (uebersprungen)', charName: playerName };
-        UI.addChatLog('System', `**${playerName}** wurde uebersprungen.`);
-        this.broadcastSystemChat('System', `**${playerName}** wurde uebersprungen.`);
+        this._sysMsgBroadcast(`**${playerName}** wurde übersprungen.`);
         this._broadcastCombatStatus();
     },
 
@@ -436,21 +450,48 @@ export const Network = {
     },
 
     _generateAutoAction(char) {
-        const enemy = State.activeEnemies.find(e => e.hp > 0);
+        const weakestEnemy = State.activeEnemies
+            .filter(e => e.hp > 0)
+            .sort((a, b) => a.hp - b.hp)[0];
         const hurt = State.party
             .filter(p => p.hp > 0 && !p.isSummon && p.hp < PartyManager.getEffectiveMaxHp(p) * 0.5)
             .sort((a, b) => a.hp / PartyManager.getEffectiveMaxHp(a) - b.hp / PartyManager.getEffectiveMaxHp(b))[0];
 
-        if (State.activeEnemies.some(e => e.hp > 0)) {
-            const cls = (char.class || '').toLowerCase();
-            if ((cls === 'kleriker' || cls === 'heiler') && hurt) return `${char.name} heilt ${hurt.name}`;
-            if (cls === 'magier' && enemy) return `${char.name} wirkt einen Zauber gegen ${enemy.name}`;
-            if ((cls.includes('wald')) && enemy) return `${char.name} schiesst einen Pfeil auf ${enemy.name}`;
-            if (cls === 'schurke' && enemy) return `${char.name} schleicht sich an ${enemy.name} heran und attackiert`;
-            if (enemy) return `${char.name} greift ${enemy.name} an`;
-            return `${char.name} verteidigt sich`;
+        if (!weakestEnemy) return `${char.name} folgt der Gruppe`;
+
+        const cls = (char.class || '').toLowerCase();
+        const t = weakestEnemy.name;
+        const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+        if (cls === 'kleriker' || cls === 'heiler') {
+            if (hurt) return pick([
+                `${char.name} heilt ${hurt.name}`,
+                `${char.name} ruft eine heilige Aura um ${hurt.name}`,
+                `${char.name} fleht die Götter um Schutz für ${hurt.name} an`,
+            ]);
+            return pick([`${char.name} schlägt ${t} mit dem Streitkolben`, `${char.name} ruft die Strafe der Götter auf ${t} herab`]);
         }
-        return `${char.name} folgt der Gruppe`;
+        if (cls === 'magier') return pick([
+            `${char.name} wirkt einen Feuerball auf ${t}`,
+            `${char.name} schleudert Eiskristalle auf ${t}`,
+            `${char.name} beschwört arkane Kraft gegen ${t}`,
+        ]);
+        if (cls === 'krieger') return pick([
+            `${char.name} greift ${t} mit voller Wucht an`,
+            `${char.name} pariert und kontert ${t}`,
+            `${char.name} provoziert ${t} um Verbündete zu schützen`,
+        ]);
+        if (cls === 'schurke') return pick([
+            `${char.name} schleicht sich an ${t} heran und attackiert`,
+            `${char.name} wirft ein Messer auf ${t}`,
+            `${char.name} trifft ${t} an einem verwundbaren Punkt`,
+        ]);
+        if (cls.includes('wald')) return pick([
+            `${char.name} schießt einen Pfeil auf ${t}`,
+            `${char.name} zielt präzise auf ${t}`,
+            `${char.name} hetzt seinen tierischen Begleiter auf ${t}`,
+        ]);
+        return `${char.name} greift ${t} an`;
     },
 
     _scheduleAutoActions() {
@@ -499,6 +540,16 @@ export const Network = {
         if (!this.isHost()) return;
         this._updateTurnUI();
         this._markDirty();
+
+        // Auto-execute wenn alle menschlichen Spieler ihre Aktion eingereicht haben
+        const humanPlayers = this.turnOrder.filter(p => !this.autoPlayers[p]);
+        if (humanPlayers.length > 0 && humanPlayers.every(p => this.combatActions[p]) && !State.isProcessing) {
+            setTimeout(() => {
+                if (humanPlayers.every(p => this.combatActions[p]) && !State.isProcessing) {
+                    this.executeCombatRound();
+                }
+            }, 500);
+        }
     },
 
     registerCharacter(playerName, charId) {
@@ -556,8 +607,7 @@ export const Network = {
             distributed.push(`**${recipient.name}** erhaelt: ${item}`);
         }
         State.lootDrops = [];
-        UI.addChatLog('System', `**Beute verteilt:**\n${distributed.join('\n')}`);
-        this.broadcastSystemChat('System', `**Beute verteilt:**\n${distributed.join('\n')}`);
+        this._sysMsgBroadcast(`**Beute verteilt:**\n${distributed.join('\n')}`);
     },
 
     startVote(question, options) {
@@ -596,8 +646,7 @@ export const Network = {
     resolveVote(chosenIndex) {
         if (!this.isHost() || !this.currentVote) return;
         const chosen = this.currentVote.options[chosenIndex] || 'Unbekannt';
-        UI.addChatLog('System', `**Abstimmung beendet:** "${chosen}" wurde gewaehlt.`);
-        this.broadcastSystemChat('System', `**Abstimmung beendet:** "${chosen}" wurde gewaehlt.`);
+        this._sysMsgBroadcast(`**Abstimmung beendet:** "${chosen}" wurde gewählt.`);
         const msg = { type: 'VOTE_RESULT', chosen, chosenIndex };
         this.connections.forEach(c => this._sendTo(c, msg));
         this.currentVote = null;
@@ -750,8 +799,7 @@ export const Network = {
                     const char = validateHeroData(msg.charData);
                     if (!State.party.find(p => p.id === char.id)) {
                         State.party.push(char);
-                        UI.addChatLog('System', `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`);
-                        this.broadcastSystemChat('System', `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`);
+                        this._sysMsgBroadcast(`**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefügt.`);
                         this.registerCharacter(msg.playerName, char.id);
                         this.broadcastState();
                         UI.updateAll();
@@ -777,7 +825,23 @@ export const Network = {
                     roll.rawRoll = msg.rawRoll;
                     UI.updateActionBox();
                     this._markDirty();
+                    // Auto-submit wenn alle Würfe erledigt sind
+                    if (State.pendingRolls.length > 0 && State.pendingRolls.every(r => r.rolled) && !State.isProcessing) {
+                        setTimeout(() => {
+                            if (State.pendingRolls.every(r => r.rolled) && !State.isProcessing) {
+                                Engine.submitPendingRolls();
+                            }
+                        }, 800);
+                    }
                 }
+                break;
+            }
+            case 'DICE_SHOW_RELAY': {
+                // Client sendet Würfel-Show-Anfrage → Host zeigt Animation und leitet an andere weiter
+                UI.showAnimatedDiceModal(msg.charName, msg.dc, msg.mod, null, true, msg.diceType, true);
+                this.connections.forEach(c => {
+                    if (c !== conn) this._sendTo(c, { type: 'DICE_SHOW', charName: msg.charName, dc: msg.dc, mod: msg.mod, diceType: msg.diceType });
+                });
                 break;
             }
             case 'REQUEST_SYNC': {
@@ -870,9 +934,14 @@ export const Network = {
                 break;
             }
             case 'VOTE_RESULT': {
-                UI.addChatLog('System', `**Abstimmung beendet:** "${msg.chosen}" wurde gewaehlt.`);
+                UI.addChatLog('System', `**Abstimmung beendet:** "${msg.chosen}" wurde gewählt.`);
                 this.currentVote = null;
                 this._updateTurnUI();
+                break;
+            }
+            case 'DICE_SHOW': {
+                // Ein anderer Spieler würfelt – Animation im Zuschauermodus anzeigen
+                UI.showAnimatedDiceModal(msg.charName, msg.dc, msg.mod, null, true, msg.diceType, true);
                 break;
             }
             default:
@@ -1127,8 +1196,8 @@ export const Network = {
             : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayer}</b>${isAutoTurn ? ' <i class="fas fa-robot text-[9px]"></i>' : ''} ist am Zug...</span>`)
             + `<div class="text-slate-500 text-[9px] mt-1">${turnOrderHtml}</div>`
             + (autoToggleHtml ? `<div class="flex flex-wrap gap-1 mt-1.5 justify-center">${autoToggleHtml}</div>` : '');
-        playerInput.disabled = !myTurn;
-        sendBtn.disabled = !myTurn;
+        playerInput.disabled = !myTurn || State.isProcessing;
+        sendBtn.disabled = !myTurn || State.isProcessing;
         playerInput.placeholder = myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayer}...`;
         this._setQuickActionsEnabled(myTurn);
     },
@@ -1239,6 +1308,7 @@ export const Network = {
             '[data-action="submit-action"]',
             '[data-action="camp"]',
             '[data-action="ask-oracle"]',
+            '[data-action="ask-party-member"]',
             '[data-action="plot-twist"]',
             '[data-action="generate-npc"]',
             '[data-action="check-enemies"]',
