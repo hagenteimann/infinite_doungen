@@ -153,13 +153,17 @@ export const initDOM = () => {
 export const UIBuilders = {
     buildHeroCard: function (c) {
         const isDead = c.hp === 0;
+        const myCharId = State.playerAssignments[State.localPlayerName];
+        const isMyChar = !!myCharId && c.id === myCharId;
         const borderClass = isDead ? 'border-red-900 shadow-[0_0_15px_rgba(220,38,38,0.3)] grayscale opacity-80' :
+            (isMyChar ? 'border-amber-400/70 shadow-[0_0_20px_rgba(245,158,11,0.35)]' :
             (c.isSummon ? 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]' :
-                (c.isNPC ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-white/10 hover:border-amber-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]'));
+                (c.isNPC ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-white/10 hover:border-amber-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]')));
         const nameColor = isDead ? 'text-red-500 line-through' :
             (c.isSummon ? 'text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.5)]' :
                 (c.isNPC ? 'text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]' : 'text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]'));
         const badge = isDead ? '💀' : (c.isSummon ? '🌀' : '👤');
+        const myBadge = isMyChar ? `<span class="text-[8px] bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded px-1 ml-1 font-bold">Du</span>` : '';
         const effMaxHp = PartyManager.getEffectiveMaxHp(c);
         if (c.hp > effMaxHp) c.hp = effMaxHp;
         const hpPercent = (c.hp / effMaxHp) * 100;
@@ -170,7 +174,7 @@ export const UIBuilders = {
         return `<div class="bg-black/30 backdrop-blur-md p-2 rounded-xl border ${borderClass} flex gap-2.5 items-center cursor-pointer group transition-all" data-action="entity-click" data-name="${c.name.replace(/"/g, '&quot;')}" data-entity-type="hero" data-entity-id="${c.id}">
             ${portraitHtml}
             <div class="flex-1">
-                <div class="flex justify-between text-[11px] font-bold tracking-wide"><span class="${nameColor}">${c.name} <span class="text-slate-500 text-[9px] font-normal ml-0.5">Lvl ${c.level}</span></span><span class="${isDead ? 'text-red-500' : 'text-slate-300 font-mono'}">${c.hp}/${effMaxHp}</span></div>
+                <div class="flex justify-between text-[11px] font-bold tracking-wide"><span class="${nameColor}">${c.name}${myBadge} <span class="text-slate-500 text-[9px] font-normal ml-0.5">Lvl ${c.level}</span></span><span class="${isDead ? 'text-red-500' : 'text-slate-300 font-mono'}">${c.hp}/${effMaxHp}</span></div>
                 <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 border border-white/5 overflow-hidden"><div class="${c.isNPC ? (c.isSummon ? 'bg-gradient-to-r from-purple-700 to-purple-400' : 'bg-gradient-to-r from-blue-700 to-blue-400') : 'bg-gradient-to-r from-red-700 to-red-400'} h-full rounded-full transition-all duration-500" style="width: ${(c.hp / effMaxHp) * 100}%"></div></div>
             </div>
             <button data-action="remove-char" data-char-id="${c.id}" class="opacity-0 group-hover:opacity-100 p-1.5 text-red-500/70 hover:text-red-400 transition-colors bg-white/5 rounded-lg hover:bg-white/10"><i class="fas fa-trash text-[10px]"></i></button>
@@ -376,7 +380,13 @@ export const UI = {
     },
 
     updateAll: function () {
-        DOM.partyList.innerHTML = sanitize(State.party.map(UIBuilders.buildHeroCard).join(''));
+        // Sort party: own character first (if assigned)
+        const myCharId = State.playerAssignments[State.localPlayerName];
+        const sorted = myCharId
+            ? [...State.party].sort((a, b) => (b.id === myCharId ? 1 : 0) - (a.id === myCharId ? 1 : 0))
+            : State.party;
+        DOM.partyList.innerHTML = sanitize(sorted.map(UIBuilders.buildHeroCard).join(''));
+        this._renderMpPanels();
         DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>' + State.party.filter(p => !p.isSummon && p.hp > 0).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
         DOM.enemySection.classList.toggle('hidden', !State.activeEnemies.length && !State.defeatedEnemies.length);
         DOM.enemyHistoryContainer.innerHTML = sanitize(State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join(''));
@@ -456,6 +466,176 @@ export const UI = {
         this.updateTargetModeButton();
         this.updateActionBox();
 
+    },
+
+    _renderMpPanels: function () {
+        this._renderCombatQueue();
+        this._renderVotingPanel();
+        this._renderAssignCharPanel();
+    },
+
+    _renderCombatQueue: function () {
+        const panelId = 'mp-combat-queue';
+        let panel = document.getElementById(panelId);
+
+        const inCombat = State.activeEnemies.length > 0;
+        const isConnected = !!State.localPlayerName;
+        if (!inCombat || !isConnected || !State.gameStarted) {
+            panel?.remove();
+            return;
+        }
+
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = panelId;
+            DOM.actionArea?.insertBefore(panel, DOM.actionArea.firstChild);
+        }
+
+        const actions = State.combatActions;
+        const actionEntries = Object.entries(actions);
+        const myCharId = State.playerAssignments[State.localPlayerName];
+        const hasMyAction = actionEntries.some(([p]) => p === State.localPlayerName);
+        const isLeader = State.leaderName ? State.leaderName === State.localPlayerName : !State.localPlayerName;
+        // Host is leader if no leaderName set
+        const amLeader = isLeader || (State.leaderName === '' && State.localPlayerName === State.party[0]?.name);
+
+        const queueHtml = actionEntries.length > 0
+            ? actionEntries.map(([player, action]) =>
+                `<div class="text-[10px] flex items-center gap-2 py-0.5">
+                    <i class="fas fa-check text-green-400 text-[8px]"></i>
+                    <span class="text-slate-400">${player}:</span>
+                    <span class="text-slate-300 truncate">${action}</span>
+                </div>`
+            ).join('')
+            : `<p class="text-slate-600 text-[10px] italic">Noch keine Aktionen eingereicht...</p>`;
+
+        panel.className = 'bg-black/40 border border-red-900/40 rounded-xl p-3 mb-3 space-y-2 backdrop-blur-sm';
+        panel.innerHTML = `
+            <div class="flex items-center justify-between">
+                <h4 class="text-[10px] font-bold text-red-400 uppercase tracking-widest"><i class="fas fa-fist-raised mr-1.5"></i>Kampfrunde – Aktionen</h4>
+                <span class="text-[9px] text-slate-500">${actionEntries.length} eingereicht</span>
+            </div>
+            <div class="space-y-0.5 max-h-20 overflow-y-auto">${queueHtml}</div>
+            <div class="flex gap-2 pt-1">
+                ${!hasMyAction
+                    ? `<button data-action="submit-combat-action" class="flex-1 bg-red-800/70 hover:bg-red-700 text-white py-1.5 rounded-lg text-[10px] font-bold border border-red-600/40 transition-all">
+                        <i class="fas fa-sword mr-1"></i> Aktion einreichen
+                       </button>`
+                    : `<div class="flex-1 text-center text-[10px] text-green-400"><i class="fas fa-check mr-1"></i>Aktion eingereicht</div>`}
+                ${amLeader && actionEntries.length > 0
+                    ? `<button data-action="execute-combat-round" class="flex-1 bg-amber-700/80 hover:bg-amber-600 text-white py-1.5 rounded-lg text-[10px] font-bold border border-amber-500/40 transition-all">
+                        <i class="fas fa-play mr-1"></i> Runde ausführen
+                       </button>`
+                    : ''}
+            </div>`;
+    },
+
+    _renderVotingPanel: function () {
+        const panelId = 'mp-voting-panel';
+        let panel = document.getElementById(panelId);
+
+        if (!State.votingSession || !State.localPlayerName) {
+            panel?.remove();
+            return;
+        }
+
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = panelId;
+            DOM.actionArea?.insertBefore(panel, DOM.actionArea.firstChild);
+        }
+
+        const session = State.votingSession;
+        const myVote = session.votes[State.localPlayerName];
+        const hasVoted = myVote !== undefined;
+        const voteCounts = session.options.map((_, i) =>
+            Object.values(session.votes).filter(v => v === i).length
+        );
+        const totalVotes = Object.values(session.votes).filter(v => v >= 0).length;
+        const isLeader = State.leaderName === State.localPlayerName || (State.leaderName === '' && State.localPlayerName);
+
+        const optionsHtml = session.options.map((opt, i) => {
+            const count = voteCounts[i];
+            const isMyChoice = myVote === i;
+            return `<button data-action="cast-vote" data-idx="${i}"
+                class="w-full text-left px-3 py-2 rounded-lg text-[10px] border transition-all ${isMyChoice
+                    ? 'bg-purple-700/60 border-purple-500/60 text-purple-200 font-bold'
+                    : 'bg-slate-800/60 border-slate-600/40 text-slate-300 hover:border-purple-500/40'}"
+            >
+                ${opt}
+                ${count > 0 ? `<span class="float-right text-purple-400 font-bold">${count}x</span>` : ''}
+            </button>`;
+        }).join('');
+
+        const leaderResolveHtml = isLeader
+            ? `<div class="pt-1 border-t border-slate-700/40">
+                <p class="text-[9px] text-slate-500 mb-1">Leader-Entscheid:</p>
+                <div class="flex flex-wrap gap-1">
+                    ${session.options.map((opt, i) =>
+                        `<button data-action="resolve-vote" data-idx="${i}"
+                            class="bg-amber-700/70 hover:bg-amber-600 text-white px-2 py-1 rounded text-[9px] font-bold border border-amber-500/40 transition-all">
+                            ${opt}
+                        </button>`
+                    ).join('')}
+                </div>
+              </div>`
+            : '';
+
+        const skipHtml = isLeader && Object.keys(session.votes).length < Object.keys(State.playerAssignments).length
+            ? Object.entries(State.playerAssignments)
+                .filter(([player]) => session.votes[player] === undefined)
+                .map(([player]) =>
+                    `<button data-action="skip-vote-player" data-name="${player}"
+                        class="text-[9px] text-slate-500 hover:text-amber-400 transition-colors">
+                        ⏭ ${player} überspringen
+                    </button>`
+                ).join('  ')
+            : '';
+
+        panel.className = 'bg-black/40 border border-purple-900/40 rounded-xl p-3 mb-3 space-y-2 backdrop-blur-sm';
+        panel.innerHTML = `
+            <div class="flex items-center justify-between">
+                <h4 class="text-[10px] font-bold text-purple-400 uppercase tracking-widest"><i class="fas fa-vote-yea mr-1.5"></i>Abstimmung</h4>
+                <span class="text-[9px] text-slate-500">${totalVotes} Stimmen</span>
+            </div>
+            <p class="text-slate-300 text-[11px] font-medium">${session.question}</p>
+            <div class="space-y-1">${optionsHtml}</div>
+            ${skipHtml ? `<div class="text-[9px] space-x-2">${skipHtml}</div>` : ''}
+            ${leaderResolveHtml}`;
+    },
+
+    _renderAssignCharPanel: function () {
+        const panelId = 'mp-assign-panel';
+        let panel = document.getElementById(panelId);
+
+        const isConnected = !!State.localPlayerName;
+        const myCharId = State.playerAssignments[State.localPlayerName];
+        const needsAssign = isConnected && !myCharId && State.party.length > 0;
+
+        if (!needsAssign) { panel?.remove(); return; }
+
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = panelId;
+            document.getElementById('party-list')?.insertAdjacentElement('beforebegin', panel);
+        }
+
+        panel.className = 'bg-amber-950/40 border border-amber-700/40 rounded-xl p-3 mb-3 space-y-2';
+        panel.innerHTML = `
+            <p class="text-[10px] text-amber-300 font-bold"><i class="fas fa-user-tag mr-1.5"></i>Wähle deinen Helden:</p>
+            <div class="space-y-1">
+                ${State.party.filter(c => !c.isSummon && !c.isNPC).map(c => {
+                    const taken = Object.values(State.playerAssignments).includes(c.id);
+                    const taker = taken ? Object.entries(State.playerAssignments).find(([,id]) => id === c.id)?.[0] : null;
+                    return `<button data-action="assign-character" data-char-id="${c.id}"
+                        class="w-full text-left px-3 py-1.5 rounded-lg text-[10px] border transition-all ${taken
+                            ? 'bg-slate-800/40 border-slate-700/40 text-slate-500 cursor-not-allowed'
+                            : 'bg-amber-900/30 border-amber-700/40 text-amber-200 hover:border-amber-500'}" ${taken ? 'disabled' : ''}>
+                        ${c.name} <span class="text-[9px] opacity-70">${c.class} Lvl ${c.level}</span>
+                        ${taken ? `<span class="float-right text-slate-500">${taker}</span>` : ''}
+                    </button>`;
+                }).join('')}
+            </div>`;
     },
 
     updateActionBox: function () {

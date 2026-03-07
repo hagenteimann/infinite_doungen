@@ -161,6 +161,21 @@ export const Sound = {
                     });
                     break;
                 }
+                case 'bling': {
+                    [880, 1108, 1320].forEach((freq, i) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination);
+                        o.type = 'sine';
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.0, t + i * 0.08);
+                        g.gain.linearRampToValueAtTime(0.12, t + i * 0.08 + 0.03);
+                        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.35);
+                        o.start(t + i * 0.08);
+                        o.stop(t + i * 0.08 + 0.35);
+                    });
+                    break;
+                }
             }
         } catch (e) { console.warn('Sound playback failed:', e); }
     }

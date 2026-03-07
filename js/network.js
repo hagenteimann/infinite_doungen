@@ -22,6 +22,7 @@ const SYNC_KEYS = [
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
     'isBossFight', 'dungeonLevel', 'weather', 'gold', 'momentum',
     'pendingRolls', 'pendingAbilityLearning',
+    'combatActions', 'votingSession', 'leaderName', 'playerAssignments',
 ];
 
 export const Network = {
@@ -40,6 +41,13 @@ export const Network = {
     isHost() { return this.role === 'host'; },
     isClient() { return this.role === 'client'; },
     isConnected() { return this.connState === 'connected'; },
+    isLeader() {
+        if (!this.isConnected()) return true;
+        const leader = State.leaderName;
+        return leader ? leader === this.playerName : this.isHost();
+    },
+    getMyCharId() { return State.playerAssignments[this.playerName]; },
+    getMyChar() { return State.party.find(c => c.id === this.getMyCharId()); },
     isMyTurn() {
         if (!this.isConnected() || this.turnOrder.length <= 1) return true;
         return this.turnOrder[this.currentTurnIndex] === this.playerName;
@@ -104,6 +112,7 @@ export const Network = {
     host(playerName) {
         if (this.peer) this.disconnect();
         this.playerName = playerName || 'DM';
+        dispatch({ type: 'BULK_UPDATE', updates: { localPlayerName: this.playerName, leaderName: this.playerName } });
         this.roomCode = this.generateRoomCode();
         this.role = 'host';
         this._setConnState('connecting');
@@ -183,6 +192,7 @@ export const Network = {
     join(roomCode, playerName) {
         if (this.peer) this.disconnect();
         this.playerName = playerName || 'Spieler';
+        dispatch({ type: 'BULK_UPDATE', updates: { localPlayerName: this.playerName } });
         this.roomCode = roomCode.toUpperCase();
         this.role = 'client';
         this._setConnState('connecting');
@@ -321,6 +331,105 @@ export const Network = {
         this._updateTurnUI();
     },
 
+    // ── Combat Round ──────────────────────────────────────────────
+    submitCombatAction(action) {
+        if (this.isHost()) {
+            dispatch({ type: 'SET_COMBAT_ACTION', playerName: this.playerName, action });
+            this.broadcastState();
+        } else {
+            this._sendTo(this.connections[0], { type: 'COMBAT_ACTION_SUBMIT', action, playerName: this.playerName });
+        }
+    },
+
+    clearCombatActions() {
+        dispatch({ type: 'CLEAR_COMBAT_ACTIONS' });
+        if (this.isHost()) this.broadcastState();
+    },
+
+    // ── Voting ────────────────────────────────────────────────────
+    startVote(question, options) {
+        if (!this.isHost()) return;
+        const session = { id: Date.now().toString(), question, options, votes: {} };
+        dispatch({ type: 'START_VOTE', session });
+        this.broadcastState();
+        UI.addChatLog('System', `🗳️ **Abstimmung:** ${question}`);
+        this.broadcastSystemChat('System', `🗳️ **Abstimmung:** ${question}`);
+    },
+
+    castVote(optionIdx) {
+        if (this.isHost()) {
+            dispatch({ type: 'CAST_VOTE', playerName: this.playerName, optionIdx });
+            this.broadcastState();
+        } else {
+            this._sendTo(this.connections[0], { type: 'VOTE_CAST', optionIdx, playerName: this.playerName });
+        }
+    },
+
+    resolveVote(optionIdx) {
+        if (!this.isLeader()) return;
+        const session = State.votingSession;
+        if (!session) return;
+        const chosen = session.options[optionIdx];
+        dispatch({ type: 'END_VOTE' });
+        if (this.isHost()) this.broadcastState();
+        return chosen;
+    },
+
+    skipVotePlayer(playerName) {
+        if (!this.isHost()) return;
+        dispatch({ type: 'CAST_VOTE', playerName, optionIdx: -1 });
+        this.broadcastState();
+        UI.addChatLog('System', `⏭️ **${playerName}** wurde in der Abstimmung übersprungen.`);
+    },
+
+    // ── Leader ────────────────────────────────────────────────────
+    setLeader(name) {
+        if (!this.isHost()) return;
+        dispatch({ type: 'SET_LEADER', name });
+        this.broadcastState();
+        UI.addChatLog('System', `👑 **${name}** ist jetzt der Gruppenleader.`);
+        this.broadcastSystemChat('System', `👑 **${name}** ist jetzt der Gruppenleader.`);
+    },
+
+    // ── Character Assignment ──────────────────────────────────────
+    assignCharacterToPlayer(playerName, charId) {
+        if (!this.isHost()) return;
+        dispatch({ type: 'ASSIGN_PLAYER', playerName, charId });
+        this.broadcastState();
+        const char = State.party.find(c => c.id === charId);
+        UI.addChatLog('System', `🎭 **${playerName}** spielt jetzt **${char?.name || charId}**.`);
+    },
+
+    requestCharacterAssign(charId) {
+        if (this.isHost()) {
+            this.assignCharacterToPlayer(this.playerName, charId);
+        } else {
+            this._sendTo(this.connections[0], { type: 'CHARACTER_ASSIGN_REQUEST', charId, playerName: this.playerName });
+        }
+    },
+
+    // ── Item Transfer ─────────────────────────────────────────────
+    giveItemToChar(fromCharId, itemName, toCharId) {
+        if (this.isHost()) {
+            this._executeItemGive(fromCharId, itemName, toCharId);
+        } else {
+            this._sendTo(this.connections[0], { type: 'ITEM_GIVE_REQUEST', fromCharId, itemName, toCharId });
+        }
+    },
+
+    _executeItemGive(fromCharId, itemName, toCharId) {
+        const from = State.party.find(c => c.id === fromCharId);
+        const to = State.party.find(c => c.id === toCharId);
+        if (!from || !to) return;
+        const idx = from.inventory.findIndex(i => i === itemName);
+        if (idx === -1) return;
+        from.inventory.splice(idx, 1);
+        to.inventory.push(itemName);
+        dispatch({ type: 'BULK_UPDATE', updates: {} }); // trigger listeners
+        if (this.isHost()) this.broadcastState();
+        UI.addChatLog('System', `📦 **${from.name}** gibt **${itemName}** an **${to.name}** weiter.`);
+    },
+
     saveAdvancedConfig() {
         const hostEl = document.getElementById('mp-cfg-host');
         const portEl = document.getElementById('mp-cfg-port');
@@ -398,6 +507,28 @@ export const Network = {
                     roll.rawRoll = msg.rawRoll;
                     UI.updateActionBox();
                 }
+                break;
+            }
+            case 'COMBAT_ACTION_SUBMIT': {
+                dispatch({ type: 'SET_COMBAT_ACTION', playerName: msg.playerName || name, action: msg.action });
+                this.broadcastState();
+                Sound.play('bling');
+                UI.addChatLog('System', `⚔️ **${msg.playerName || name}** hat eine Kampfaktion eingereicht.`);
+                UI.updateAll();
+                break;
+            }
+            case 'VOTE_CAST': {
+                dispatch({ type: 'CAST_VOTE', playerName: msg.playerName || name, optionIdx: msg.optionIdx });
+                this.broadcastState();
+                UI.updateAll();
+                break;
+            }
+            case 'CHARACTER_ASSIGN_REQUEST': {
+                this.assignCharacterToPlayer(msg.playerName || name, msg.charId);
+                break;
+            }
+            case 'ITEM_GIVE_REQUEST': {
+                this._executeItemGive(msg.fromCharId, msg.itemName, msg.toCharId);
                 break;
             }
             default:
@@ -518,18 +649,38 @@ export const Network = {
         if (this.connState === 'connected') {
             const count = this.connections.length;
             const roleLabel = this.isHost() ? 'Host (DM)' : 'Spieler';
-            const playersList = this.isHost()
-                ? this.connections.map(c => `<li class="text-green-300 text-xs"><i class="fas fa-user mr-1"></i> ${c.metadata?.name || 'Unbekannt'}</li>`).join('')
-                : '';
+            const leaderName = State.leaderName || this.playerName;
+            const allPlayers = this.isHost()
+                ? [{ name: this.playerName, isHost: true }, ...this.connections.map(c => ({ name: c.metadata?.name || 'Unbekannt', conn: c }))]
+                : [];
+
+            const playersListHtml = this.isHost()
+                ? allPlayers.map(p => {
+                    const isLeader = leaderName === p.name;
+                    const assignment = Object.entries(State.playerAssignments).find(([pn]) => pn === p.name);
+                    const charName = assignment ? State.party.find(c => c.id === assignment[1])?.name || '' : '';
+                    return `<li class="flex items-center justify-between text-xs py-0.5">
+                        <span class="${isLeader ? 'text-amber-300 font-bold' : 'text-green-300'}">
+                            ${isLeader ? '<i class="fas fa-crown text-amber-400 mr-1"></i>' : '<i class="fas fa-user text-slate-500 mr-1"></i>'}
+                            ${p.name}${charName ? ` <span class="text-slate-500 font-normal">(${charName})</span>` : ''}
+                        </span>
+                        ${!isLeader ? `<button data-action="set-leader" data-name="${p.name}" class="text-[9px] text-slate-500 hover:text-amber-400 transition-colors ml-2">👑</button>` : ''}
+                    </li>`;
+                }).join('')
+                : `<li class="text-green-300 text-xs">Leader: <span class="text-amber-400 font-bold">${leaderName}</span></li>`;
 
             content.innerHTML = `
-                <div class="space-y-4">
+                <div class="space-y-3">
                     <div class="bg-green-900/30 border border-green-500/40 rounded-lg p-3">
                         <p class="text-green-300 text-sm font-bold"><i class="fas fa-check-circle mr-1"></i> Verbunden als ${roleLabel}</p>
                         ${this.isHost() ? `<p class="text-slate-400 text-xs mt-1">Raum-Code: <span class="text-amber-400 font-mono font-bold text-sm select-all">${this.roomCode}</span></p>` : `<p class="text-slate-400 text-xs mt-1">Raum: <span class="text-amber-400 font-mono">${this.roomCode}</span></p>`}
                         <p class="text-slate-400 text-xs mt-1">${count} Spieler verbunden</p>
-                        ${playersList ? `<ul class="mt-2 space-y-1">${playersList}</ul>` : ''}
+                        <ul class="mt-2 space-y-1">${playersListHtml}</ul>
                     </div>
+                    ${this.isHost() ? `
+                    <button data-action="start-vote" class="w-full bg-purple-800/60 hover:bg-purple-700 text-purple-200 py-1.5 rounded-lg text-xs font-bold transition-all border border-purple-500/40">
+                        <i class="fas fa-vote-yea mr-1"></i> Abstimmung starten
+                    </button>` : ''}
                     <button data-action="mp-disconnect" class="w-full bg-red-700/80 hover:bg-red-600 text-white py-2 rounded-lg text-xs font-bold transition-all border border-red-500/40">
                         <i class="fas fa-sign-out-alt mr-1"></i> Trennen
                     </button>

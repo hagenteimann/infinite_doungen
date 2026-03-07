@@ -362,6 +362,95 @@ export const Engine = {
         this.interactWithAI(action);
     },
 
+    // ── Combat Round (Multiplayer) ──────────────────────────────
+    submitCombatAction: function () {
+        const action = DOM.playerInput.value.trim();
+        if (!action) { UI.addChatLog('System', '⚠️ Bitte eine Aktion eingeben.'); return; }
+
+        const actingChar = Network.getMyChar();
+        const actingName = actingChar ? actingChar.name : (DOM.actingChar.value === 'party' ? 'Die Gruppe' : DOM.actingChar.value);
+        const fullAction = `${actingName}: ${action}`;
+
+        Network.submitCombatAction(fullAction);
+        Sound.play('bling');
+        DOM.playerInput.value = '';
+        UI.addChatLog(actingName, `[Kampfaktion eingereicht] ${action}`);
+        UI.updateAll();
+    },
+
+    executeCombatRound: function () {
+        if (!Network.isLeader()) { UI.addChatLog('System', '⚠️ Nur der Leader kann die Runde ausführen.'); return; }
+        const actions = State.combatActions;
+        if (Object.keys(actions).length === 0) { UI.addChatLog('System', '⚠️ Keine Kampfaktionen eingereicht.'); return; }
+
+        const actionLines = Object.entries(actions).map(([player, action]) => `• ${action}`).join('\n');
+        const roundPrompt = `Kampfrunde - alle Aktionen der Gruppe:\n${actionLines}`;
+
+        UI.addChatLog('System', `⚔️ **Kampfrunde wird ausgeführt!**\n${actionLines}`);
+        Network.clearCombatActions();
+        this.interactWithAI(roundPrompt);
+    },
+
+    // ── Leader ─────────────────────────────────────────────────
+    setLeader: function (name) {
+        if (this._requireHost('Leader setzen')) return;
+        Network.setLeader(name);
+    },
+
+    // ── Voting ─────────────────────────────────────────────────
+    startVoteDialog: function () {
+        if (this._requireHost('Abstimmung starten')) return;
+        const modal = document.getElementById('vote-create-modal');
+        if (modal) { modal.classList.remove('hidden'); return; }
+        // Inject modal if not present
+        const div = document.createElement('div');
+        div.id = 'vote-create-modal';
+        div.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[200]';
+        div.innerHTML = `
+            <div class="bg-slate-900 border border-purple-500/40 rounded-xl p-5 w-80 space-y-3 shadow-2xl">
+                <h3 class="text-purple-300 font-bold cinzel text-sm uppercase tracking-wider">🗳️ Abstimmung erstellen</h3>
+                <input id="vote-question" type="text" placeholder="Frage / Beschreibung" class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2 text-sm text-slate-200 outline-none focus:border-purple-500/50">
+                <div id="vote-options-list" class="space-y-1.5">
+                    <input type="text" placeholder="Option 1" class="vote-option-input w-full bg-black/50 border border-slate-700/50 rounded-lg p-2 text-sm text-slate-200 outline-none focus:border-purple-500/50">
+                    <input type="text" placeholder="Option 2" class="vote-option-input w-full bg-black/50 border border-slate-700/50 rounded-lg p-2 text-sm text-slate-200 outline-none focus:border-purple-500/50">
+                </div>
+                <button data-action="add-vote-option" class="text-[11px] text-slate-400 hover:text-purple-300 transition-colors">+ Option hinzufügen</button>
+                <div class="flex gap-2">
+                    <button data-action="submit-vote-creation" class="flex-1 bg-purple-700/80 hover:bg-purple-600 text-white py-2 rounded-lg text-xs font-bold border border-purple-500/40">Abstimmung starten</button>
+                    <button data-close-modal="vote-create-modal" class="flex-1 bg-slate-700/80 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold border border-slate-500/40">Abbrechen</button>
+                </div>
+            </div>`;
+        document.body.appendChild(div);
+    },
+
+    submitVoteCreation: function () {
+        const question = document.getElementById('vote-question')?.value.trim();
+        const options = [...document.querySelectorAll('.vote-option-input')]
+            .map(i => i.value.trim()).filter(v => v);
+        if (!question || options.length < 2) { UI.addChatLog('System', '⚠️ Frage und mindestens 2 Optionen erforderlich.'); return; }
+        Network.startVote(question, options);
+        document.getElementById('vote-create-modal')?.remove();
+    },
+
+    resolveVote: function (optionIdx) {
+        const chosen = Network.resolveVote(optionIdx);
+        if (!chosen) return;
+        UI.addChatLog('System', `✅ **Abstimmung entschieden:** ${chosen}`);
+        this.interactWithAI(`Die Gruppe hat entschieden: ${chosen}`);
+        UI.updateAll();
+    },
+
+    skipVotePlayer: function (playerName) {
+        Network.skipVotePlayer(playerName);
+        UI.updateAll();
+    },
+
+    // ── Character Assignment ────────────────────────────────────
+    requestAssignCharacter: function (charId) {
+        Network.requestCharacterAssign(charId);
+        UI.updateAll();
+    },
+
     proposeTrade: function (safeId, merchantName) {
         const wantSelect = document.getElementById(`trade-want-${safeId}`);
         const offerSelect = document.getElementById(`trade-offer-${safeId}`);

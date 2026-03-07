@@ -24,6 +24,12 @@ export const State = {
     momentum: 0,
     pendingAbilityLearning: null,
     activeCrafterId: null,
+    // Multiplayer group features
+    combatActions: {},        // { playerName: actionText } - queued combat round actions
+    votingSession: null,      // { id, question, options, votes: { playerName: optionIdx } }
+    leaderName: '',           // designated group leader (can be any player)
+    localPlayerName: '',      // this client's player name (set on connect)
+    playerAssignments: {},    // { playerName: charId } - which character each player controls
 };
 
 const listeners = new Set();
@@ -164,6 +170,40 @@ export function dispatch(action) {
         }
         case 'BULK_UPDATE': {
             Object.assign(State, action.updates);
+            break;
+        }
+        case 'SET_COMBAT_ACTION': {
+            if (action.action === null) {
+                delete State.combatActions[action.playerName];
+            } else {
+                State.combatActions = { ...State.combatActions, [action.playerName]: action.action };
+            }
+            break;
+        }
+        case 'CLEAR_COMBAT_ACTIONS': {
+            State.combatActions = {};
+            break;
+        }
+        case 'START_VOTE': {
+            State.votingSession = action.session;
+            break;
+        }
+        case 'CAST_VOTE': {
+            if (State.votingSession) {
+                State.votingSession = { ...State.votingSession, votes: { ...State.votingSession.votes, [action.playerName]: action.optionIdx } };
+            }
+            break;
+        }
+        case 'END_VOTE': {
+            State.votingSession = null;
+            break;
+        }
+        case 'SET_LEADER': {
+            State.leaderName = action.name;
+            break;
+        }
+        case 'ASSIGN_PLAYER': {
+            State.playerAssignments = { ...State.playerAssignments, [action.playerName]: action.charId };
             break;
         }
         default:
