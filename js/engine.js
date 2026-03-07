@@ -79,6 +79,10 @@ export const Engine = {
 
     interactWithAI: async function (actionMsg) {
         if (State.isProcessing) return;
+        if (State.combatEnded) {
+            State.defeatedEnemies = [];
+            State.combatEnded = false;
+        }
 
         try {
             State.undoSnapshot = JSON.parse(JSON.stringify({
@@ -159,9 +163,12 @@ export const Engine = {
 
         try {
             const aiResponse = await API.generateText(context);
-            State.lastStoryPart = aiResponse;
+            const cleanStory = aiResponse
+                .replace(/\[(?:Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave|Schaden|GegnerSchaden|Heilung|Probe|Route).*?\]/gi, '')
+                .replace(/\n{3,}/g, '\n\n').trim();
+            State.lastStoryPart = cleanStory.substring(0, 1500);
             Weather.randomChange();
-            State.chatHistory.push(aiResponse.substring(0, CHAT_CONTEXT_CHAR_LIMIT));
+            State.chatHistory.push(cleanStory.substring(0, CHAT_CONTEXT_CHAR_LIMIT));
             if (State.chatHistory.length > CHAT_HISTORY_MAX) State.chatHistory.shift();
             let cleanText = aiResponse;
 
@@ -269,10 +276,26 @@ export const Engine = {
             });
 
             cleanText = cleanText.replace(/\[(Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave).*?\]/gi, '').trim();
+            const suggestionClass = 'mt-1.5 suggestion-option flex items-center gap-2 w-full text-left bg-slate-800/70 hover:bg-indigo-900/40 border border-slate-600/40 hover:border-indigo-500/50 text-indigo-200 hover:text-indigo-100 rounded-lg px-3 py-2.5 cursor-pointer transition-all shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.2)] text-xs';
             cleanText = cleanText.replace(/(?:^|\n)(?:-|\*)\s+([^\n]+)/g, (m, p1) => {
                 const safeValue = p1.replace(/"/g, '&quot;');
-                return `<div class="mt-2 suggestion-option block w-full text-left bg-slate-800/60 hover:bg-slate-700/80 border border-slate-600/50 hover:border-indigo-500/50 text-indigo-200 rounded-md px-3 py-2 cursor-pointer transition-all shadow-sm text-xs group" data-prompt="${safeValue}"><span class="leading-relaxed">${p1}</span></div>`;
+                return `<div class="${suggestionClass}" data-prompt="${safeValue}"><span class="leading-relaxed">${p1}</span></div>`;
             });
+
+            const hasSuggestions = cleanText.includes('suggestion-option');
+            const hasPendingRolls = State.pendingRolls.some(r => !r.rolled);
+            if (!hasSuggestions && !hasPendingRolls) {
+                const inCombat = State.activeEnemies.some(e => e.hp > 0);
+                const hasLoot = State.lootDrops && State.lootDrops.length > 0;
+                const fallback = inCombat
+                    ? [['⚔️', 'Angreifen'], ['🛡️', 'Verteidigen'], ['🏃', 'Fliehen']]
+                    : hasLoot
+                        ? [['🤚', 'Beute einsammeln'], ['🔍', 'Umgebung untersuchen'], ['🚶', 'Weiter erkunden']]
+                        : [['🔍', 'Umgebung untersuchen'], ['🚶', 'Weiter erkunden'], ['⛺', 'Lager aufschlagen']];
+                cleanText += '<div class="mt-3">' + fallback.map(([emoji, text]) =>
+                    `<div class="${suggestionClass}" data-prompt="${text}"><span>${emoji} ${text}</span></div>`
+                ).join('') + '</div>';
+            }
 
             if (cleanText.length > 0) {
                 UI.addChatLog("DM", cleanText);
@@ -294,6 +317,7 @@ export const Engine = {
             UI.updateAll();
             if (Network.isHost() && Network.isConnected()) {
                 Network.broadcastState();
+                Network.autoRollPending();
                 if (Network.isInCombat()) {
                     Network.startNewCombatRound();
                 } else {
@@ -306,8 +330,7 @@ export const Engine = {
     chooseRoute: function (route) {
         DOM.actionBoxContainer.innerHTML = ''; DOM.actionBoxContainer.classList.add('hidden');
         UI.updateAll();
-        let actionText = `Die Gruppe wählt den Weg: ${route}.`;
-        this.submitPlayerAction(actionText);
+        this.submitPlayerAction(`wählt den Weg: ${route}.`);
     },
 
     camp: function () {
@@ -354,7 +377,13 @@ export const Engine = {
         const action = isStr ? actionOverride.trim() : DOM.playerInput.value.trim();
         if (!action || State.isProcessing) return;
         if (!isStr) DOM.playerInput.value = "";
-        const actingName = DOM.actingChar.value === 'party' ? 'Die Gruppe' : DOM.actingChar.value;
+        let actingName;
+        if (DOM.actingChar.value === 'party') {
+            const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
+            actingName = myChar ? myChar.name : 'Die Gruppe';
+        } else {
+            actingName = DOM.actingChar.value;
+        }
 
         if (action.startsWith('/vote ') && Network.isHost() && Network.isConnected()) {
             const parts = action.substring(6).split('|').map(s => s.trim());

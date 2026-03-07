@@ -3,6 +3,7 @@ import { State, subscribe, dispatch } from './state.js';
 import { UI, DOM } from './ui.js';
 import { Engine } from './engine.js';
 import { Sound } from './sound.js';
+import { PartyManager } from './party.js';
 import { validateHeroData } from './sanitize.js';
 
 const ROOM_PREFIX = 'infdung-';
@@ -22,7 +23,7 @@ const SYNC_KEYS = [
     'lastStoryPart', 'gameStarted', 'combatEnded', 'activeMerchant',
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
     'isBossFight', 'dungeonLevel', 'weather', 'gold', 'momentum',
-    'pendingRolls', 'pendingAbilityLearning',
+    'pendingRolls', 'pendingAbilityLearning', 'quickplayEnabled',
 ];
 
 export const Network = {
@@ -42,6 +43,7 @@ export const Network = {
     playerCharMap: {},
     currentVote: null,
     _mySubmittedAction: null,
+    autoPlayers: {},
 
     isHost() { return this.role === 'host'; },
     isClient() { return this.role === 'client'; },
@@ -117,7 +119,7 @@ export const Network = {
 
     host(playerName) {
         if (this.peer) this.disconnect();
-        this.playerName = playerName || 'DM';
+        this.playerName = playerName || 'Host';
         this.roomCode = this.generateRoomCode();
         this.role = 'host';
         State._mpRole = 'host';
@@ -278,6 +280,7 @@ export const Network = {
         this.playerCharMap = {};
         this.currentVote = null;
         this._mySubmittedAction = null;
+        this.autoPlayers = {};
         State._mpRole = null;
         State._mpMyCharId = null;
         this._setConnState('idle');
@@ -342,6 +345,20 @@ export const Network = {
         this.currentTurnIndex = (this.currentTurnIndex + 1) % this.turnOrder.length;
         this.broadcastTurnState();
         this._updateTurnUI();
+        const currentPlayer = this.turnOrder[this.currentTurnIndex];
+        if (currentPlayer && this.autoPlayers[currentPlayer]) {
+            const char = this._getCharForPlayer(currentPlayer);
+            if (char && char.hp > 0) {
+                setTimeout(() => {
+                    const action = this._generateAutoAction(char);
+                    UI.addChatLog(char.name, action);
+                    this.connections.forEach(c => {
+                        this._sendTo(c, { type: 'PLAYER_CHAT', sender: char.name, text: action });
+                    });
+                    Engine.interactWithAI(action);
+                }, 600);
+            }
+        }
     },
 
     broadcastTurnState() {
@@ -396,6 +413,85 @@ export const Network = {
         this.combatActions = {};
         this._mySubmittedAction = null;
         this._broadcastCombatStatus();
+        this._scheduleAutoActions();
+    },
+
+    toggleAutoPlayer(playerName) {
+        if (!this.isHost()) return;
+        if (this.autoPlayers[playerName]) {
+            delete this.autoPlayers[playerName];
+            UI.addChatLog('System', `**${playerName}** wird wieder manuell gesteuert.`);
+        } else {
+            this.autoPlayers[playerName] = true;
+            UI.addChatLog('System', `**${playerName}** wird jetzt automatisch (KI) gesteuert.`);
+        }
+        this.broadcastSystemChat('System', `**${playerName}** ist jetzt ${this.autoPlayers[playerName] ? 'KI-gesteuert' : 'manuell'}.`);
+        this._updateTurnUI();
+    },
+
+    _getCharForPlayer(playerName) {
+        const charId = this.playerCharMap[playerName];
+        return charId ? State.party.find(p => p.id === charId) : null;
+    },
+
+    _generateAutoAction(char) {
+        const enemy = State.activeEnemies.find(e => e.hp > 0);
+        const hurt = State.party
+            .filter(p => p.hp > 0 && !p.isSummon && p.hp < PartyManager.getEffectiveMaxHp(p) * 0.5)
+            .sort((a, b) => a.hp / PartyManager.getEffectiveMaxHp(a) - b.hp / PartyManager.getEffectiveMaxHp(b))[0];
+
+        if (State.activeEnemies.some(e => e.hp > 0)) {
+            const cls = (char.class || '').toLowerCase();
+            if ((cls === 'kleriker' || cls === 'heiler') && hurt) return `${char.name} heilt ${hurt.name}`;
+            if (cls === 'magier' && enemy) return `${char.name} wirkt einen Zauber gegen ${enemy.name}`;
+            if ((cls.includes('wald')) && enemy) return `${char.name} schiesst einen Pfeil auf ${enemy.name}`;
+            if (cls === 'schurke' && enemy) return `${char.name} schleicht sich an ${enemy.name} heran und attackiert`;
+            if (enemy) return `${char.name} greift ${enemy.name} an`;
+            return `${char.name} verteidigt sich`;
+        }
+        return `${char.name} folgt der Gruppe`;
+    },
+
+    _scheduleAutoActions() {
+        if (!this.isHost() || !this.isInCombat()) return;
+        setTimeout(() => {
+            let submitted = false;
+            for (const playerName of Object.keys(this.autoPlayers)) {
+                if (this.combatActions[playerName]) continue;
+                const char = this._getCharForPlayer(playerName);
+                if (!char || char.hp <= 0) continue;
+                const action = this._generateAutoAction(char);
+                this.combatActions[playerName] = { action, charName: char.name };
+                this.connections.forEach(c => {
+                    this._sendTo(c, { type: 'PLAYER_CHAT', sender: char.name, text: action });
+                });
+                UI.addChatLog(char.name, action);
+                submitted = true;
+            }
+            if (submitted) this._broadcastCombatStatus();
+        }, 800);
+    },
+
+    autoRollPending() {
+        if (!this.isHost()) return;
+        const autoCharNames = new Set();
+        for (const playerName of Object.keys(this.autoPlayers)) {
+            const char = this._getCharForPlayer(playerName);
+            if (char) autoCharNames.add(char.name);
+        }
+        let rolled = false;
+        for (const r of State.pendingRolls) {
+            if (r.rolled || !autoCharNames.has(r.name)) continue;
+            const diceMax = r.diceType === 'W6' ? 6 : (r.diceType === 'W100' ? 100 : 20);
+            r.rawRoll = Math.floor(Math.random() * diceMax) + 1;
+            r.result = r.rawRoll + (r.mod || 0);
+            r.rolled = true;
+            rolled = true;
+        }
+        if (rolled) {
+            UI.updateActionBox();
+            if (this.isConnected()) this.broadcastState();
+        }
     },
 
     _broadcastCombatStatus() {
@@ -748,7 +844,7 @@ export const Network = {
 
         if (this.connState === 'connected') {
             const count = this.connections.length;
-            const roleLabel = this.isHost() ? 'Host (DM)' : 'Spieler';
+            const roleLabel = this.isHost() ? 'Host' : 'Spieler';
             const playersList = this.isHost()
                 ? this.connections.map(c => `<li class="text-green-300 text-xs"><i class="fas fa-user mr-1"></i> ${c.metadata?.name || 'Unbekannt'}</li>`).join('')
                 : '';
@@ -785,7 +881,7 @@ export const Network = {
                     <button data-action="mp-host" class="bg-purple-700/80 hover:bg-purple-600 text-white py-3 rounded-lg text-xs font-bold transition-all border border-purple-500/40 flex flex-col items-center gap-1">
                         <i class="fas fa-crown text-amber-400 text-lg"></i>
                         <span>Raum erstellen</span>
-                        <span class="text-[10px] text-slate-400 font-normal">(als DM/Host)</span>
+                        <span class="text-[10px] text-slate-400 font-normal">(als Host)</span>
                     </button>
                     <div class="flex flex-col gap-2">
                         <input id="mp-room-code" type="text" placeholder="RAUM-CODE" maxlength="6" class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2 text-sm text-center font-mono uppercase text-amber-400 outline-none focus:border-indigo-500/50 tracking-widest placeholder-slate-600">
@@ -904,9 +1000,21 @@ export const Network = {
         el.classList.remove('hidden');
         el.className = 'text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
         const voteBtn = this.isHost() ? ' <button data-action="mp-start-vote" class="ml-2 text-purple-400 hover:text-purple-300 transition-colors" title="Abstimmung starten"><i class="fas fa-poll"></i></button>' : '';
-        el.innerHTML = myTurn
-            ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span>${voteBtn} <span class="text-slate-500 text-[9px] ml-2">Reihenfolge: ${this.turnOrder.join(' \u2192 ')}</span>`
-            : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayer}</b> ist am Zug...</span>`;
+        const isAutoTurn = this.autoPlayers[currentPlayer];
+        const turnOrderHtml = this.turnOrder.map(p => {
+            const isAuto = this.autoPlayers[p];
+            const label = isAuto ? `<span class="text-cyan-400">${p} <i class="fas fa-robot text-[8px]"></i></span>` : p;
+            return p === this.playerName ? `<b>${label}</b>` : label;
+        }).join(' \u2192 ');
+        const autoToggleHtml = this.isHost() ? this.turnOrder.filter(p => p !== this.playerName).map(p => {
+            const isAuto = !!this.autoPlayers[p];
+            return `<button data-action="mp-toggle-auto" data-player="${p}" class="text-[9px] px-1.5 py-0.5 rounded ${isAuto ? 'bg-cyan-900/40 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800/60 text-slate-500 border border-slate-600/30'} hover:text-cyan-300 transition-all" title="${p}: KI ${isAuto ? 'aus' : 'an'}"><i class="fas fa-robot mr-0.5"></i>${p}</button>`;
+        }).join(' ') : '';
+        el.innerHTML = (myTurn
+            ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span>${voteBtn}`
+            : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayer}</b>${isAutoTurn ? ' <i class="fas fa-robot text-[9px]"></i>' : ''} ist am Zug...</span>`)
+            + `<div class="text-slate-500 text-[9px] mt-1">${turnOrderHtml}</div>`
+            + (autoToggleHtml ? `<div class="flex flex-wrap gap-1 mt-1.5 justify-center">${autoToggleHtml}</div>` : '');
         playerInput.disabled = !myTurn;
         sendBtn.disabled = !myTurn;
         playerInput.placeholder = myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayer}...`;
@@ -923,14 +1031,23 @@ export const Network = {
         const playersHtml = this.turnOrder.map(p => {
             const done = !!submitted[p];
             const isMe = p === this.playerName;
-            const icon = done
-                ? '<i class="fas fa-check-circle text-green-400"></i>'
-                : '<i class="fas fa-hourglass-half text-amber-400 animate-pulse"></i>';
-            const nameClass = isMe ? 'text-cyan-300 font-bold' : 'text-slate-300';
-            const skipBtn = this.isHost() && !done && !isMe
-                ? ` <button data-action="mp-skip-player" data-player="${p}" class="text-[9px] text-red-400 hover:text-red-300 ml-1 underline">Skip</button>`
-                : '';
-            return `<div class="flex items-center gap-1.5 text-[10px]">${icon} <span class="${nameClass}">${isMe ? 'Du' : p}</span>${skipBtn}</div>`;
+            const isAuto = !!this.autoPlayers[p];
+            const icon = isAuto
+                ? '<i class="fas fa-robot text-cyan-400"></i>'
+                : done
+                    ? '<i class="fas fa-check-circle text-green-400"></i>'
+                    : '<i class="fas fa-hourglass-half text-amber-400 animate-pulse"></i>';
+            const nameClass = isMe ? 'text-cyan-300 font-bold' : (isAuto ? 'text-cyan-400' : 'text-slate-300');
+            const autoLabel = isAuto ? ' <span class="text-[8px] text-cyan-500">(KI)</span>' : '';
+            let actions = '';
+            if (this.isHost() && !isMe) {
+                const autoBtn = `<button data-action="mp-toggle-auto" data-player="${p}" class="text-[9px] ${isAuto ? 'text-cyan-400 hover:text-cyan-300' : 'text-slate-500 hover:text-cyan-400'} ml-1" title="${isAuto ? 'KI deaktivieren' : 'KI aktivieren'}"><i class="fas fa-robot"></i></button>`;
+                const skipBtn = !done && !isAuto
+                    ? ` <button data-action="mp-skip-player" data-player="${p}" class="text-[9px] text-red-400 hover:text-red-300 ml-1 underline">Skip</button>`
+                    : '';
+                actions = autoBtn + skipBtn;
+            }
+            return `<div class="flex items-center gap-1.5 text-[10px]">${icon} <span class="${nameClass}">${isMe ? 'Du' : p}</span>${autoLabel}${actions}</div>`;
         }).join('');
 
         const canExecute = submittedCount > 0 && !State.isProcessing;

@@ -91,7 +91,7 @@ export function initEvents() {
             'show-details': () => UI.showDetails(actionEl.dataset.charId),
             'show-multiplayer': () => Network.showModal(),
             'mp-host': () => {
-                const name = document.getElementById('mp-player-name')?.value.trim() || 'DM';
+                const name = document.getElementById('mp-player-name')?.value.trim() || 'Host';
                 Network.host(name);
             },
             'mp-join': () => {
@@ -113,6 +113,7 @@ export function initEvents() {
             'mp-save-config': () => Network.saveAdvancedConfig(),
             'mp-execute-round': () => Network.executeCombatRound(),
             'mp-skip-player': () => Network.skipPlayer(actionEl.dataset.player),
+            'mp-toggle-auto': () => Network.toggleAutoPlayer(actionEl.dataset.player),
             'mp-cast-vote': () => Network.castVote(parseInt(actionEl.dataset.option)),
             'mp-resolve-vote': () => Network.resolveVote(parseInt(actionEl.dataset.option)),
             'mp-start-vote': () => {
