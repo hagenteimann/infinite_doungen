@@ -23,7 +23,7 @@ const SYNC_KEYS = [
     'party', 'activeEnemies', 'defeatedEnemies', 'lootDrops',
     'lastStoryPart', 'gameStarted', 'combatEnded', 'activeMerchant',
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
-    'isBossFight', 'dungeonLevel', 'weather', 'gold', 'momentum',
+    'isBossFight', 'weather', 'gold', 'momentum',
     'pendingRolls', 'pendingAbilityLearning', 'quickplayEnabled',
 ];
 

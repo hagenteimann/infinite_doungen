@@ -17,7 +17,6 @@ export const State = {
     isBossFight: false,
     chatHistory: [],
     undoSnapshot: null,
-    dungeonLevel: 0,
     savedPrompts: [],
     weather: { current: 'sunny', name: 'Sonnig', icon: '\u2600\uFE0F', dcMod: 0 },
     gold: 0,
@@ -127,7 +126,6 @@ export function dispatch(action) {
         case 'COMBAT_ENDED': {
             State.combatEnded = true;
             State.sessionStats.combatsWon++;
-            State.dungeonLevel = (State.dungeonLevel || 0) + 1;
             break;
         }
         case 'SET_COOLDOWN': {

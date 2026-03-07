@@ -467,9 +467,6 @@ export const UI = {
                     fatigueEl.classList.remove('text-red-500', 'text-amber-500', 'animate-pulse');
                 }
 
-                const dungeonLevelEl = document.getElementById('hud-dungeon-level');
-                if (dungeonLevelEl) dungeonLevelEl.innerText = `${State.dungeonLevel || 0}`;
-
                 const goldHudEl = document.getElementById('hud-gold');
                 if (goldHudEl) goldHudEl.innerText = `${State.gold || 0} 🪙`;
             }
