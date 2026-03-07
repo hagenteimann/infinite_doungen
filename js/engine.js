@@ -21,9 +21,17 @@ import {
 export const Engine = {
     _isRollingAll: false,
 
+    _requireHost(actionName) {
+        if (Network.isClient() && Network.isConnected()) {
+            UI.addChatLog('System', `**${actionName}** ist nur für den Host verfügbar.`);
+            return true;
+        }
+        return false;
+    },
+
     setCustomApiKey: function () { DOM.customKeyInput.value = localStorage.getItem("custom_gemini_key") || ""; DOM.apiKeyModal.classList.remove('hidden'); setTimeout(() => DOM.customKeyInput.focus(), 100); },
     saveApiKey: function () { localStorage.setItem("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "🔑 API-Key wurde gespeichert."); },
-    startGame: function () { if (State.party.length === 0) { UI.addChatLog("System", "⚠️ Erstelle zuerst einen Helden!"); return; } State.gameStarted = true; UI.toggleViews(true); this.interactWithAI("Die Reise beginnt."); },
+    startGame: function () { if (this._requireHost('Abenteuer starten')) return; if (State.party.length === 0) { UI.addChatLog("System", "⚠️ Erstelle zuerst einen Helden!"); return; } State.gameStarted = true; UI.toggleViews(true); this.interactWithAI("Die Reise beginnt."); },
 
     toggleSound: function () {
         State.soundEnabled = !State.soundEnabled;
@@ -50,6 +58,7 @@ export const Engine = {
     },
 
     generateJournalEntry: async function () {
+        if (this._requireHost('Journal-Eintrag')) return;
         if (!State.lastStoryPart || !State.gameStarted) return;
         const oldJournalBtn = document.querySelector('[data-action="gen-journal"]');
         if (oldJournalBtn) { oldJournalBtn.textContent = '⏳'; oldJournalBtn.disabled = true; }
@@ -280,6 +289,10 @@ export const Engine = {
                 localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(saveData));
             } catch (e) { console.warn('Auto-save failed:', e); }
             UI.updateAll();
+            if (Network.isHost() && Network.isConnected()) {
+                Network.broadcastState();
+                Network.advanceTurn();
+            }
         }
     },
 
@@ -335,6 +348,13 @@ export const Engine = {
         if (!isStr) DOM.playerInput.value = "";
         const actingName = DOM.actingChar.value === 'party' ? 'Die Gruppe' : DOM.actingChar.value;
         UI.addChatLog(actingName, action);
+
+        if (Network.isClient() && Network.isConnected()) {
+            Network.sendPlayerAction(action, actingName);
+            State.isProcessing = true;
+            UI.showLoader(true, 'DM antwortet...');
+            return;
+        }
 
         State.fatigue = Math.min(FATIGUE_MAX, State.fatigue + 1);
         UI.updateAll();
@@ -446,7 +466,7 @@ export const Engine = {
         }
     },
 
-    askOracle: function () { DOM.oracleInput.value = ""; DOM.oracleModal.classList.remove('hidden'); setTimeout(() => DOM.oracleInput.focus(), 100); },
+    askOracle: function () { if (this._requireHost('Orakel')) return; DOM.oracleInput.value = ""; DOM.oracleModal.classList.remove('hidden'); setTimeout(() => DOM.oracleInput.focus(), 100); },
     submitOracle: async function () {
         const q = DOM.oracleInput.value.trim();
         if (!q) return;
@@ -459,6 +479,7 @@ export const Engine = {
         } catch (e) { UI.addChatLog('System', `⚠️ Orakel-Fehler: ${e.message}`); } finally { UI.showLoader(false); }
     },
     generatePlotTwist: async function () {
+        if (this._requireHost('Plot-Twist')) return;
         UI.showLoader(true, "Schicksal weben...");
         try {
             const twistText = await API.generateText(
@@ -508,6 +529,7 @@ export const Engine = {
     },
 
     generateNPC: async function () {
+        if (this._requireHost('NPC begegnen')) return;
         if (State.party.length === 0) return; UI.showLoader(true, "NPC wird rekrutiert...");
         try {
             let aiText = await API.generateText(`Erstelle einen passenden NPC-Begleiter für diese Szene: "${State.lastStoryPart}".`, "Du bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown. Nutze ZWINGEND diese exakten Keys: {\"name\": \"Name\", \"class\": \"Klasse\", \"appearance\": \"Kurze optische Beschreibung\"}");
@@ -769,6 +791,7 @@ export const Engine = {
         UI.renderCraftingModal();
     },
     suggestCrafting: async function () {
+        if (this._requireHost('KI-Vorschlag')) return;
         if (State.craftingIngredients.length === 0) {
             UI.addChatLog("System", "⚠️ Bitte wähle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.");
             return;

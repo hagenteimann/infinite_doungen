@@ -1,7 +1,8 @@
 import Peer from 'peerjs';
 import { State, subscribe, dispatch } from './state.js';
-import { UI } from './ui.js';
+import { UI, DOM } from './ui.js';
 import { Engine } from './engine.js';
+import { Sound } from './sound.js';
 
 const ROOM_PREFIX = 'infdung-';
 const CONNECT_TIMEOUT_MS = 10000;
@@ -33,10 +34,16 @@ export const Network = {
     _unsubscribe: null,
     _connectTimer: null,
     _lastError: '',
+    turnOrder: [],
+    currentTurnIndex: 0,
 
     isHost() { return this.role === 'host'; },
     isClient() { return this.role === 'client'; },
     isConnected() { return this.connState === 'connected'; },
+    isMyTurn() {
+        if (!this.isConnected() || this.turnOrder.length <= 1) return true;
+        return this.turnOrder[this.currentTurnIndex] === this.playerName;
+    },
 
     generateRoomCode() {
         return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -53,7 +60,7 @@ export const Network = {
                     opts.config.iceServers = [...DEFAULT_ICE_SERVERS, ...custom];
                 }
             }
-        } catch (_) {}
+        } catch (e) { console.warn('Failed to parse TURN config:', e); }
 
         try {
             const serverJson = localStorage.getItem(LS_KEY_SERVER);
@@ -66,7 +73,7 @@ export const Network = {
                     opts.secure = srv.secure !== false;
                 }
             }
-        } catch (_) {}
+        } catch (e) { console.warn('Failed to parse server config:', e); }
 
         return opts;
     },
@@ -109,23 +116,39 @@ export const Network = {
         this.peer.on('open', () => {
             this._clearConnectTimeout();
             this._setConnState('connected');
+            this.turnOrder = [this.playerName];
+            this.currentTurnIndex = 0;
             UI.addChatLog('System', `Multiplayer-Raum erstellt: **${this.roomCode}**. Teile diesen Code mit deinen Spielern.`);
         });
 
         this.peer.on('connection', (conn) => {
             conn.on('open', () => {
                 this.connections.push(conn);
-                UI.addChatLog('System', `Spieler **${conn.metadata?.name || 'Unbekannt'}** ist beigetreten.`);
+                const joinedName = conn.metadata?.name || 'Unbekannt';
+                UI.addChatLog('System', `Spieler **${joinedName}** ist beigetreten.`);
+                if (!this.turnOrder.includes(joinedName)) {
+                    this.turnOrder.push(joinedName);
+                }
                 this._updateUI();
                 this._sendTo(conn, { type: 'STATE_SYNC', state: this._getSyncState() });
+                this.broadcastTurnState();
             });
 
             conn.on('data', (msg) => this._handleClientMessage(conn, msg));
 
             conn.on('close', () => {
                 this.connections = this.connections.filter(c => c !== conn);
-                UI.addChatLog('System', `Spieler **${conn.metadata?.name || 'Unbekannt'}** hat den Raum verlassen.`);
+                const leftName = conn.metadata?.name || 'Unbekannt';
+                UI.addChatLog('System', `Spieler **${leftName}** hat den Raum verlassen.`);
+                const turnIdx = this.turnOrder.indexOf(leftName);
+                if (turnIdx > -1) {
+                    this.turnOrder.splice(turnIdx, 1);
+                    if (this.currentTurnIndex >= this.turnOrder.length) {
+                        this.currentTurnIndex = 0;
+                    }
+                }
                 this._updateUI();
+                this.broadcastTurnState();
             });
 
             conn.on('error', (err) => {
@@ -230,7 +253,11 @@ export const Network = {
         }
         this.role = null;
         this.roomCode = null;
+        this.turnOrder = [];
+        this.currentTurnIndex = 0;
         this._setConnState('idle');
+        const turnEl = document.getElementById('mp-turn-indicator');
+        if (turnEl) turnEl.classList.add('hidden');
     },
 
     sendPlayerAction(action, actingChar) {
@@ -267,6 +294,31 @@ export const Network = {
         this.connections.forEach(conn => {
             this._sendTo(conn, { type: 'DM_MESSAGE', sender, text });
         });
+    },
+
+    broadcastSystemChat(sender, text) {
+        if (!this.isHost()) return;
+        this.connections.forEach(conn => {
+            this._sendTo(conn, { type: 'SYSTEM_CHAT', sender, text });
+        });
+    },
+
+    advanceTurn() {
+        if (!this.isHost() || this.turnOrder.length <= 1) return;
+        this.currentTurnIndex = (this.currentTurnIndex + 1) % this.turnOrder.length;
+        this.broadcastTurnState();
+        this._updateTurnUI();
+    },
+
+    broadcastTurnState() {
+        if (!this.isHost()) return;
+        const msg = {
+            type: 'TURN_UPDATE',
+            turnOrder: this.turnOrder,
+            currentTurnIndex: this.currentTurnIndex,
+        };
+        this.connections.forEach(c => this._sendTo(c, msg));
+        this._updateTurnUI();
     },
 
     saveAdvancedConfig() {
@@ -326,10 +378,18 @@ export const Network = {
         const name = conn.metadata?.name || 'Spieler';
 
         switch (msg.type) {
-            case 'PLAYER_ACTION':
+            case 'PLAYER_ACTION': {
+                Sound.play('turn');
+                this.connections.forEach(c => {
+                    if (c !== conn) {
+                        this._sendTo(c, { type: 'PLAYER_CHAT', sender: msg.actingChar || name, text: msg.action });
+                    }
+                });
                 UI.addChatLog(msg.actingChar || name, msg.action);
+                if (DOM.actingChar) DOM.actingChar.value = msg.actingChar || 'party';
                 Engine.interactWithAI(msg.action);
                 break;
+            }
             case 'DICE_RESULT': {
                 const roll = State.pendingRolls.find(r => r.id === msg.rollId);
                 if (roll) {
@@ -351,15 +411,34 @@ export const Network = {
         switch (msg.type) {
             case 'STATE_SYNC': {
                 const incoming = msg.state;
+                const wasStarted = State.gameStarted;
                 SYNC_KEYS.forEach(k => {
                     if (incoming[k] !== undefined) State[k] = incoming[k];
                 });
+                if (State.gameStarted && !wasStarted) UI.toggleViews(true);
                 UI.updateAll();
                 break;
             }
             case 'DM_MESSAGE':
                 UI.addChatLog(msg.sender || 'DM', msg.text);
                 break;
+            case 'PLAYER_CHAT':
+                Sound.play('turn');
+                UI.addChatLog(msg.sender || 'Spieler', msg.text);
+                break;
+            case 'SYSTEM_CHAT':
+                UI.addChatLog(msg.sender || 'System', msg.text);
+                break;
+            case 'TURN_UPDATE': {
+                this.turnOrder = msg.turnOrder || [];
+                this.currentTurnIndex = msg.currentTurnIndex || 0;
+                const wasProcessing = State.isProcessing;
+                State.isProcessing = false;
+                UI.showLoader(false);
+                if (wasProcessing && this.isMyTurn()) Sound.play('turn');
+                this._updateTurnUI();
+                break;
+            }
             default:
                 console.warn('Unknown host message:', msg.type);
         }
@@ -520,5 +599,44 @@ export const Network = {
                     </div>
                 </details>
             </div>`;
+    },
+
+    _injectTurnIndicator() {
+        if (document.getElementById('mp-turn-indicator')) return;
+        const actionArea = document.getElementById('action-area');
+        if (!actionArea) return;
+        const indicator = document.createElement('div');
+        indicator.id = 'mp-turn-indicator';
+        indicator.className = 'hidden text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
+        actionArea.insertBefore(indicator, actionArea.firstChild);
+    },
+
+    _updateTurnUI() {
+        this._injectTurnIndicator();
+        const el = document.getElementById('mp-turn-indicator');
+        if (!el) return;
+
+        if (!this.isConnected() || this.turnOrder.length <= 1) {
+            el.classList.add('hidden');
+            return;
+        }
+
+        const currentPlayer = this.turnOrder[this.currentTurnIndex] || '';
+        const myTurn = this.isMyTurn();
+        el.classList.remove('hidden');
+        el.innerHTML = myTurn
+            ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span> <span class="text-slate-500 text-[9px] ml-2">Reihenfolge: ${this.turnOrder.join(' \u2192 ')}</span>`
+            : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayer}</b> ist am Zug...</span>`;
+
+        const playerInput = document.getElementById('player-input');
+        const sendBtn = document.getElementById('send-btn');
+        const hasPendingRolls = State.pendingRolls && State.pendingRolls.length > 0;
+        if (playerInput && !hasPendingRolls) {
+            playerInput.disabled = !myTurn;
+            playerInput.placeholder = myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayer}...`;
+        }
+        if (sendBtn && !hasPendingRolls) {
+            sendBtn.disabled = !myTurn;
+        }
     },
 };

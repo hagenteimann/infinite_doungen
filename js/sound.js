@@ -146,6 +146,21 @@ export const Sound = {
                     o.start(t); o.stop(t + 0.05);
                     break;
                 }
+                case 'turn': {
+                    [660, 880].forEach((freq, i) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination);
+                        o.type = 'sine';
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.0, t + i * 0.12);
+                        g.gain.linearRampToValueAtTime(0.09, t + i * 0.12 + 0.03);
+                        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.3);
+                        o.start(t + i * 0.12);
+                        o.stop(t + i * 0.12 + 0.3);
+                    });
+                    break;
+                }
             }
         } catch (e) { console.warn('Sound playback failed:', e); }
     }
