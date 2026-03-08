@@ -160,7 +160,7 @@ export const UIBuilders = {
         const nameColor = isDead ? 'text-red-500 line-through' :
             (c.isSummon ? 'text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.5)]' :
                 (c.isNPC ? 'text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]' : 'text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]'));
-        const badge = isDead ? 'ðŸ’€' : (c.isSummon ? 'ðŸŒ€' : 'ðŸ‘¤');
+        const badge = isDead ? 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬' : (c.isSummon ? 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬' : 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¹Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤');
         const effMaxHp = PartyManager.getEffectiveMaxHp(c);
         if (c.hp > effMaxHp) c.hp = effMaxHp;
         const hpPercent = (c.hp / effMaxHp) * 100;
@@ -220,7 +220,11 @@ export const UI = {
         };
     },
     toggleViews: function (s) { DOM.lobbyView.classList.toggle('hidden', s); DOM.actionArea.classList.toggle('hidden', !s); },
-    showLoader: function (s, t = "LÃ¤dt...") { DOM.loadingSpinner.classList.toggle('hidden', !s); DOM.loadingText.innerText = t; },
+    showLoader: function (s, t = 'Laedt...') {
+        DOM.loadingSpinner.classList.toggle('hidden', !s);
+        DOM.loadingSpinner.classList.add('pointer-events-none');
+        DOM.loadingText.innerText = t || 'Laedt...';
+    },
     selectOption: function (t) {
         this.clearSuggestions();
         DOM.playerInput.value = t;
@@ -265,9 +269,9 @@ export const UI = {
         const listHtml = (State.savedPrompts || []).map((promptText, idx) => {
             return `<div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/50 flex gap-2 items-center group shadow-sm">
                 <span class="text-xs text-slate-300 flex-1 truncate font-medium" title="${promptText.replace(/"/g, '&quot;')}">${promptText}</span>
-                <button title="EinfÃ¼gen" data-action="insert-prompt" data-idx="${idx}" class="text-blue-400 hover:text-blue-300 p-1.5 transition-colors"><i class="fas fa-paste"></i></button>
+                <button title="Einfuegen" data-action="insert-prompt" data-idx="${idx}" class="text-blue-400 hover:text-blue-300 p-1.5 transition-colors"><i class="fas fa-paste"></i></button>
                 <button title="Spielen" data-action="play-prompt" data-idx="${idx}" class="text-emerald-400 hover:text-emerald-300 p-1.5 transition-colors"><i class="fas fa-play"></i></button>
-                <button title="LÃ¶schen" data-action="delete-prompt" data-idx="${idx}" class="text-opacity-50 text-red-500 hover:text-opacity-100 p-1.5 transition-opacity"><i class="fas fa-trash"></i></button>
+                <button title="Loeschen" data-action="delete-prompt" data-idx="${idx}" class="text-opacity-50 text-red-500 hover:text-opacity-100 p-1.5 transition-opacity"><i class="fas fa-trash"></i></button>
             </div>`;
         }).join('');
         document.getElementById('prompt-list').innerHTML = sanitize(listHtml || '<p class="text-slate-500 text-xs text-center italic mt-2">Noch keine Prompts gespeichert.</p>');
@@ -290,7 +294,7 @@ export const UI = {
     renderJournal: function () {
         if (!DOM.journalContent) return;
         if (State.journal.length === 0) {
-            DOM.journalContent.innerHTML = '<p class="text-slate-500 italic">Noch keine EintrÃ¤ge. Starte ein Abenteuer und klicke âœ¨ Update!</p>';
+            DOM.journalContent.innerHTML = '<p class="text-slate-500 italic">Noch keine Eintraege. Starte ein Abenteuer und klicke auf Update!</p>';
             return;
         }
         DOM.journalContent.innerHTML = sanitize(State.journal.map((e, i) => `
@@ -314,7 +318,6 @@ export const UI = {
         const avgRoll = s.diceRolls.length > 0 ? (s.diceRolls.reduce((a, b) => a + b, 0) / s.diceRolls.length).toFixed(1) : '-';
         const luckyColor = parseFloat(avgRoll) >= 12 ? 'text-green-400' : parseFloat(avgRoll) >= 8 ? 'text-amber-400' : 'text-red-400';
 
-        // Per-character damage breakdown
         const charStats = State.party.filter(p => !p.isSummon).map(p => {
             const hpPercent = (p.hp / PartyManager.getEffectiveMaxHp(p)) * 100;
             const barColor = hpPercent > 60 ? 'bg-green-500' : hpPercent > 30 ? 'bg-amber-500' : 'bg-red-500';
@@ -330,39 +333,34 @@ export const UI = {
         DOM.statsContent.innerHTML = `
             <div class="space-y-3">
                 <div>
-                    <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">âš”ï¸ Kampf</div>
+                    <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">Kampf</div>
                     <div class="grid grid-cols-2 gap-1.5 text-[10px]">
                         <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Schaden ausgeteilt</div><div class="text-red-400 font-bold text-sm">${s.totalDamageDealt}</div></div>
                         <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Schaden erhalten</div><div class="text-orange-400 font-bold text-sm">${s.totalDamageTaken}</div></div>
                         <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Geheilt</div><div class="text-green-400 font-bold text-sm">${s.totalHealed}</div></div>
-                        <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">KÃ¤mpfe gewonnen</div><div class="text-purple-400 font-bold text-sm">${s.combatsWon}</div></div>
+                        <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Kaempfe gewonnen</div><div class="text-purple-400 font-bold text-sm">${s.combatsWon}</div></div>
                     </div>
                 </div>
                 <div>
-                    <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">ðŸŽ² WÃ¼rfelglÃ¼ck</div>
+                    <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">Wuerfel</div>
                     <div class="grid grid-cols-3 gap-1.5 text-[10px]">
-                        <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50 text-center"><div class="text-slate-400">Ã˜ Wurf</div><div class="${luckyColor} font-bold text-sm">${avgRoll}</div></div>
-                        <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50 text-center"><div class="text-slate-400">HÃ¶chster</div><div class="text-green-400 font-bold text-sm">${s.diceRolls.length ? s.highestRoll : '-'}</div></div>
+                        <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50 text-center"><div class="text-slate-400">Schnitt</div><div class="${luckyColor} font-bold text-sm">${avgRoll}</div></div>
+                        <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50 text-center"><div class="text-slate-400">Hoechster</div><div class="text-green-400 font-bold text-sm">${s.diceRolls.length ? s.highestRoll : '-'}</div></div>
                         <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50 text-center"><div class="text-slate-400">Niedrigster</div><div class="text-red-400 font-bold text-sm">${s.diceRolls.length ? s.lowestRoll : '-'}</div></div>
                     </div>
-                    <div class="text-center text-[10px] text-slate-500 mt-1">${s.diceRolls.length} WÃ¼rfe gesamt | ${s.turnsPlayed} Runden</div>
+                    <div class="text-center text-[10px] text-slate-500 mt-1">${s.diceRolls.length} Wuerfe gesamt | ${s.turnsPlayed} Runden</div>
                 </div>
                 <div>
-                    <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">ðŸ§™ Gruppe</div>
+                    <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">Gruppe</div>
                     ${charStats || '<p class="text-slate-500 italic text-[10px]">Keine Helden</p>'}
-                    <div class="text-[10px] text-slate-400 mt-1">Gesamt XP dieser Session: <span class="text-yellow-400 font-bold">${s.totalXPEarned}</span></div>
-                </div>
-                <div>
-                    <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">ðŸ’° Wirtschaft</div>
-                    <div class="grid grid-cols-2 gap-1.5 text-[10px]">
-                        <div class="bg-slate-800/60 p-1.5 rounded border border-amber-800/40"><div class="text-slate-400">GoldmÃ¼nzen</div><div class="text-amber-400 font-bold text-sm">${State.gold || 0} ðŸª™</div></div>
-                        <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Momentum</div><div class="${(State.momentum||0) >= 3 ? 'text-yellow-300 animate-pulse' : 'text-slate-300'} font-bold text-sm">${State.momentum || 0}x âš¡</div></div>
+                    <div class="grid grid-cols-2 gap-1.5 text-[10px] mt-2">
+                        <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Session-XP</div><div class="text-yellow-400 font-bold text-sm">${s.totalXPEarned}</div></div>
+                        <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/50"><div class="text-slate-400">Momentum</div><div class="${(State.momentum || 0) >= 3 ? 'text-yellow-300 animate-pulse' : 'text-slate-300'} font-bold text-sm">${State.momentum || 0}x</div></div>
                     </div>
                 </div>
             </div>
         `;
     },
-
     toggleTargetMode: function () {
         State.targetMapMode = !State.targetMapMode;
         this.updateTargetModeButton();
@@ -478,17 +476,12 @@ export const UI = {
                     fatigueEl.classList.add('text-white');
                     fatigueEl.classList.remove('text-red-500', 'text-amber-500', 'animate-pulse');
                 }
-
-                const dungeonLevelEl = document.getElementById('hud-dungeon-level');
-                if (dungeonLevelEl) dungeonLevelEl.innerText = `${State.dungeonLevel || 0}`;
-
-                const goldHudEl = document.getElementById('hud-gold');
-                if (goldHudEl) goldHudEl.innerText = `${State.gold || 0} ðŸª™`;
             }
         }
 
         this.updateTargetModeButton();
         this.updateActionBox();
+        this.renderDiceFeed();
 
         const network = window.App?.Network;
         if (network?.isHost?.() && network?.isConnected?.()) {
@@ -500,31 +493,36 @@ export const UI = {
     updateActionBox: function () {
         if (State.pendingRolls.length > 0) {
             DOM.actionBoxContainer.classList.remove('hidden');
-            DOM.playerInput.disabled = true; DOM.sendBtn.disabled = true;
-            DOM.playerInput.placeholder = "WÃ¼rfle zuerst die anstehenden Proben aus...";
+            DOM.playerInput.disabled = true;
+            DOM.sendBtn.disabled = true;
+            DOM.playerInput.placeholder = 'Wuerfle zuerst die anstehenden Proben aus...';
 
             const isClient = State._mpRole === 'client';
             const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
 
             let html = '<h3 class="text-indigo-400 text-[10px] font-bold uppercase mb-2 tracking-widest flex items-center gap-2"><i class="fas fa-dice-d20"></i> Erforderliche Proben</h3><div class="space-y-1.5">';
             State.pendingRolls.forEach(r => {
-                let dt = r.diceType || 'W20';
-                let btnClass = dt === 'W6' ? 'bg-blue-600 hover:bg-blue-500' : (dt === 'W100' ? 'bg-purple-700 hover:bg-purple-600 shadow-[0_0_15px_rgba(147,51,234,0.5)]' : 'bg-indigo-600 hover:bg-indigo-500');
-                let textClass = dt === 'W6' ? 'text-blue-400' : (dt === 'W100' ? 'text-purple-300 font-bold' : 'text-indigo-400');
+                const dt = r.diceType || 'W20';
+                const btnClass = dt === 'W6'
+                    ? 'bg-blue-600 hover:bg-blue-500'
+                    : (dt === 'W100' ? 'bg-purple-700 hover:bg-purple-600 shadow-[0_0_15px_rgba(147,51,234,0.5)]' : 'bg-indigo-600 hover:bg-indigo-500');
+                const textClass = dt === 'W6' ? 'text-blue-400' : (dt === 'W100' ? 'text-purple-300 font-bold' : 'text-indigo-400');
                 const canRoll = !isClient || (myChar && r.name === myChar.name);
                 let status;
+
                 if (r.rolled) {
                     status = r.result >= r.dc
                         ? `<span class="text-green-400 text-xs font-bold flex items-center gap-1 bg-green-900/20 px-2 py-1 rounded border border-green-700/50"><i class="fas fa-check"></i> Erfolg (${r.result})</span>`
-                        : `<span class="text-red-400 text-xs font-bold flex items-center gap-1 bg-red-900/20 px-2 py-1 rounded border border-red-700/50"><i class="fas fa-times"></i> Fehl (${r.result})</span>`;
+                        : `<span class="text-red-400 text-xs font-bold flex items-center gap-1 bg-red-900/20 px-2 py-1 rounded border border-red-700/50"><i class="fas fa-times"></i> Fehlschlag (${r.result})</span>`;
                 } else if (canRoll) {
-                    status = `<div id="roll-status-${r.id}"><button data-action="roll-specific" data-roll-id="${r.id}" class="${btnClass} px-3 py-1 rounded text-white text-[10px] font-bold shadow-md transition-all">${dt} Werfen</button></div>`;
+                    status = `<div id="roll-status-${r.id}"><button data-action="roll-specific" data-roll-id="${r.id}" class="${btnClass} px-3 py-1 rounded text-white text-[10px] font-bold shadow-md transition-all">${dt} werfen</button></div>`;
                 } else if (window.App?.Network?.isHost?.()) {
-                    status = `<div class="flex flex-col items-end gap-1"><span class="text-[9px] text-slate-500 italic"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span><button data-action="mp-roll-pending" data-roll-id="${r.id}" class="px-2 py-1 rounded border border-amber-500/40 text-amber-300 text-[9px] font-bold hover:bg-amber-900/30 transition-colors">FÃ¼r ${r.name} wÃ¼rfeln</button></div>`;
+                    status = `<div class="flex flex-col items-end gap-1"><span class="text-[9px] text-slate-500 italic"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span><button data-action="mp-roll-pending" data-roll-id="${r.id}" class="px-2 py-1 rounded border border-amber-500/40 text-amber-300 text-[9px] font-bold hover:bg-amber-900/30 transition-colors">Fuer ${r.name} wuerfeln</button></div>`;
                 } else {
-                    status = `<span class="text-[9px] text-slate-500 italic animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span>`;
+                    status = '<span class="text-[9px] text-slate-500 italic animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span>';
                 }
-                let modHtml = r.stat ? `<span class="bg-slate-800 text-slate-300 px-1 py-0.5 rounded text-[9px] ml-1 font-mono align-middle border border-slate-600/50">${r.stat} ${r.mod >= 0 ? '+' + r.mod : r.mod}</span>` : '';
+
+                const modHtml = r.stat ? `<span class="bg-slate-800 text-slate-300 px-1 py-0.5 rounded text-[9px] ml-1 font-mono align-middle border border-slate-600/50">${r.stat} ${r.mod >= 0 ? '+' + r.mod : r.mod}</span>` : '';
                 const ownHighlight = isClient && myChar && r.name === myChar.name ? 'border-cyan-700/50' : 'border-slate-700';
 
                 html += `<div class="flex justify-between items-center bg-slate-900/80 border ${ownHighlight} p-2.5 rounded-lg shadow-sm">
@@ -536,33 +534,32 @@ export const UI = {
 
             if (State.pendingRolls.some(r => !r.rolled)) {
                 if (!isClient) {
-                    html += `<button id="btn-roll-all" data-action="roll-all" class="mt-3 w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"><i class="fas fa-dice mr-1"></i> Alle automatisch auswÃ¼rfeln</button>`;
+                    html += '<button id="btn-roll-all" data-action="roll-all" class="mt-3 w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"><i class="fas fa-dice mr-1"></i> Alle automatisch auswuerfeln</button>';
                 }
+            } else if (!isClient) {
+                html += '<button data-action="submit-rolls" class="mt-3 w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded text-xs font-bold animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.4)]">Ergebnisse bestaetigen und fortfahren</button>';
             } else {
-                if (!isClient) {
-                    html += `<button data-action="submit-rolls" class="mt-3 w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded text-xs font-bold animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.4)]">Ergebnisse bestÃ¤tigen & fortfahren</button>`;
-                } else {
-                    html += `<p class="mt-3 text-center text-[10px] text-amber-400 animate-pulse"><i class="fas fa-hourglass-half mr-1"></i> Warte auf den Host...</p>`;
-                }
+                html += '<p class="mt-3 text-center text-[10px] text-amber-400 animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte auf den Host...</p>';
             }
 
             DOM.actionBoxContainer.innerHTML = sanitize(html);
         } else if (State.routeChoices.length > 0) {
             DOM.actionBoxContainer.classList.remove('hidden');
-            DOM.playerInput.disabled = false; DOM.sendBtn.disabled = false;
-            DOM.playerInput.placeholder = "Waehle einen Weg oder beschreibe eine eigene Aktion...";
+            DOM.playerInput.disabled = false;
+            DOM.sendBtn.disabled = false;
+            DOM.playerInput.placeholder = 'Waehle einen Weg oder beschreibe eine eigene Aktion...';
 
-            const routeButtons = State.routeChoices.map(route => 
+            const routeButtons = State.routeChoices.map(route =>
                 `<button data-action="choose-route" data-route="${route.replace(/"/g, '&quot;')}" class="w-full bg-slate-800/80 hover:bg-slate-700 py-3 rounded-lg font-bold text-xs border border-slate-600 shadow-sm transition-colors text-slate-300 hover:text-white flex items-center justify-center gap-2 mb-2"><i class="fas fa-door-open text-slate-400"></i> Route waehlen: ${route}</button>`
             ).join('');
             DOM.actionBoxContainer.innerHTML = sanitize(`<h3 class="text-slate-300 text-[10px] font-bold uppercase mb-2 tracking-widest flex items-center gap-2"><i class="fas fa-compass"></i> Verfuegbare Wege</h3>${routeButtons}`);
         } else {
             DOM.actionBoxContainer.classList.add('hidden');
-            DOM.playerInput.disabled = false; DOM.sendBtn.disabled = false;
-            DOM.playerInput.placeholder = "Was tut ihr?";
+            DOM.playerInput.disabled = false;
+            DOM.sendBtn.disabled = false;
+            DOM.playerInput.placeholder = 'Was tut ihr?';
         }
     },
-
     rebuildChatLog: function () {
         Array.from(DOM.storyLog.children).forEach(child => {
             if (child.id !== 'lobby-view') child.remove();
@@ -599,10 +596,77 @@ export const UI = {
             </div>`;
         }).join('');
     },
+    getRollEntity: function (name) {
+        return Utils.findTarget(State.party, name) || Utils.findTarget(State.activeEnemies, name) || Utils.findTarget(State.defeatedEnemies, name);
+    },
+    getRollPortraitMarkup: function (name) {
+        const entity = this.getRollEntity(name);
+        if (entity?.portrait) return `<img src="${entity.portrait}" alt="${name}" class="w-full h-full object-cover">`;
+        if (entity?.isSummon) return '<i class="fas fa-hat-wizard"></i>';
+        if (entity && entity.class) return '<i class="fas fa-user"></i>';
+        if (entity) return '<i class="fas fa-skull"></i>';
+        return '<i class="fas fa-dice-d20"></i>';
+    },
+    pushDiceFeedEntry: function (entry) {
+        if (!entry || !entry.name) return;
+        State.recentRolls = Array.isArray(State.recentRolls) ? State.recentRolls : [];
+        const normalized = {
+            id: entry.id || `${entry.name}-${Date.now()}`,
+            name: entry.name,
+            reason: entry.reason || 'Probe',
+            diceType: entry.diceType || 'W20',
+            rawRoll: entry.rawRoll ?? null,
+            modifier: entry.modifier || 0,
+            result: entry.result ?? null,
+            targetDC: entry.targetDC ?? null,
+            success: entry.result != null && entry.targetDC != null ? entry.result >= entry.targetDC : null,
+            createdAt: entry.createdAt || Date.now(),
+        };
+        const idx = State.recentRolls.findIndex(r => r.id === normalized.id);
+        if (idx >= 0) State.recentRolls[idx] = { ...State.recentRolls[idx], ...normalized };
+        else State.recentRolls.unshift(normalized);
+        State.recentRolls = State.recentRolls.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 8);
+        this.renderDiceFeed();
+    },
+    renderDiceFeed: function () {
+        if (!DOM.dynamicRollContainer) return;
+        const rolls = Array.isArray(State.recentRolls) ? State.recentRolls : [];
+        if (!rolls.length) {
+            DOM.dynamicRollContainer.innerHTML = '<div class="dice-feed-empty">Noch keine Wuerfe in dieser Szene.</div>';
+            return;
+        }
+
+        DOM.dynamicRollContainer.innerHTML = sanitize(rolls.map(roll => {
+            const successClass = roll.success === null ? 'border-slate-700/70' : (roll.success ? 'border-emerald-500/40' : 'border-rose-500/40');
+            const resultClass = roll.success === null ? 'text-slate-300' : (roll.success ? 'text-emerald-300' : 'text-rose-300');
+            const modifierText = roll.modifier ? `${roll.modifier >= 0 ? '+' : ''}${roll.modifier}` : '+0';
+            const dcText = roll.targetDC != null ? `DC ${roll.targetDC}` : 'Freier Wurf';
+            return `<article class="dice-feed-card ${successClass}">
+                <div class="dice-feed-avatar">${this.getRollPortraitMarkup(roll.name)}</div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="truncate">
+                            <div class="text-[10px] uppercase tracking-[0.18em] text-slate-500">${roll.diceType}</div>
+                            <div class="text-sm font-bold text-amber-200 truncate">${roll.name}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] text-slate-500">${dcText}</div>
+                            <div class="text-lg font-bold ${resultClass}">${roll.result ?? '-'}</div>
+                        </div>
+                    </div>
+                    <p class="mt-1 text-[11px] text-slate-300 leading-snug">${roll.reason}</p>
+                    <div class="mt-2 flex items-center justify-between text-[10px]">
+                        <span class="text-slate-500">Wurf ${roll.rawRoll ?? '-'} <span class="text-slate-600">${modifierText}</span></span>
+                        <span class="${resultClass}">${roll.success === null ? 'Laeuft' : (roll.success ? 'Erfolg' : 'Fehlschlag')}</span>
+                    </div>
+                </div>
+            </article>`;
+        }).join(''));
+    },
     addChatLog: function (s, t, options = {}) {
         const isAI = s === 'DM' || s.includes('Orakel') || s.includes('Schicksal');
-        const isDice = s.includes('ðŸŽ²');
-        const isWeather = s.includes('ðŸŒ¦');
+        const isDice = s.includes('ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã‚Â½Ãƒâ€šÃ‚Â²') || s.includes('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â²');
+        const isWeather = s.includes('ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã¢â‚¬â„¢Ãƒâ€šÃ‚Â¦') || s.includes('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦');
         const isSys = !isAI && !isDice && !isWeather && s.includes('System');
 
         const persist = options.persist !== false;
@@ -745,7 +809,7 @@ export const UI = {
 
         const sumBadge = c.isSummon ? `<span class="text-purple-400 text-[8px] border border-purple-500 px-1 rounded ml-1">Kreatur</span>` : '';
         const portraitSrc = c.portrait || '';
-        const portraitFallback = c.isSummon ? 'ðŸŒ€' : 'ðŸ‘¤';
+        const portraitFallback = c.isSummon ? 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬' : 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¹Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤';
         const xpNeeded = Math.floor(XP_BASE * Math.pow(c.level, XP_SCALING_EXPONENT));
         const detailPortraitHtml = `
             <div class="hero-detail-header sticky top-0 z-20 rounded-xl overflow-hidden border ${c.isNPC ? (c.isSummon ? 'border-purple-600/50' : 'border-blue-600/50') : 'border-slate-600/60'} shadow-[0_10px_30px_rgba(0,0,0,0.45)] mb-3">
@@ -755,7 +819,7 @@ export const UI = {
                 </div>
                 <div class="hero-detail-header-meta">
                     <h3 class="cinzel text-amber-300 text-sm tracking-wide">${c.name} ${sumBadge}</h3>
-                    <p class="text-[10px] text-slate-200/90">${c.class} â€¢ Lvl ${c.level}</p>
+                    <p class="text-[10px] text-slate-200/90">${c.class} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ Lvl ${c.level}</p>
                     <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-purple-500 to-indigo-400 h-full" style="width: ${Math.min(100, (c.xp / xpNeeded) * 100)}%"></div></div>
                     <p class="text-[9px] text-slate-300/80 mt-1">${c.xp}/${xpNeeded} XP</p>
                 </div>
@@ -769,8 +833,8 @@ export const UI = {
                 let abilities = [];
                 if (c.abilities) abilities = [...c.abilities];
                 if (c.ability && !abilities.includes(c.ability)) abilities.push(c.ability);
-                if (abilities.length === 0) return '<div class="mb-2 text-[9px] text-slate-500 italic">Keine FÃ¤higkeiten erlernt</div>';
-                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-amber-700/50 pb-1 mb-2 text-amber-400 uppercase tracking-wider"><i class="fas fa-fire mr-1"></i>FÃ¤higkeiten</h4>' + abilities.map(ab => {
+                if (abilities.length === 0) return '<div class="mb-2 text-[9px] text-slate-500 italic">Keine FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten erlernt</div>';
+                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-amber-700/50 pb-1 mb-2 text-amber-400 uppercase tracking-wider"><i class="fas fa-fire mr-1"></i>FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten</h4>' + abilities.map(ab => {
                     let cdKey = `${c.id}_${ab}`;
                     let cdRemaining = State.abilityCooldowns[cdKey] || 0;
                     let onCooldown = cdRemaining > 0;
@@ -779,11 +843,11 @@ export const UI = {
                     if (onCooldown) {
                         cdBarHtml = `<div class="mt-1 flex items-center gap-1.5"><div class="flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700/50"><div class="bg-gradient-to-r from-orange-600 to-amber-500 h-full rounded-full transition-all" style="width: ${Math.min(100, cdRemaining * 20)}%"></div></div><span class="text-[8px] text-orange-400 font-mono font-bold whitespace-nowrap">${cdRemaining} Rdn</span></div>`;
                     }
-                    return `<div ${onCooldown ? '' : `data-action="use-ability" data-char-id="${c.id}" data-ability="${safeAb}"`} class="mb-2 p-1.5 ${onCooldown ? 'bg-slate-800/60 border-slate-600/50 opacity-60 cursor-not-allowed' : 'bg-amber-900/40 hover:bg-amber-800/80 border-amber-700/50 hover:border-amber-500 cursor-pointer'} border rounded text-center text-[9px] shadow-sm transition-all ${onCooldown ? '' : 'shadow-[0_0_10px_rgba(245,158,11,0.2)] hover:shadow-[0_0_15px_rgba(245,158,11,0.4)]'} group"><span class="${onCooldown ? 'text-slate-500' : 'text-amber-500'} font-bold block mb-0.5 ${onCooldown ? '' : 'group-hover:animate-pulse'}">${onCooldown ? '<i class="fas fa-hourglass-half"></i> Abklingzeit' : '<i class="fas fa-meteor"></i> FÃ¤higkeit (Klicken)'}:</span>${ab}${cdBarHtml}</div>`;
+                    return `<div ${onCooldown ? '' : `data-action="use-ability" data-char-id="${c.id}" data-ability="${safeAb}"`} class="mb-2 p-1.5 ${onCooldown ? 'bg-slate-800/60 border-slate-600/50 opacity-60 cursor-not-allowed' : 'bg-amber-900/40 hover:bg-amber-800/80 border-amber-700/50 hover:border-amber-500 cursor-pointer'} border rounded text-center text-[9px] shadow-sm transition-all ${onCooldown ? '' : 'shadow-[0_0_10px_rgba(245,158,11,0.2)] hover:shadow-[0_0_15px_rgba(245,158,11,0.4)]'} group"><span class="${onCooldown ? 'text-slate-500' : 'text-amber-500'} font-bold block mb-0.5 ${onCooldown ? '' : 'group-hover:animate-pulse'}">${onCooldown ? '<i class="fas fa-hourglass-half"></i> Abklingzeit' : '<i class="fas fa-meteor"></i> FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeit (Klicken)'}:</span>${ab}${cdBarHtml}</div>`;
                 }).join('') + '</div>';
             })()}
             ${(() => {
-                // Feature 1: Item-FÃ¤higkeiten aus ausgerÃ¼steten Items extrahieren
+                // Feature 1: Item-FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten aus ausgerÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼steten Items extrahieren
                 let itemAbilities = [];
                 (c.equipment || []).forEach(item => {
                     let effects = [];
@@ -792,14 +856,14 @@ export const UI = {
                         return '';
                     });
                     effects.forEach(e => {
-                        // Nur Nicht-Stat-Effekte als FÃ¤higkeiten zÃ¤hlen
+                        // Nur Nicht-Stat-Effekte als FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten zÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤hlen
                         if (!e.match(/^[+-]\d+\s*(STR|DEX|INT|CON)|(STR|DEX|INT|CON)\s*[+-]\d+$/i)) {
                             itemAbilities.push({ effect: e, source: item.replace(/\s*\(.*?\)/g, '').trim() });
                         }
                     });
                 });
                 if (itemAbilities.length === 0) return '';
-                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-teal-700/50 pb-1 mb-2 text-teal-400 uppercase tracking-wider"><i class="fas fa-shield-alt mr-1"></i>Item-FÃ¤higkeiten</h4>' + itemAbilities.map(ia => {
+                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-teal-700/50 pb-1 mb-2 text-teal-400 uppercase tracking-wider"><i class="fas fa-shield-alt mr-1"></i>Item-FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten</h4>' + itemAbilities.map(ia => {
                     let safeEffect = ia.effect.replace(/'/g, "\\'").replace(/"/g, "&quot;");
                     return `<div data-action="use-ability" data-char-id="${c.id}" data-ability="${safeEffect}" data-item-ability="true" class="mb-2 p-1.5 bg-teal-900/30 hover:bg-teal-800/50 border border-teal-700/40 hover:border-teal-500 rounded text-center text-[9px] cursor-pointer shadow-sm transition-all shadow-[0_0_10px_rgba(20,184,166,0.15)] hover:shadow-[0_0_15px_rgba(20,184,166,0.3)] group"><span class="text-teal-400 font-bold block mb-0.5 group-hover:animate-pulse"><i class="fas fa-gem"></i> ${ia.source}:</span>${ia.effect}</div>`;
                 }).join('') + '</div>';
@@ -807,7 +871,7 @@ export const UI = {
             
             ${(c.talents && c.talents.length > 0) ? `<div class="mb-3"><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-emerald-400 uppercase">Spezialisierung</h4><div class="flex flex-wrap gap-1">${c.talents.map(t => `<span class="bg-emerald-900/30 border border-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded text-[10px]"><i class="fas fa-leaf mr-1 opacity-70"></i>${t}</span>`).join('')}</div></div>` : ''}
             
-            ${(c.pendingTalentPoints > 0 && TALENT_TREES[c.class]) ? `<div class="mb-3 p-2 border border-emerald-500/50 rounded bg-emerald-950/30 shadow-inner"><div class="text-[10px] text-emerald-400 font-bold mb-2 uppercase tracking-wider"><i class="fas fa-star animate-pulse mr-1"></i> Talent wÃ¤hlbar!</div><div class="flex gap-1.5">` +
+            ${(c.pendingTalentPoints > 0 && TALENT_TREES[c.class]) ? `<div class="mb-3 p-2 border border-emerald-500/50 rounded bg-emerald-950/30 shadow-inner"><div class="text-[10px] text-emerald-400 font-bold mb-2 uppercase tracking-wider"><i class="fas fa-star animate-pulse mr-1"></i> Talent wÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤hlbar!</div><div class="flex gap-1.5">` +
                 Object.keys(TALENT_TREES[c.class]).map(lvlReq => {
                     if (c.level >= parseInt(lvlReq) && TALENT_TREES[c.class][lvlReq].some(t => !c.talents.includes(t))) {
                         return TALENT_TREES[c.class][lvlReq].filter(t => !c.talents.includes(t)).map(t => `<button data-action="learn-talent" data-char-id="${c.id}" data-talent="${t}" class="flex-1 bg-emerald-700/50 hover:bg-emerald-600/70 border border-emerald-500/50 text-white text-[9px] font-bold py-1.5 rounded shadow-sm transition-colors">${t}</button>`).join('');
@@ -822,7 +886,7 @@ export const UI = {
                 <p class="text-[10px] text-slate-500 italic">Privates Inventar</p>
             </div>` : `
             <div class="mt-3">
-                <h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-indigo-300">AUSRÃœSTUNG</h4>
+                <h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-indigo-300">AUSRÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“STUNG</h4>
                 <ul id="equipment-list-${c.id}" class="text-[10px] space-y-1.5 mb-3"></ul>
                 <h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2">INVENTAR</h4>
                 <ul id="inventory-list-${c.id}" class="text-[10px] space-y-1.5"></ul>
@@ -850,8 +914,8 @@ export const UI = {
             const formatted = UI.formatItemDisplay(it);
             const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
             const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-indigo-400/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="true" data-count="${count}" class="bg-indigo-900/30 p-1.5 rounded cursor-pointer hover:bg-indigo-800/50 border border-indigo-700/50 flex justify-between group transition-colors" ${titleAttr}><span class="text-indigo-200">â€¢ ${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-indigo-400 mt-0.5"></i></li>`;
-        }).join('') || '<li class="text-slate-500 italic">Nichts ausgerÃ¼stet</li>');
+            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="true" data-count="${count}" class="bg-indigo-900/30 p-1.5 rounded cursor-pointer hover:bg-indigo-800/50 border border-indigo-700/50 flex justify-between group transition-colors" ${titleAttr}><span class="text-indigo-200">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-indigo-400 mt-0.5"></i></li>`;
+        }).join('') || '<li class="text-slate-500 italic">Nichts ausgerÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼stet</li>');
 
         const invMap = new Map();
         c.inventory.forEach(it => { invMap.set(it, (invMap.get(it) || 0) + 1); });
@@ -861,7 +925,7 @@ export const UI = {
             const formatted = UI.formatItemDisplay(it);
             const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
             const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="false" data-count="${count}" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors" ${titleAttr}><span>â€¢ ${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
+            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="false" data-count="${count}" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors" ${titleAttr}><span>ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
         }).join('') || '<li class="text-slate-500 italic">Leer</li>');
         }
 
@@ -885,7 +949,7 @@ export const UI = {
                 </div>
                 <div class="hero-detail-header-meta">
                     <h3 class="cinzel text-red-300 text-sm tracking-wide">${enemy.name}</h3>
-                    <p class="text-[10px] text-slate-200/90">Monster â€¢ ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
+                    <p class="text-[10px] text-slate-200/90">Monster ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
                     <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-red-700 to-red-400 h-full" style="width: ${Math.max(0, Math.min(100, (enemy.hp / enemy.maxHp) * 100))}%"></div></div>
                     <p class="text-[9px] text-slate-300/80 mt-1">${Math.max(0, enemy.hp)}/${enemy.maxHp} HP</p>
                 </div>
@@ -912,6 +976,7 @@ export const UI = {
 
 
     showNetworkDiceAnimation: function (payload) {
+        this.pushDiceFeedEntry(payload);
         let layer = document.getElementById('dice-broadcast-layer');
         if (!layer) {
             layer = document.createElement('div');
@@ -923,8 +988,9 @@ export const UI = {
         const success = (payload.result || 0) >= (payload.targetDC || 0);
         card.className = `min-w-[180px] max-w-[220px] rounded-2xl border px-4 py-3 backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.35)] bg-slate-950/80 ${success ? 'border-green-500/40' : 'border-red-500/40'}`;
         card.innerHTML = sanitize(`
-            <div class="text-[9px] uppercase tracking-[0.2em] ${success ? 'text-green-300' : 'text-red-300'}">WÃ¼rfelwurf</div>
+            <div class="text-[9px] uppercase tracking-[0.2em] ${success ? 'text-green-300' : 'text-red-300'}">Wurf</div>
             <div class="mt-1 text-sm font-bold text-amber-300">${payload.name || 'Unbekannt'}</div>
+            <div class="mt-1 text-[10px] text-slate-400">${payload.reason || 'Probe'}</div>
             <div class="mt-2 flex items-end gap-2"><span class="text-4xl font-bold text-white">${payload.rawRoll ?? '?'}</span><span class="text-slate-400 text-sm">${payload.modifier ? `${payload.modifier >= 0 ? '+' : ''}${payload.modifier}` : ''}</span><span class="text-xl font-bold ${success ? 'text-green-300' : 'text-red-300'}">${payload.result ?? '?'}</span></div>
             <div class="mt-1 text-[10px] text-slate-400">${payload.diceType || 'W20'} gegen DC ${payload.targetDC ?? '-'}</div>
         `);
@@ -944,20 +1010,19 @@ export const UI = {
         }
 
         if (DOM.diceRollerPortrait) {
-            let entity = Utils.findTarget(State.party, name) || Utils.findTarget(State.activeEnemies, name);
-            let portraitHtml = 'ðŸ‘¤';
+            const entity = Utils.findTarget(State.party, name) || Utils.findTarget(State.activeEnemies, name);
+            let portraitHtml = '<i class="fas fa-user"></i>';
             if (entity) {
                 if (entity.portrait) portraitHtml = `<img src="${entity.portrait}" class="w-full h-full object-cover">`;
-                else if (entity.isSummon) portraitHtml = 'ðŸŒ€';
-                else if (entity.hp !== undefined && !entity.class) portraitHtml = 'ðŸ’€';
+                else if (entity.isSummon) portraitHtml = '<i class="fas fa-hat-wizard"></i>';
+                else if (entity.hp !== undefined && !entity.class) portraitHtml = '<i class="fas fa-skull"></i>';
                 DOM.diceRollerPortrait.className = `w-16 h-16 rounded-full border-2 bg-slate-800 flex items-center justify-center text-3xl overflow-hidden shadow-inner flex-shrink-0 ${entity.isNPC ? (entity.isSummon ? 'border-purple-500' : 'border-blue-500') : (entity.class ? 'border-amber-500' : 'border-red-600')}`;
             } else {
-                DOM.diceRollerPortrait.className = "w-16 h-16 rounded-full border-2 border-slate-600 bg-slate-800 flex items-center justify-center text-3xl overflow-hidden shadow-inner flex-shrink-0";
+                DOM.diceRollerPortrait.className = 'w-16 h-16 rounded-full border-2 border-slate-600 bg-slate-800 flex items-center justify-center text-3xl overflow-hidden shadow-inner flex-shrink-0';
             }
             DOM.diceRollerPortrait.innerHTML = portraitHtml;
             DOM.diceRollerPortrait.classList.remove('hidden');
         }
-
         DOM.diceRollerName.innerText = name;
         DOM.diceTargetDc.innerText = `Ziel: DC ${targetDC}`; DOM.diceTargetDc.classList.remove('hidden');
         DOM.diceAcceptBtn.classList.add('hidden'); DOM.diceModal.classList.remove('hidden');
@@ -966,7 +1031,7 @@ export const UI = {
         void DOM.diceContainer.offsetWidth; // Reflow
         DOM.diceContainer.classList.add('scale-110');
 
-        DOM.diceQualityLabel.innerText = "WÃ¼rfelt..."; DOM.diceQualityLabel.className = "text-xl cinzel text-slate-400 tracking-widest mb-4 animate-pulse h-8";
+        DOM.diceQualityLabel.innerText = "Wuerfelt..."; DOM.diceQualityLabel.className = "text-xl cinzel text-slate-400 tracking-widest mb-4 animate-pulse h-8";
         DOM.diceResult.className = "text-9xl font-bold cinzel mb-6 mt-4 text-white inline-block dice-rolling";
 
         let count = 0;
@@ -989,16 +1054,16 @@ export const UI = {
 
                 let labelHtml, labelClass;
                 if (isCritical && success) {
-                    labelHtml = "âš¡ KRITISCH! <i class='fas fa-star'></i>";
+                    labelHtml = "Kritisch <i class='fas fa-star'></i>";
                     labelClass = 'text-yellow-300 animate-pulse drop-shadow-[0_0_15px_rgba(234,179,8,0.8)]';
                 } else if (isBotch) {
-                    labelHtml = "ðŸ’€ PATZER! <i class='fas fa-skull'></i>";
+                    labelHtml = "Patzer <i class='fas fa-skull'></i>";
                     labelClass = 'text-red-600 animate-pulse';
                 } else if (isNearSuccess) {
-                    labelHtml = "ðŸŽ¯ KNAPP BESTANDEN! <i class='fas fa-crosshairs'></i>";
+                    labelHtml = "Knapp geschafft <i class='fas fa-crosshairs'></i>";
                     labelClass = 'text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]';
                 } else if (isNearMiss) {
-                    labelHtml = "ðŸ’¨ FAST GESCHAFFT... <i class='fas fa-minus-circle'></i>";
+                    labelHtml = "Fast geschafft <i class='fas fa-minus-circle'></i>";
                     labelClass = 'text-orange-400';
                 } else if (success) {
                     labelHtml = "Erfolg <i class='fas fa-check'></i>";
@@ -1007,7 +1072,6 @@ export const UI = {
                     labelHtml = "Fehlschlag <i class='fas fa-times'></i>";
                     labelClass = 'text-red-500';
                 }
-
                 DOM.diceQualityLabel.innerHTML = labelHtml;
                 DOM.diceQualityLabel.className = `text-2xl cinzel font-bold uppercase tracking-widest mb-4 drop-shadow-lg h-8 ${labelClass}`;
 

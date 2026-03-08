@@ -55,7 +55,7 @@
         }
 
         .defeated-enemy::after {
-            content: "💀 BESIEGT";
+            content: "BESIEGT";
             position: absolute;
             inset: 0;
             display: flex;
@@ -122,7 +122,7 @@
             border-radius: 10px;
         }
 
-        /* Würfel Animation */
+        /* WÃ¼rfel Animation */
         .dice-rolling {
             animation: rollPulse 0.1s infinite alternate;
         }
@@ -687,3 +687,73 @@
         }
     </style>
 </head>
+
+        .loading-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 190px;
+            max-width: 260px;
+            padding: 0.8rem 0.95rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(167, 139, 250, 0.35);
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.42);
+        }
+
+        .loading-chip-dot {
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #c084fc, #818cf8);
+            box-shadow: 0 0 0 0 rgba(192, 132, 252, 0.55);
+            animation: loadingPulse 1.35s ease-out infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes loadingPulse {
+            0% { box-shadow: 0 0 0 0 rgba(192, 132, 252, 0.45); }
+            70% { box-shadow: 0 0 0 12px rgba(192, 132, 252, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(192, 132, 252, 0); }
+        }
+
+        .dice-feed-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.8rem;
+            border-radius: 1rem;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.72));
+            border: 1px solid rgba(71, 85, 105, 0.75);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 24px rgba(2, 6, 23, 0.28);
+        }
+
+        .dice-feed-avatar {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.9rem;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            color: #f8fafc;
+            box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .dice-feed-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 70px;
+            border: 1px dashed rgba(100, 116, 139, 0.5);
+            border-radius: 1rem;
+            color: #64748b;
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: rgba(2, 6, 23, 0.28);
+        }

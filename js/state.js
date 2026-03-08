@@ -2,7 +2,7 @@ export const State = {
     party: [], activeEnemies: [], defeatedEnemies: [], lootDrops: [],
     lastStoryPart: "", gameStarted: false, isProcessing: false,
     tempPortraitData: "", tempImagePrompt: "",
-    pendingRolls: [], craftingIngredients: [], routeChoices: [],
+    pendingRolls: [], recentRolls: [], craftingIngredients: [], routeChoices: [],
     chatMessages: [],
     targetMapMode: false,
     imageQuotaExceeded: false,

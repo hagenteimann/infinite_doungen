@@ -23,7 +23,7 @@ const SYNC_KEYS = [
     'lastStoryPart', 'gameStarted', 'combatEnded', 'activeMerchant',
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
     'isBossFight', 'weather', 'momentum',
-    'pendingRolls', 'pendingAbilityLearning', 'quickplayEnabled',
+    'pendingRolls', 'recentRolls', 'pendingAbilityLearning', 'quickplayEnabled',
 ];
 
 export const Network = {
@@ -543,7 +543,9 @@ export const Network = {
         roll.result = rawRoll + (roll.mod || 0);
         roll.rolled = true;
         const animationPayload = {
+            id: roll.id,
             name: roll.name,
+            reason: roll.desc || 'Probe',
             targetDC: roll.dc,
             modifier: roll.mod || 0,
             diceType: roll.diceType || 'W20',
@@ -762,6 +764,11 @@ export const Network = {
         this._updateTurnUI();
     },
 
+    broadcastDiceAnimation(payload) {
+        if (!this.isHost()) return;
+        this.connections.forEach(c => this._sendTo(c, { type: 'DICE_ANIMATION', payload }));
+    },
+
     saveAdvancedConfig() {
         const hostEl = document.getElementById('mp-cfg-host');
         const portEl = document.getElementById('mp-cfg-port');
@@ -951,7 +958,9 @@ export const Network = {
                     roll.result = msg.result;
                     roll.rawRoll = msg.rawRoll;
                     const animationPayload = {
+                        id: roll.id,
                         name: roll.name,
+                        reason: roll.desc || 'Probe',
                         targetDC: roll.dc,
                         modifier: roll.mod || 0,
                         diceType: roll.diceType || 'W20',
@@ -1020,6 +1029,9 @@ export const Network = {
             }
             case 'DM_MESSAGE':
                 UI.addChatLog(msg.sender || 'DM', msg.text);
+                break;
+            case 'DICE_ANIMATION':
+                UI.showNetworkDiceAnimation(msg.payload || {});
                 break;
             case 'PLAYER_CHAT':
                 Sound.play('turn');
