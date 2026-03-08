@@ -126,7 +126,7 @@ export const Engine = {
                 lootDrops: State.lootDrops,
                 fate: State.fate,
                 fatigue: State.fatigue,
-                gold: State.gold,
+
                 activeMerchant: State.activeMerchant,
                 abilityCooldowns: State.abilityCooldowns
             }));
@@ -728,7 +728,7 @@ export const Engine = {
         this._submitInventoryAction('COLLECT_ALL_LOOT', { charId: cid }, { showDetailsId: cid });
     },
 
-    leaveMerchant: function () { State.activeMerchant = null; UI.updateAll(); UI.addChatLog("System", "Ihr wendet euch vom H�ndler ab."); },
+    leaveMerchant: function () { State.activeMerchant = null; UI.updateAll(); UI.addChatLog("System", "Ihr wendet euch vom Händler ab."); },
 
     handleItemClick: function (cid, itemName, isEquipped = false, count = 1) {
         const c = State.party.find(p => p.id === cid); if (!c) return;
@@ -782,7 +782,7 @@ export const Engine = {
     },
     confirmDropItem: function () {
         const amt = parseInt(document.getElementById('item-action-amount')?.value) || 1;
-        if (!confirm(`Bist du sicher, dass du ${amt}x dieses Item unwiderruflich wegwerfen m�chtest?`)) return;
+        if (!confirm(`Bist du sicher, dass du ${amt}x dieses Item unwiderruflich wegwerfen möchtest?`)) return;
         const cid = DOM.itemActionCid.value;
         const itemName = DOM.itemActionName.value;
         this._submitInventoryAction('DROP_ITEM', { charId: cid, itemName, amount: amt }, { showDetailsId: cid, closeModal: true });
@@ -813,7 +813,7 @@ export const Engine = {
         DOM.itemActionModal.classList.add('hidden');
         if (c && State.activeMerchant) {
             DOM.actingChar.value = c.name;
-            DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? K�nnen wir tauschen?"`;
+            DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? Können wir tauschen?"`;
             UI.hideDetails();
             DOM.playerInput.focus();
         }

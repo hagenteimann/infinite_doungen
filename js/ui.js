@@ -516,7 +516,7 @@ export const UI = {
                 } else if (canRoll) {
                     status = `<div id="roll-status-${r.id}"><button data-action="roll-specific" data-roll-id="${r.id}" class="${btnClass} px-3 py-1 rounded text-white text-[10px] font-bold shadow-md transition-all">${dt} Werfen</button></div>`;
                 } else if (window.App?.Network?.isHost?.()) {
-                    status = `<div class="flex flex-col items-end gap-1"><span class="text-[9px] text-slate-500 italic"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span><button data-action="mp-roll-pending" data-roll-id="${r.id}" class="px-2 py-1 rounded border border-amber-500/40 text-amber-300 text-[9px] font-bold hover:bg-amber-900/30 transition-colors">F�r ${r.name} w�rfeln</button></div>`;
+                    status = `<div class="flex flex-col items-end gap-1"><span class="text-[9px] text-slate-500 italic"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span><button data-action="mp-roll-pending" data-roll-id="${r.id}" class="px-2 py-1 rounded border border-amber-500/40 text-amber-300 text-[9px] font-bold hover:bg-amber-900/30 transition-colors">Für ${r.name} würfeln</button></div>`;
                 } else {
                     status = `<span class="text-[9px] text-slate-500 italic animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span>`;
                 }
@@ -564,6 +564,36 @@ export const UI = {
             if (child.id !== 'lobby-view') child.remove();
         });
         (State.chatMessages || []).forEach(entry => this.addChatLog(entry.sender, entry.text, { persist: false }));
+    },
+    buildHostInventoryOverview: function () {
+        const heroes = State.party.filter(c => !c.isSummon);
+        if (heroes.length === 0) {
+            return '<div class="text-[10px] text-slate-500 italic">Noch keine Helden vorhanden.</div>';
+        }
+        return heroes.map(c => {
+            const equipment = (c.equipment || []).length
+                ? (c.equipment || []).map(it => `<li class="text-[10px] text-indigo-200 truncate">${it}</li>`).join('')
+                : '<li class="text-[10px] text-slate-500 italic">Keine Ausruestung</li>';
+            const inventory = (c.inventory || []).length
+                ? (c.inventory || []).map(it => `<li class="text-[10px] text-slate-300 truncate">${it}</li>`).join('')
+                : '<li class="text-[10px] text-slate-500 italic">Leer</li>';
+            return `<div class="rounded-xl border border-slate-700/50 bg-black/20 p-3">
+                <div class="flex items-center justify-between gap-2">
+                    <button data-action="show-details" data-char-id="${c.id}" class="text-left text-amber-300 font-bold text-xs hover:text-amber-200 transition-colors">${c.name}</button>
+                    <span class="text-[9px] text-slate-500">${c.class || 'Held'}</span>
+                </div>
+                <div class="mt-2 grid grid-cols-2 gap-3">
+                    <div>
+                        <div class="text-[9px] uppercase tracking-wider text-indigo-300 mb-1">Ausruestung</div>
+                        <ul class="space-y-1">${equipment}</ul>
+                    </div>
+                    <div>
+                        <div class="text-[9px] uppercase tracking-wider text-slate-400 mb-1">Inventar</div>
+                        <ul class="space-y-1 max-h-28 overflow-y-auto custom-scrollbar">${inventory}</ul>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
     },
     addChatLog: function (s, t, options = {}) {
         const isAI = s === 'DM' || s.includes('Orakel') || s.includes('Schicksal');
@@ -851,7 +881,7 @@ export const UI = {
                 </div>
                 <div class="hero-detail-header-meta">
                     <h3 class="cinzel text-red-300 text-sm tracking-wide">${enemy.name}</h3>
-                    <p class="text-[10px] text-slate-200/90">Monster � ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
+                    <p class="text-[10px] text-slate-200/90">Monster • ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
                     <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-red-700 to-red-400 h-full" style="width: ${Math.max(0, Math.min(100, (enemy.hp / enemy.maxHp) * 100))}%"></div></div>
                     <p class="text-[9px] text-slate-300/80 mt-1">${Math.max(0, enemy.hp)}/${enemy.maxHp} HP</p>
                 </div>
@@ -889,7 +919,7 @@ export const UI = {
         const success = (payload.result || 0) >= (payload.targetDC || 0);
         card.className = `min-w-[180px] max-w-[220px] rounded-2xl border px-4 py-3 backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.35)] bg-slate-950/80 ${success ? 'border-green-500/40' : 'border-red-500/40'}`;
         card.innerHTML = sanitize(`
-            <div class="text-[9px] uppercase tracking-[0.2em] ${success ? 'text-green-300' : 'text-red-300'}">W�rfelwurf</div>
+            <div class="text-[9px] uppercase tracking-[0.2em] ${success ? 'text-green-300' : 'text-red-300'}">Würfelwurf</div>
             <div class="mt-1 text-sm font-bold text-amber-300">${payload.name || 'Unbekannt'}</div>
             <div class="mt-2 flex items-end gap-2"><span class="text-4xl font-bold text-white">${payload.rawRoll ?? '?'}</span><span class="text-slate-400 text-sm">${payload.modifier ? `${payload.modifier >= 0 ? '+' : ''}${payload.modifier}` : ''}</span><span class="text-xl font-bold ${success ? 'text-green-300' : 'text-red-300'}">${payload.result ?? '?'}</span></div>
             <div class="mt-1 text-[10px] text-slate-400">${payload.diceType || 'W20'} gegen DC ${payload.targetDC ?? '-'}</div>

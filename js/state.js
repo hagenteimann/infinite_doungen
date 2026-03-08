@@ -18,10 +18,8 @@ export const State = {
     isBossFight: false,
     chatHistory: [],
     undoSnapshot: null,
-    dungeonLevel: 0,
     savedPrompts: [],
     weather: { current: 'sunny', name: 'Sonnig', icon: '\u2600\uFE0F', dcMod: 0 },
-    gold: 0,
     momentum: 0,
     pendingAbilityLearning: null,
     activeCrafterId: null,
@@ -92,14 +90,6 @@ export function dispatch(action) {
             }
             break;
         }
-        case 'SET_GOLD': {
-            State.gold = action.amount;
-            break;
-        }
-        case 'ADD_GOLD': {
-            State.gold = (State.gold || 0) + action.amount;
-            break;
-        }
         case 'SET_MERCHANT': {
             State.activeMerchant = action.merchant;
             break;
@@ -128,7 +118,6 @@ export function dispatch(action) {
         case 'COMBAT_ENDED': {
             State.combatEnded = true;
             State.sessionStats.combatsWon++;
-            State.dungeonLevel = (State.dungeonLevel || 0) + 1;
             break;
         }
         case 'SET_COOLDOWN': {
@@ -157,7 +146,6 @@ export function dispatch(action) {
                 routeChoices: snap.routeChoices || [],
                 fate: snap.fate || 0,
                 fatigue: snap.fatigue || 0,
-                gold: snap.gold || 0,
                 activeMerchant: snap.activeMerchant || null,
                 abilityCooldowns: snap.abilityCooldowns || {},
             });

@@ -34,7 +34,6 @@ export const FATE_BOSS_THRESHOLD = 100;
 export const FATE_DARK_THRESHOLD = 75;
 export const FATE_UNREST_THRESHOLD = 50;
 
-export const DUNGEON_XP_BONUS_PER_LEVEL = 8;
 export const ENEMY_XP_MULTIPLIER = 1.2;
 export const ENEMY_XP_BASE = 10;
 export const MIN_XP_PER_HERO = 15;

@@ -21,8 +21,13 @@ const init = () => {
             if (saved.party && saved.party.length > 0 && saved.gameStarted) {
                 const time = saved._autoSaveTime ? new Date(saved._autoSaveTime).toLocaleString('de-DE') : 'Unbekannt';
                 if (confirm('Auto-Save gefunden (' + time + ').\nFortsetzen?')) {
+                    const legacyGold = Number(saved.gold) || 0;
                     const allowed = Object.keys(State);
                     Object.keys(saved).forEach(k => { if (k !== '_autoSaveTime' && allowed.includes(k)) State[k] = saved[k]; });
+                    if (Array.isArray(State.party)) {
+                        State.party = State.party.filter(c => typeof c === 'object' && c.name).map(c => Utils.sanitizeCharacter(c));
+                        if (legacyGold > 0) Utils.distributeGold(State.party.filter(c => !c.isSummon), legacyGold);
+                    }
                     DOM.storyLog.querySelector('#lobby-view')?.classList.add('hidden');
                     DOM.actionArea?.classList.remove('hidden');
                 }

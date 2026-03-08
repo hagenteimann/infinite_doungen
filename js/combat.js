@@ -1,11 +1,11 @@
-import { State, dispatch } from './state.js';
+﻿import { State, dispatch } from './state.js';
 import { Sound } from './sound.js';
 import { UI } from './ui.js';
 import { Utils } from './utils.js';
 import { PartyManager } from './party.js';
 import { API } from './api.js';
 import {
-    DUNGEON_XP_BONUS_PER_LEVEL, ENEMY_XP_MULTIPLIER, ENEMY_XP_BASE,
+    ENEMY_XP_MULTIPLIER, ENEMY_XP_BASE,
     MIN_XP_PER_HERO, ENEMY_GOLD_MULTIPLIER, ENEMY_GOLD_BASE,
     FLED_ENEMY_GOLD_MULTIPLIER, FATE_BOSS_THRESHOLD,
 } from './constants.js';
@@ -104,13 +104,11 @@ export const CombatManager = {
     },
     endCombat: function () {
         dispatch({ type: 'COMBAT_ENDED' });
-        if (State.party.some(p => p.isSummon)) { State.party = State.party.filter(p => !p.isSummon); UI.addChatLog("System", `💨 Beschworene Kreaturen verschwinden.`); }
-
-        const dungeonBonus = (State.dungeonLevel || 0) * DUNGEON_XP_BONUS_PER_LEVEL;
+        if (State.party.some(p => p.isSummon)) { State.party = State.party.filter(p => !p.isSummon); UI.addChatLog("System", `💨 Beschworene Kreaturen verschwinden.`); }
         const xpPool = State.defeatedEnemies.reduce((sum, e) => {
             if (e.fled) return sum;
             return sum + Math.floor((e.maxHp || 20) * ENEMY_XP_MULTIPLIER) + ENEMY_XP_BASE;
-        }, 0) + dungeonBonus;
+        }, 0);
         const livingHeroes = State.party.filter(p => !p.isSummon && p.hp > 0);
         if (xpPool > 0 && livingHeroes.length > 0) {
             const xpEach = Math.max(MIN_XP_PER_HERO, Math.floor(xpPool / livingHeroes.length));

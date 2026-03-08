@@ -1,4 +1,5 @@
 export const Utils = {
+    GOLD_ITEM_NAME: 'Goldmuenze',
     generateId: function () {
         return (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2);
     },
@@ -29,6 +30,39 @@ export const Utils = {
 
         name = name.charAt(0).toUpperCase() + name.slice(1);
         return { amt, name };
+    },
+    isGoldItem: function (itemName) {
+        const normalized = String(itemName || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '');
+        return normalized === 'goldmuenze' || normalized === 'goldmunze' || normalized === 'goldcoin' || normalized === 'gold';
+    },
+    getGoldAmount: function (inventory) {
+        if (!Array.isArray(inventory)) return 0;
+        return inventory.reduce((sum, item) => sum + (this.isGoldItem(item) ? 1 : 0), 0);
+    },
+    getPartyGold: function (party) {
+        if (!Array.isArray(party)) return 0;
+        return party.reduce((sum, char) => sum + this.getGoldAmount(char?.inventory || []), 0);
+    },
+    addGoldToInventory: function (inventory, amount) {
+        if (!Array.isArray(inventory) || !amount || amount < 1) return 0;
+        for (let i = 0; i < amount; i++) inventory.push(this.GOLD_ITEM_NAME);
+        return amount;
+    },
+    distributeGold: function (party, amount) {
+        const eligible = (party || []).filter(char => char && Array.isArray(char.inventory));
+        if (!eligible.length || !amount || amount < 1) return [];
+
+        const base = Math.floor(amount / eligible.length);
+        const remainder = amount % eligible.length;
+        return eligible.map((char, index) => {
+            const share = base + (index < remainder ? 1 : 0);
+            if (share > 0) this.addGoldToInventory(char.inventory, share);
+            return { hero: char, amount: share };
+        }).filter(entry => entry.amount > 0);
     },
     sanitizeCharacter: function (c) {
         c.level = c.level || 1; c.xp = c.xp || 0; c.statPoints = c.statPoints || 0;

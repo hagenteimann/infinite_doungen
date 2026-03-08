@@ -22,7 +22,7 @@ const SYNC_KEYS = [
     'party', 'activeEnemies', 'defeatedEnemies', 'lootDrops',
     'lastStoryPart', 'gameStarted', 'combatEnded', 'activeMerchant',
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
-    'isBossFight', 'dungeonLevel', 'weather', 'gold', 'momentum',
+    'isBossFight', 'weather', 'momentum',
     'pendingRolls', 'pendingAbilityLearning', 'quickplayEnabled',
 ];
 
@@ -553,8 +553,8 @@ export const Network = {
         UI.showNetworkDiceAnimation(animationPayload);
         this.broadcastDiceAnimation(animationPayload);
         if (!options.silent) {
-            UI.addChatLog('System', `?? Host w�rfelt f�r **${roll.name}**.`);
-            this.broadcastSystemChat('System', `?? Host w�rfelt f�r **${roll.name}**.`);
+            UI.addChatLog('System', `🎲 Host würfelt für **${roll.name}**.`);
+            this.broadcastSystemChat('System', `🎲 Host würfelt für **${roll.name}**.`);
         }
         UI.updateActionBox();
         this._queuePendingRollResolution();
@@ -584,12 +584,12 @@ export const Network = {
             if (!char || !item) return { ok: false, error: 'Beute nicht gefunden.' };
             char.inventory.push(item);
             State.lootDrops.splice(payload.index, 1);
-            return { ok: true, message: `?? **${char.name}** erh�lt **${item}**.` };
+            return { ok: true, message: `🎁 **${char.name}** erhält **${item}**.` };
         }
 
         if (action === 'COLLECT_ALL_LOOT') {
             const char = State.party.find(p => p.id === payload.charId);
-            if (!char || State.lootDrops.length === 0) return { ok: false, error: 'Keine Beute verf�gbar.' };
+            if (!char || State.lootDrops.length === 0) return { ok: false, error: 'Keine Beute verfügbar.' };
             char.inventory.push(...State.lootDrops);
             State.lootDrops = [];
             return { ok: true, message: `?? **${char.name}** hat die gesamte Beute eingesammelt.` };
@@ -602,7 +602,7 @@ export const Network = {
             if (!removed) return { ok: false, error: 'Item nicht gefunden.' };
             const effMax = PartyManager.getEffectiveMaxHp(char);
             if (char.hp > effMax) char.hp = effMax;
-            return { ok: true, message: `??? **${char.name}** hat **${removed}x ${payload.itemName}** weggeworfen.` };
+            return { ok: true, message: `🗑️ **${char.name}** hat **${removed}x ${payload.itemName}** weggeworfen.` };
         }
 
         if (action === 'GIVE_ITEM') {
@@ -614,7 +614,7 @@ export const Network = {
             for (let i = 0; i < removed; i++) toChar.inventory.push(payload.itemName);
             const effMax = PartyManager.getEffectiveMaxHp(fromChar);
             if (fromChar.hp > effMax) fromChar.hp = effMax;
-            return { ok: true, message: `?? **${fromChar.name}** �bergibt **${removed}x ${payload.itemName}** an **${toChar.name}**.` };
+            return { ok: true, message: `🤝 **${fromChar.name}** übergibt **${removed}x ${payload.itemName}** an **${toChar.name}**.` };
         }
 
         if (action === 'EQUIP_ITEM') {
@@ -635,14 +635,14 @@ export const Network = {
             const newMax = PartyManager.getEffectiveMaxHp(char);
             if (newMax > oldMax) char.hp += (newMax - oldMax);
             else if (newMax < oldMax) char.hp = Math.max(1, char.hp - (oldMax - newMax));
-            return { ok: true, message: `${extraMessage}??? **${char.name}** r�stet **${payload.itemName}** aus.`.trim() };
+            return { ok: true, message: `${extraMessage}🛡️ **${char.name}** rüstet **${payload.itemName}** aus.`.trim() };
         }
 
         if (action === 'UNEQUIP_ITEM') {
             const char = State.party.find(p => p.id === payload.charId);
             if (!char) return { ok: false, error: 'Held nicht gefunden.' };
             const idx = (char.equipment || []).indexOf(payload.itemName);
-            if (idx === -1) return { ok: false, error: 'Item nicht ausger�stet.' };
+            if (idx === -1) return { ok: false, error: 'Item nicht ausgerüstet.' };
             const oldMax = PartyManager.getEffectiveMaxHp(char);
             char.equipment.splice(idx, 1);
             char.inventory.push(payload.itemName);
