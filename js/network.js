@@ -1319,20 +1319,7 @@ export const Network = {
     },
 
     _setQuickActionsEnabled(enabled) {
-        const selectors = [
-            '[data-action="submit-action"]',
-            '[data-action="camp"]',
-            '[data-action="ask-oracle"]',
-            '[data-action="ask-party-member"]',
-            '[data-action="plot-twist"]',
-            '[data-action="generate-npc"]',
-            '[data-action="check-enemies"]',
-            '[data-action="toggle-quickplay"]',
-        ];
-        document.querySelectorAll(selectors.join(',')).forEach(btn => {
-            btn.disabled = !enabled;
-            btn.classList.toggle('opacity-40', !enabled);
-            btn.classList.toggle('pointer-events-none', !enabled);
-        });
+        const row = document.getElementById('quick-actions-row');
+        if (row) row.classList.toggle('hidden', !enabled);
     },
 };

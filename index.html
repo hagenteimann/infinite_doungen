@@ -131,7 +131,7 @@
                     </button>
                 </div>
 
-                <div
+                <div id="quick-actions-row"
                     class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 border-t border-slate-700/50 pt-4 mt-1">
                     <div class="flex flex-wrap items-center gap-2.5 text-[11px] font-medium w-full xl:w-auto">
                         <button id="target-mode-btn" data-action="toggle-target"
@@ -286,6 +286,14 @@
                     </div>
                 </div>
             </div>
+            <!-- Würfel-Proben Panel -->
+            <div id="dice-section" class="hidden border-t border-white/10 pt-3 mt-2 shrink-0">
+                <h3 class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <i class="fas fa-dice-d20"></i> Laufende Proben
+                </h3>
+                <div id="dice-roll-list" class="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar"></div>
+            </div>
+
             <!-- Kampf Ansicht -->
             <div id="enemy-section"
                 class="flex-1 border-t border-white/10 pt-4 flex flex-col overflow-hidden hidden relative">

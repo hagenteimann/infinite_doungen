@@ -278,8 +278,9 @@ export const Engine = {
             cleanText = cleanText.replace(/\[(Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave).*?\]/gi, '').trim();
             const suggestionClass = 'mt-1.5 suggestion-option flex items-center gap-2 w-full text-left bg-slate-800/70 hover:bg-indigo-900/40 border border-slate-600/40 hover:border-indigo-500/50 text-indigo-200 hover:text-indigo-100 rounded-lg px-3 py-2.5 cursor-pointer transition-all shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.2)] text-xs';
             cleanText = cleanText.replace(/(?:^|\n)(?:-|\*)\s+([^\n]+)/g, (m, p1) => {
-                const safeValue = p1.replace(/"/g, '&quot;');
-                return `<div class="${suggestionClass}" data-prompt="${safeValue}"><span class="leading-relaxed">${p1}</span></div>`;
+                const cleanP1 = p1.replace(/\s*["'>]+\s*$/, '').trim();
+                const safeValue = cleanP1.replace(/"/g, '&quot;');
+                return `<div class="${suggestionClass}" data-prompt="${safeValue}"><span class="leading-relaxed">${cleanP1}</span></div>`;
             });
 
             const hasSuggestions = cleanText.includes('suggestion-option');
@@ -838,9 +839,15 @@ export const Engine = {
             const effMax = PartyManager.getEffectiveMaxHp(fromChar);
             if (fromChar.hp > effMax) fromChar.hp = effMax;
 
-            UI.addChatLog("System", `🤝 **${fromChar.name}** übergibt **${amt}x ${itemName}** an **${toChar.name}**.`);
+            const msg = `🤝 **${fromChar.name}** übergibt **${amt}x ${itemName}** an **${toChar.name}**.`;
+            if (Network.isHost() && Network.isConnected()) {
+                Network._sysMsgBroadcast(msg);
+            } else {
+                UI.addChatLog("System", msg);
+            }
             DOM.itemActionModal.classList.add('hidden');
             UI.showDetails(cid); UI.updateAll();
+            if (Network.isHost() && Network.isConnected()) Network.broadcastState();
         }
     },
     confirmOfferItem: function () {
@@ -1111,8 +1118,8 @@ export const Engine = {
         UI.updateAll();
         UI.addChatLog("System", "↩️ **Letzte Aktion rückgängig gemacht.** (Spielzustand wiederhergestellt)");
     },
-    upgradeStat: function (cid, key) { const c = State.party.find(p => p.id === cid); if (c && c.statPoints > 0) { c.attributes[key]++; c.statPoints--; UI.showDetails(cid); UI.updateAll(); } },
-    removeCharacter: function (id) { const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); } },
+    upgradeStat: function (cid, key) { const c = State.party.find(p => p.id === cid); if (c && c.statPoints > 0) { c.attributes[key]++; c.statPoints--; UI.showDetails(cid); UI.updateAll(); if (Network.isHost() && Network.isConnected()) Network.broadcastState(); } },
+    removeCharacter: function (id) { const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); if (Network.isHost() && Network.isConnected()) Network.broadcastState(); } },
     exportHero: function (id) { const c = State.party.find(p => p.id === id); if (!c) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(c)], { type: 'application/json' })); a.download = `Hero_${c.name}.json`; document.body.appendChild(a); a.click(); },
     bulkExportHeroes: async function () {
         const heroes = State.party.filter(p => !p.isSummon);
@@ -1166,8 +1173,14 @@ export const Engine = {
                 let h = JSON.parse(ev.target.result);
                 h = validateHeroData(h);
                 h.id = Utils.generateId();
-                State.party.push(Utils.sanitizeCharacter(h));
-                UI.updateAll();
+                const charData = Utils.sanitizeCharacter(h);
+                if (Network.isClient() && Network.isConnected()) {
+                    Network.sendCharacterCreate(charData);
+                } else {
+                    State.party.push(charData);
+                    UI.updateAll();
+                    if (Network.isHost() && Network.isConnected()) Network.broadcastState();
+                }
             } catch (err) {
                 UI.addChatLog('System', `⚠️ Hero-Import fehlgeschlagen: ${err.message}`);
             }

@@ -126,7 +126,8 @@ export const initDOM = () => {
         'crafting-modal', 'craft-inv-list', 'craft-sel-list', 'craft-target-item',
         'journal-content', 'stats-content', 'quick-actions-container', 'sound-toggle',
         'tab-party', 'tab-journal', 'tab-stats',
-        'tab-content-party', 'tab-content-journal', 'tab-content-stats'
+        'tab-content-party', 'tab-content-journal', 'tab-content-stats',
+        'dice-section', 'dice-roll-list'
     ];
     ids.forEach(id => {
         const camelCaseId = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
@@ -474,6 +475,7 @@ export const UI = {
 
         this.updateTargetModeButton();
         this.updateActionBox();
+        this.updateDiceSection();
 
     },
 
@@ -530,6 +532,36 @@ export const UI = {
             DOM.playerInput.disabled = false; DOM.sendBtn.disabled = !!State.isProcessing;
             DOM.playerInput.placeholder = "Was tut ihr?";
         }
+        this.updateDiceSection();
+    },
+
+    updateDiceSection: function () {
+        if (!DOM.diceSection || !DOM.diceRollList) return;
+        if (!State.pendingRolls || State.pendingRolls.length === 0) {
+            DOM.diceSection.classList.add('hidden');
+            return;
+        }
+        DOM.diceSection.classList.remove('hidden');
+        DOM.diceRollList.innerHTML = sanitize(State.pendingRolls.map(r => {
+            const char = State.party.find(p => p.name === r.name);
+            const portraitHtml = char?.portrait
+                ? `<img src="${char.portrait}" class="w-8 h-8 rounded-full object-cover border-2 ${r.rolled ? (r.result >= r.dc ? 'border-green-500' : 'border-red-500') : 'border-indigo-500/60'} flex-shrink-0">`
+                : `<div class="w-8 h-8 rounded-full bg-slate-800 border-2 ${r.rolled ? (r.result >= r.dc ? 'border-green-500' : 'border-red-500') : 'border-indigo-500/40'} flex items-center justify-center text-base flex-shrink-0">👤</div>`;
+            const dcBadge = `<span class="text-slate-500 font-mono text-[9px]">DC${r.dc}</span>`;
+            const statusHtml = r.rolled
+                ? (r.result >= r.dc
+                    ? `<span class="text-green-400 font-bold text-[11px] tabular-nums">✓ ${r.result}</span>`
+                    : `<span class="text-red-400 font-bold text-[11px] tabular-nums">✗ ${r.result}</span>`)
+                : `<span class="text-amber-400 text-[10px] animate-pulse">…</span>`;
+            return `<div class="flex items-center gap-2 bg-black/30 p-1.5 rounded-lg border ${r.rolled ? (r.result >= r.dc ? 'border-green-700/40' : 'border-red-700/40') : 'border-indigo-500/20'}">
+                ${portraitHtml}
+                <div class="flex-1 min-w-0">
+                    <div class="text-[10px] font-bold text-amber-400 truncate">${r.name} ${dcBadge}</div>
+                    <div class="text-[9px] text-slate-400 truncate">${r.desc}</div>
+                </div>
+                ${statusHtml}
+            </div>`;
+        }).join(''));
     },
 
     addChatLog: function (s, t) {
