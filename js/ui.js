@@ -478,6 +478,11 @@ export const UI = {
         this.updateTargetModeButton();
         this.updateActionBox();
 
+        const network = window.App?.Network;
+        if (network?.isHost?.() && network?.isConnected?.()) {
+            network.broadcastState();
+        }
+
     },
 
     updateActionBox: function () {
@@ -528,6 +533,15 @@ export const UI = {
                 }
             }
             DOM.actionBoxContainer.innerHTML = sanitize(html);
+        } else if (State.routeChoices.length > 0) {
+            DOM.actionBoxContainer.classList.remove('hidden');
+            DOM.playerInput.disabled = false; DOM.sendBtn.disabled = false;
+            DOM.playerInput.placeholder = "Waehle einen Weg oder beschreibe eine eigene Aktion...";
+
+            const routeButtons = State.routeChoices.map(route => 
+                `<button data-action="choose-route" data-route="${route.replace(/"/g, '&quot;')}" class="w-full bg-slate-800/80 hover:bg-slate-700 py-3 rounded-lg font-bold text-xs border border-slate-600 shadow-sm transition-colors text-slate-300 hover:text-white flex items-center justify-center gap-2 mb-2"><i class="fas fa-door-open text-slate-400"></i> Route waehlen: ${route}</button>`
+            ).join('');
+            DOM.actionBoxContainer.innerHTML = sanitize(`<h3 class="text-slate-300 text-[10px] font-bold uppercase mb-2 tracking-widest flex items-center gap-2"><i class="fas fa-compass"></i> Verfuegbare Wege</h3>${routeButtons}`);
         } else {
             DOM.actionBoxContainer.classList.add('hidden');
             DOM.playerInput.disabled = false; DOM.sendBtn.disabled = false;

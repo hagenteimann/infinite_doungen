@@ -52,8 +52,38 @@ export const Utils = {
         return c;
     },
     findTarget: function (list, name) {
-        if (!name) return null;
-        const n = name.toLowerCase().trim();
-        return list.find(x => x.name.toLowerCase() === n) || list.find(x => x.name.toLowerCase().includes(n)) || list.find(x => n.includes(x.name.toLowerCase()));
+        if (!name || !Array.isArray(list) || list.length === 0) return null;
+
+        const normalize = (value) => String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/\([^)]*\)/g, ' ')
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim()
+            .replace(/\s+/g, ' ');
+
+        const target = normalize(name);
+        if (!target) return null;
+
+        const scored = list
+            .filter(item => item && item.name)
+            .map(item => {
+                const normalized = normalize(item.name);
+                let score = 0;
+
+                if (normalized === target) score = 100;
+                else if (normalized.startsWith(target + ' ')) score = 90;
+                else if (target.startsWith(normalized + ' ')) score = 80;
+                else if (normalized.split(' ').includes(target)) score = 70;
+                else if (normalized.includes(target)) score = 60;
+                else if (target.includes(normalized)) score = 50;
+
+                return { item, score, normalizedLength: normalized.length };
+            })
+            .filter(entry => entry.score > 0)
+            .sort((a, b) => b.score - a.score || a.normalizedLength - b.normalizedLength);
+
+        return scored[0]?.item || null;
     }
 };

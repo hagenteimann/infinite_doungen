@@ -10,7 +10,7 @@ import { ABILITY_LIMIT, DEATH_SAVE_DC } from './constants.js';
 
 export const TagParser = {
     process: function (text) {
-        const tagRegex = /\[(Schaden|Gegner[\s\-]*Schaden|Heilung|Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave)[\s:]*(.*?)\]/gi;
+        const tagRegex = /\[(Schaden|Gegner[\s\-]*Schaden|Heilung|Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave|Route)[\s:]*(.*?)\]/gi;
         let match;
         while ((match = tagRegex.exec(text)) !== null) {
             let type = match[1].toLowerCase().replace(/[\s\-]+/g, '');
@@ -68,9 +68,9 @@ export const TagParser = {
         }
         else if (type === 'route') {
             let routeName = rawArgs.trim();
-            let btnHtml = `<button data-action="choose-route" data-route="${routeName.replace(/"/g, '&quot;')}" class="w-full bg-slate-800/80 hover:bg-slate-700 py-3 rounded-lg font-bold text-xs border border-slate-600 shadow-sm transition-colors text-slate-300 hover:text-white flex items-center justify-center gap-2 mb-2"><i class="fas fa-door-open text-slate-400"></i> Route wählen: ${routeName}</button>`;
-            DOM.actionBoxContainer.insertAdjacentHTML('beforeend', sanitize(btnHtml));
-            DOM.actionBoxContainer.classList.remove('hidden');
+            if (routeName && !State.routeChoices.includes(routeName)) {
+                State.routeChoices.push(routeName);
+            }
         }
         else if (type === 'verbraucht') {
             let vArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/);
@@ -216,3 +216,4 @@ export const TagParser = {
         }
     }
 };
+

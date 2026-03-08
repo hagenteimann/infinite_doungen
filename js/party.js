@@ -7,12 +7,19 @@ import {
     XP_BASE, XP_SCALING_EXPONENT, STAT_POINTS_PER_LEVEL,
 } from './constants.js';
 
+function findEntityCard(targetName) {
+    const normalizedTarget = (targetName || '').toLowerCase().trim();
+    if (!normalizedTarget) return null;
+
+    const cards = Array.from(document.querySelectorAll('[data-action="entity-click"]'));
+    return cards.find(card => (card.dataset.name || '').toLowerCase().trim() === normalizedTarget)
+        || cards.find(card => (card.dataset.name || '').toLowerCase().includes(normalizedTarget))
+        || cards.find(card => normalizedTarget.includes((card.dataset.name || '').toLowerCase().trim()))
+        || null;
+}
+
 function showFloatingNumber(targetName, amount, type) {
-    const cards = document.querySelectorAll('[onclick*="handleEntityClick"]');
-    let targetCard = null;
-    cards.forEach(card => {
-        if (card.textContent.includes(targetName)) targetCard = card;
-    });
+    const targetCard = findEntityCard(targetName);
     if (!targetCard) return;
 
     const float = document.createElement('div');
@@ -30,11 +37,7 @@ function showFloatingNumber(targetName, amount, type) {
 }
 
 function showLevelUpAnimation(char) {
-    const cards = document.querySelectorAll('[onclick*="handleEntityClick"]');
-    let targetCard = null;
-    cards.forEach(card => {
-        if (card.textContent.includes(char.name)) targetCard = card;
-    });
+    const targetCard = findEntityCard(char.name);
     if (!targetCard) return;
 
     targetCard.classList.add('level-up-glow');

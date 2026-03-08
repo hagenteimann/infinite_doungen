@@ -2,7 +2,7 @@ export const State = {
     party: [], activeEnemies: [], defeatedEnemies: [], lootDrops: [],
     lastStoryPart: "", gameStarted: false, isProcessing: false,
     tempPortraitData: "", tempImagePrompt: "",
-    pendingRolls: [], craftingIngredients: [],
+    pendingRolls: [], craftingIngredients: [], routeChoices: [],
     targetMapMode: false,
     imageQuotaExceeded: false,
     combatEnded: false,
@@ -153,6 +153,7 @@ export function dispatch(action) {
                 activeEnemies: snap.activeEnemies || [],
                 defeatedEnemies: snap.defeatedEnemies || [],
                 lootDrops: snap.lootDrops || [],
+                routeChoices: snap.routeChoices || [],
                 fate: snap.fate || 0,
                 fatigue: snap.fatigue || 0,
                 gold: snap.gold || 0,
@@ -179,3 +180,4 @@ export function subscribe(fn) {
     listeners.add(fn);
     return () => listeners.delete(fn);
 }
+

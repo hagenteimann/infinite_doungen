@@ -376,6 +376,7 @@ export const Engine = {
         const isStr = typeof actionOverride === 'string';
         const action = isStr ? actionOverride.trim() : DOM.playerInput.value.trim();
         if (!action || State.isProcessing) return;
+        State.routeChoices = [];
         if (!isStr) DOM.playerInput.value = "";
         let actingName;
         if (Network.isConnected() && Network.turnOrder.length > 1) {
@@ -1120,3 +1121,4 @@ export const Engine = {
         e.target.value = "";
     }
 };
+
