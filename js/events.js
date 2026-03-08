@@ -113,6 +113,7 @@ export function initEvents() {
             'mp-save-config': () => Network.saveAdvancedConfig(),
             'mp-request-sync': () => Network.requestSync(),
             'mp-execute-round': () => Network.executeCombatRound(),
+            'mp-roll-pending': () => Network.hostRollPending(actionEl.dataset.rollId),
             'mp-skip-player': () => Network.skipPlayer(actionEl.dataset.player),
             'mp-toggle-auto': () => Network.toggleAutoPlayer(actionEl.dataset.player),
             'mp-cast-vote': () => Network.castVote(parseInt(actionEl.dataset.option)),

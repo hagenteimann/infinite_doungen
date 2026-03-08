@@ -2,7 +2,7 @@ export const State = {
     party: [], activeEnemies: [], defeatedEnemies: [], lootDrops: [],
     lastStoryPart: "", gameStarted: false, isProcessing: false,
     tempPortraitData: "", tempImagePrompt: "",
-    pendingRolls: [], craftingIngredients: [], routeChoices: [],
+    pendingRolls: [], craftingIngredients: [], routeChoices: [],`r`n    chatMessages: [],
     targetMapMode: false,
     imageQuotaExceeded: false,
     combatEnded: false,
@@ -180,4 +180,3 @@ export function subscribe(fn) {
     listeners.add(fn);
     return () => listeners.delete(fn);
 }
-

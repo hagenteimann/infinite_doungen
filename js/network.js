@@ -384,6 +384,7 @@ export const Network = {
         } else {
             this.combatActions[this.playerName] = { action, charName };
             this._broadcastCombatStatus();
+            this._queueCombatExecution();
         }
         this._updateTurnUI();
     },
@@ -435,6 +436,46 @@ export const Network = {
         return charId ? State.party.find(p => p.id === charId) : null;
     },
 
+
+    _isAuthorizedCharacter(playerName, charIdOrName) {
+        if (this.isHost() && playerName === this.playerName) return true;
+        const assignedId = this.playerCharMap[playerName];
+        if (!assignedId) return false;
+        const assignedChar = State.party.find(p => p.id === assignedId);
+        if (!assignedChar) return false;
+        return assignedChar.id === charIdOrName || assignedChar.name === charIdOrName;
+    },
+
+    _allCombatActionsSubmitted() {
+        return this.turnOrder.every(playerName => {
+            if (this.autoPlayers[playerName]) return true;
+            const char = this._getCharForPlayer(playerName);
+            if (!char || char.hp <= 0) return true;
+            return !!this.combatActions[playerName];
+        });
+    },
+
+    _allPendingRollsResolved() {
+        return State.pendingRolls.length > 0 && State.pendingRolls.every(r => r.rolled);
+    },
+
+    _queueCombatExecution() {
+        if (!this.isHost() || !this._allCombatActionsSubmitted() || State.isProcessing) return;
+        setTimeout(() => {
+            if (this.isHost() && this._allCombatActionsSubmitted() && !State.isProcessing) {
+                this.executeCombatRound();
+            }
+        }, 150);
+    },
+
+    _queuePendingRollResolution() {
+        if (!this.isHost() || !this._allPendingRollsResolved() || State.isProcessing) return;
+        setTimeout(() => {
+            if (this.isHost() && this._allPendingRollsResolved() && !State.isProcessing) {
+                Engine.submitPendingRolls();
+            }
+        }, 150);
+    },
     _generateAutoAction(char) {
         const enemy = State.activeEnemies.find(e => e.hp > 0);
         const hurt = State.party
@@ -469,7 +510,7 @@ export const Network = {
                 UI.addChatLog(char.name, action);
                 submitted = true;
             }
-            if (submitted) this._broadcastCombatStatus();
+            if (submitted) { this._broadcastCombatStatus(); this._queueCombatExecution(); }
         }, 800);
     },
 
@@ -483,18 +524,135 @@ export const Network = {
         let rolled = false;
         for (const r of State.pendingRolls) {
             if (r.rolled || !autoCharNames.has(r.name)) continue;
-            const diceMax = r.diceType === 'W6' ? 6 : (r.diceType === 'W100' ? 100 : 20);
-            r.rawRoll = Math.floor(Math.random() * diceMax) + 1;
-            r.result = r.rawRoll + (r.mod || 0);
-            r.rolled = true;
-            rolled = true;
+            rolled = this.hostRollPending(r.id, { silent: true }) || rolled;
         }
         if (rolled) {
             UI.updateActionBox();
             if (this.isConnected()) this.broadcastState();
+            this._queuePendingRollResolution();
         }
     },
 
+    hostRollPending(rollId, options = {}) {
+        if (!this.isHost()) return false;
+        const roll = State.pendingRolls.find(r => r.id === rollId);
+        if (!roll || roll.rolled) return false;
+        const diceMax = roll.diceType === 'W6' ? 6 : (roll.diceType === 'W100' ? 100 : 20);
+        const rawRoll = Math.floor(Math.random() * diceMax) + 1;
+        roll.rawRoll = rawRoll;
+        roll.result = rawRoll + (roll.mod || 0);
+        roll.rolled = true;
+        const animationPayload = {
+            name: roll.name,
+            targetDC: roll.dc,
+            modifier: roll.mod || 0,
+            diceType: roll.diceType || 'W20',
+            result: roll.result,
+            rawRoll,
+        };
+        UI.showNetworkDiceAnimation(animationPayload);
+        this.broadcastDiceAnimation(animationPayload);
+        if (!options.silent) {
+            UI.addChatLog('System', `?? Host w�rfelt f�r **${roll.name}**.`);
+            this.broadcastSystemChat('System', `?? Host w�rfelt f�r **${roll.name}**.`);
+        }
+        UI.updateActionBox();
+        this._queuePendingRollResolution();
+        this.broadcastState();
+        return true;
+    },
+    _removeItems(list, itemName, amount) {
+        let removed = 0;
+        while (removed < amount) {
+            const idx = list.indexOf(itemName);
+            if (idx === -1) break;
+            list.splice(idx, 1);
+            removed++;
+        }
+        return removed;
+    },
+
+    _applyInventoryAction(action, payload, playerName) {
+        const amount = Math.max(1, parseInt(payload.amount, 10) || 1);
+        if (playerName && !this._isAuthorizedCharacter(playerName, payload.charId || payload.fromCharId)) {
+            return { ok: false, error: 'Aktion nicht erlaubt.' };
+        }
+
+        if (action === 'ASSIGN_LOOT') {
+            const char = State.party.find(p => p.id === payload.charId);
+            const item = State.lootDrops[payload.index];
+            if (!char || !item) return { ok: false, error: 'Beute nicht gefunden.' };
+            char.inventory.push(item);
+            State.lootDrops.splice(payload.index, 1);
+            return { ok: true, message: `?? **${char.name}** erh�lt **${item}**.` };
+        }
+
+        if (action === 'COLLECT_ALL_LOOT') {
+            const char = State.party.find(p => p.id === payload.charId);
+            if (!char || State.lootDrops.length === 0) return { ok: false, error: 'Keine Beute verf�gbar.' };
+            char.inventory.push(...State.lootDrops);
+            State.lootDrops = [];
+            return { ok: true, message: `?? **${char.name}** hat die gesamte Beute eingesammelt.` };
+        }
+
+        if (action === 'DROP_ITEM') {
+            const char = State.party.find(p => p.id === payload.charId);
+            if (!char) return { ok: false, error: 'Held nicht gefunden.' };
+            const removed = this._removeItems(char.inventory, payload.itemName, amount);
+            if (!removed) return { ok: false, error: 'Item nicht gefunden.' };
+            const effMax = PartyManager.getEffectiveMaxHp(char);
+            if (char.hp > effMax) char.hp = effMax;
+            return { ok: true, message: `??? **${char.name}** hat **${removed}x ${payload.itemName}** weggeworfen.` };
+        }
+
+        if (action === 'GIVE_ITEM') {
+            const fromChar = State.party.find(p => p.id === payload.fromCharId);
+            const toChar = State.party.find(p => p.id === payload.toCharId);
+            if (!fromChar || !toChar) return { ok: false, error: 'Tauschpartner nicht gefunden.' };
+            const removed = this._removeItems(fromChar.inventory, payload.itemName, amount);
+            if (!removed) return { ok: false, error: 'Item nicht gefunden.' };
+            for (let i = 0; i < removed; i++) toChar.inventory.push(payload.itemName);
+            const effMax = PartyManager.getEffectiveMaxHp(fromChar);
+            if (fromChar.hp > effMax) fromChar.hp = effMax;
+            return { ok: true, message: `?? **${fromChar.name}** �bergibt **${removed}x ${payload.itemName}** an **${toChar.name}**.` };
+        }
+
+        if (action === 'EQUIP_ITEM') {
+            const char = State.party.find(p => p.id === payload.charId);
+            if (!char) return { ok: false, error: 'Held nicht gefunden.' };
+            const idx = char.inventory.indexOf(payload.itemName);
+            if (idx === -1) return { ok: false, error: 'Item nicht im Inventar.' };
+            const oldMax = PartyManager.getEffectiveMaxHp(char);
+            char.inventory.splice(idx, 1);
+            char.equipment = char.equipment || [];
+            let extraMessage = '';
+            if (char.equipment.length >= 10) {
+                const unequippedItem = char.equipment.shift();
+                char.inventory.push(unequippedItem);
+                extraMessage = `?? **${char.name}** legt automatisch **${unequippedItem}** ab.\n`;
+            }
+            char.equipment.push(payload.itemName);
+            const newMax = PartyManager.getEffectiveMaxHp(char);
+            if (newMax > oldMax) char.hp += (newMax - oldMax);
+            else if (newMax < oldMax) char.hp = Math.max(1, char.hp - (oldMax - newMax));
+            return { ok: true, message: `${extraMessage}??? **${char.name}** r�stet **${payload.itemName}** aus.`.trim() };
+        }
+
+        if (action === 'UNEQUIP_ITEM') {
+            const char = State.party.find(p => p.id === payload.charId);
+            if (!char) return { ok: false, error: 'Held nicht gefunden.' };
+            const idx = (char.equipment || []).indexOf(payload.itemName);
+            if (idx === -1) return { ok: false, error: 'Item nicht ausger�stet.' };
+            const oldMax = PartyManager.getEffectiveMaxHp(char);
+            char.equipment.splice(idx, 1);
+            char.inventory.push(payload.itemName);
+            const newMax = PartyManager.getEffectiveMaxHp(char);
+            if (newMax < oldMax) char.hp = Math.max(1, char.hp - (oldMax - newMax));
+            return { ok: true, message: `?? **${char.name}** legt **${payload.itemName}** ab.` };
+        }
+
+        return { ok: false, error: 'Unbekannte Inventar-Aktion.' };
+    },
     _broadcastCombatStatus() {
         if (!this.isHost()) return;
         this._updateTurnUI();
@@ -735,6 +893,10 @@ export const Network = {
                 break;
             }
             case 'COMBAT_ACTION': {
+                if (!this._isAuthorizedCharacter(msg.playerName, msg.charName)) {
+                    this._sendTo(conn, { type: 'SYSTEM_CHAT', sender: 'System', text: 'Du darfst nur deinen eigenen Helden steuern.' });
+                    break;
+                }
                 Sound.play('turn');
                 this.combatActions[msg.playerName] = { action: msg.action, charName: msg.charName };
                 const combatSender = msg.charName || msg.playerName;
@@ -743,6 +905,7 @@ export const Network = {
                 });
                 UI.addChatLog(combatSender, msg.action);
                 this._broadcastCombatStatus();
+                this._queueCombatExecution();
                 break;
             }
             case 'CHARACTER_CREATE': {
@@ -761,6 +924,18 @@ export const Network = {
                 }
                 break;
             }
+            case 'ITEM_ACTION': {
+                const result = this._applyInventoryAction(msg.action, msg.payload || {}, msg.playerName);
+                if (result.ok) {
+                    UI.addChatLog('System', result.message);
+                    this.broadcastSystemChat('System', result.message);
+                    UI.updateAll();
+                    this.broadcastState();
+                } else if (result.error) {
+                    this._sendTo(conn, { type: 'SYSTEM_CHAT', sender: 'System', text: result.error });
+                }
+                break;
+            }
             case 'VOTE_CAST': {
                 if (this.currentVote && !this.currentVote.resolved) {
                     this.currentVote.votes[msg.playerName] = msg.option;
@@ -771,12 +946,23 @@ export const Network = {
             }
             case 'DICE_RESULT': {
                 const roll = State.pendingRolls.find(r => r.id === msg.rollId);
-                if (roll) {
+                if (roll && this._isAuthorizedCharacter(msg.playerName, roll.name)) {
                     roll.rolled = true;
                     roll.result = msg.result;
                     roll.rawRoll = msg.rawRoll;
+                    const animationPayload = {
+                        name: roll.name,
+                        targetDC: roll.dc,
+                        modifier: roll.mod || 0,
+                        diceType: roll.diceType || 'W20',
+                        result: msg.result,
+                        rawRoll: msg.rawRoll,
+                    };
+                    UI.showNetworkDiceAnimation(animationPayload);
+                    this.broadcastDiceAnimation(animationPayload);
                     UI.updateActionBox();
                     this._markDirty();
+                    this._queuePendingRollResolution();
                 }
                 break;
             }
@@ -788,7 +974,6 @@ export const Network = {
                 console.warn('Unknown client message:', msg.type);
         }
     },
-
     _applyStateSync(incoming) {
         const wasStarted = State.gameStarted;
         SYNC_KEYS.forEach(k => {
@@ -821,12 +1006,14 @@ export const Network = {
                 this.currentVote = msg.vote || null;
                 State.isProcessing = !!msg.isProcessing;
                 UI.showLoader(!!msg.isProcessing);
+                UI.rebuildChatLog();
                 UI.updateAll();
                 this._updateTurnUI();
                 break;
             }
             case 'STATE_SYNC': {
                 this._applyStateSync(msg.state);
+                UI.rebuildChatLog();
                 UI.updateAll();
                 this._updateTurnUI();
                 break;

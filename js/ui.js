@@ -221,7 +221,19 @@ export const UI = {
     },
     toggleViews: function (s) { DOM.lobbyView.classList.toggle('hidden', s); DOM.actionArea.classList.toggle('hidden', !s); },
     showLoader: function (s, t = "Lädt...") { DOM.loadingSpinner.classList.toggle('hidden', !s); DOM.loadingText.innerText = t; },
-    selectOption: function (t) { DOM.playerInput.value = t; DOM.playerInput.focus(); },
+    selectOption: function (t) {
+        this.clearSuggestions();
+        DOM.playerInput.value = t;
+        DOM.playerInput.focus();
+    },
+
+    clearSuggestions: function () {
+        document.querySelectorAll('.suggestion-option').forEach(el => {
+            const wrapper = el.parentElement;
+            if (wrapper && wrapper.children.length === 1 && wrapper.classList.contains('mt-3')) wrapper.remove();
+            else el.remove();
+        });
+    },
 
     showApiSettings: function () {
         document.getElementById('api-provider-select').value = API.getProvider();
@@ -497,17 +509,14 @@ export const UI = {
             let html = '<h3 class="text-indigo-400 text-[10px] font-bold uppercase mb-2 tracking-widest flex items-center gap-2"><i class="fas fa-dice-d20"></i> Erforderliche Proben</h3><div class="space-y-1.5">';
             State.pendingRolls.forEach(r => {
                 let dt = r.diceType || 'W20';
-                let btnClass = dt === 'W6' ? 'bg-blue-600 hover:bg-blue-500' : (dt === 'W100' ? 'bg-purple-700 hover:bg-purple-600 shadow-[0_0_15px_rgba(147,51,234,0.5)]' : 'bg-indigo-600 hover:bg-indigo-500');
-                let textClass = dt === 'W6' ? 'text-blue-400' : (dt === 'W100' ? 'text-purple-300 font-bold' : 'text-indigo-400');
-
-                const canRoll = !isClient || (myChar && r.name === myChar.name);
-                let status;
                 if (r.rolled) {
                     status = r.result >= r.dc
                         ? `<span class="text-green-400 text-xs font-bold flex items-center gap-1 bg-green-900/20 px-2 py-1 rounded border border-green-700/50"><i class="fas fa-check"></i> Erfolg (${r.result})</span>`
                         : `<span class="text-red-400 text-xs font-bold flex items-center gap-1 bg-red-900/20 px-2 py-1 rounded border border-red-700/50"><i class="fas fa-times"></i> Fehl (${r.result})</span>`;
                 } else if (canRoll) {
                     status = `<div id="roll-status-${r.id}"><button data-action="roll-specific" data-roll-id="${r.id}" class="${btnClass} px-3 py-1 rounded text-white text-[10px] font-bold shadow-md transition-all">${dt} Werfen</button></div>`;
+                } else if (window.App?.Network?.isHost?.()) {
+                    status = `<div class="flex flex-col items-end gap-1"><span class="text-[9px] text-slate-500 italic"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span><button data-action="mp-roll-pending" data-roll-id="${r.id}" class="px-2 py-1 rounded border border-amber-500/40 text-amber-300 text-[9px] font-bold hover:bg-amber-900/30 transition-colors">F�r ${r.name} w�rfeln</button></div>`;
                 } else {
                     status = `<span class="text-[9px] text-slate-500 italic animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span>`;
                 }
@@ -532,6 +541,7 @@ export const UI = {
                     html += `<p class="mt-3 text-center text-[10px] text-amber-400 animate-pulse"><i class="fas fa-hourglass-half mr-1"></i> Warte auf den Host...</p>`;
                 }
             }
+
             DOM.actionBoxContainer.innerHTML = sanitize(html);
         } else if (State.routeChoices.length > 0) {
             DOM.actionBoxContainer.classList.remove('hidden');
@@ -549,11 +559,24 @@ export const UI = {
         }
     },
 
-    addChatLog: function (s, t) {
+    rebuildChatLog: function () {
+        Array.from(DOM.storyLog.children).forEach(child => {
+            if (child.id !== 'lobby-view') child.remove();
+        });
+        (State.chatMessages || []).forEach(entry => this.addChatLog(entry.sender, entry.text, { persist: false }));
+    },
+    addChatLog: function (s, t, options = {}) {
         const isAI = s === 'DM' || s.includes('Orakel') || s.includes('Schicksal');
         const isDice = s.includes('🎲');
         const isWeather = s.includes('🌦');
         const isSys = !isAI && !isDice && !isWeather && s.includes('System');
+
+        const persist = options.persist !== false;
+        if (persist) {
+            State.chatMessages = State.chatMessages || [];
+            State.chatMessages.push({ sender: s, text: t });
+            if (State.chatMessages.length > 200) State.chatMessages.shift();
+        }
 
         let formattedText = t;
         formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-amber-300">$1</strong>');
@@ -578,7 +601,7 @@ export const UI = {
         const d = document.createElement('div');
 
         if (isAI) {
-            d.className = 'p-4 rounded-xl relative fade-in mb-3 bg-black/40 backdrop-blur-md border border-white/10 border-l-4 border-l-purple-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)]';
+            d.className = 'max-w-[88%] mr-auto p-4 rounded-2xl relative fade-in mb-3 bg-black/40 backdrop-blur-md border border-white/10 border-l-4 border-l-purple-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)]';
             const ttsBtn = `<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>`;
             const safeText = sanitizeStrict(formattedText);
             d.innerHTML = sanitize(`<div class="text-[10px] font-bold uppercase mb-2 tracking-[0.2em] text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">${s}${ttsBtn}</div><div class="tts-text text-sm md:text-base leading-relaxed text-slate-200">${safeText}</div>`);
@@ -592,7 +615,7 @@ export const UI = {
             d.className = 'chat-sys-group px-3 py-1.5 rounded-md fade-in mb-1 border-l-2 border-l-slate-600/40 bg-black/15';
             d.innerHTML = sanitize(`<div class="sys-lines"><div class="text-[10px] text-slate-500 leading-snug">${formattedText}</div></div>`);
         } else {
-            d.className = 'px-3 py-2 rounded-lg fade-in mb-2 bg-slate-800/30 backdrop-blur-sm border border-amber-500/10 border-l-2 border-l-amber-500/60';
+            d.className = 'max-w-[82%] ml-auto px-3 py-2 rounded-2xl fade-in mb-2 bg-amber-900/20 backdrop-blur-sm border border-amber-500/20 shadow-[0_4px_18px_rgba(245,158,11,0.08)]';
             d.innerHTML = sanitize(`<div class="text-[9px] font-bold uppercase mb-0.5 tracking-wider text-amber-400">${s}</div><div class="tts-text text-sm leading-relaxed text-slate-300">${formattedText}</div>`);
         }
 
@@ -811,8 +834,74 @@ export const UI = {
         DOM.exportHeroBtn.dataset.action = 'export-hero';
         DOM.exportHeroBtn.dataset.charId = c.id;
     },
+
+    showEnemyDetails: function (id) {
+        const enemy = State.activeEnemies.find(e => e.id === id) || State.defeatedEnemies.find(e => e.id === id);
+        if (!enemy) return;
+        DOM.partyList.classList.add('hidden');
+        DOM.charDetails.classList.remove('hidden');
+        const portrait = enemy.portrait
+            ? `<img src="${enemy.portrait}" class="hero-detail-header-bg" aria-hidden="true"><img src="${enemy.portrait}" class="hero-detail-header-portrait">`
+            : `<div class="hero-detail-fallback-icon">??</div>`;
+        DOM.detailsContent.innerHTML = sanitize(`
+            <div class="hero-detail-header sticky top-0 z-20 rounded-xl overflow-hidden border border-red-600/50 shadow-[0_10px_30px_rgba(0,0,0,0.45)] mb-3">
+                <div class="hero-detail-header-media ${enemy.portrait ? '' : 'hero-detail-header-fallback'}">
+                    ${portrait}
+                    <div class="hero-detail-header-shade"></div>
+                </div>
+                <div class="hero-detail-header-meta">
+                    <h3 class="cinzel text-red-300 text-sm tracking-wide">${enemy.name}</h3>
+                    <p class="text-[10px] text-slate-200/90">Monster � ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
+                    <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-red-700 to-red-400 h-full" style="width: ${Math.max(0, Math.min(100, (enemy.hp / enemy.maxHp) * 100))}%"></div></div>
+                    <p class="text-[9px] text-slate-300/80 mt-1">${Math.max(0, enemy.hp)}/${enemy.maxHp} HP</p>
+                </div>
+            </div>
+            <div class="hero-details-stack space-y-3">
+                <div class="bg-slate-900/50 border border-slate-700/50 rounded-xl p-3">
+                    <h4 class="text-[9px] font-bold border-b border-red-700/40 pb-1 mb-2 text-red-300 uppercase tracking-wider">Status</h4>
+                    <p class="text-[11px] text-slate-300 leading-relaxed">${enemy.description || enemy.appearance || 'Keine weiteren Informationen vorhanden.'}</p>
+                </div>
+                <div class="bg-slate-900/50 border border-slate-700/50 rounded-xl p-3">
+                    <h4 class="text-[9px] font-bold border-b border-red-700/40 pb-1 mb-2 text-red-300 uppercase tracking-wider">Kampfwerte</h4>
+                    <div class="grid grid-cols-2 gap-2 text-[10px]">
+                        <div class="bg-black/30 rounded-lg p-2 border border-white/5"><span class="text-slate-500 block">HP</span><span class="text-red-300 font-bold">${Math.max(0, enemy.hp)}/${enemy.maxHp}</span></div>
+                        <div class="bg-black/30 rounded-lg p-2 border border-white/5"><span class="text-slate-500 block">XP</span><span class="text-amber-300 font-bold">${enemy.xp || 0}</span></div>
+                        <div class="bg-black/30 rounded-lg p-2 border border-white/5 col-span-2"><span class="text-slate-500 block">Loot</span><span class="text-slate-300">${enemy.loot || 'Unbekannt'}</span></div>
+                    </div>
+                </div>
+            </div>
+        `);
+        DOM.exportHeroBtn.removeAttribute('data-char-id');
+        DOM.exportHeroBtn.removeAttribute('data-action');
+    },
     hideDetails: function () { DOM.charDetails.classList.add('hidden'); DOM.partyList.classList.remove('hidden'); },
 
+
+    showNetworkDiceAnimation: function (payload) {
+        let layer = document.getElementById('dice-broadcast-layer');
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.id = 'dice-broadcast-layer';
+            layer.className = 'fixed inset-0 pointer-events-none z-[115] p-4 grid gap-3 content-start justify-center';
+            document.body.appendChild(layer);
+        }
+        const card = document.createElement('div');
+        const success = (payload.result || 0) >= (payload.targetDC || 0);
+        card.className = `min-w-[180px] max-w-[220px] rounded-2xl border px-4 py-3 backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.35)] bg-slate-950/80 ${success ? 'border-green-500/40' : 'border-red-500/40'}`;
+        card.innerHTML = sanitize(`
+            <div class="text-[9px] uppercase tracking-[0.2em] ${success ? 'text-green-300' : 'text-red-300'}">W�rfelwurf</div>
+            <div class="mt-1 text-sm font-bold text-amber-300">${payload.name || 'Unbekannt'}</div>
+            <div class="mt-2 flex items-end gap-2"><span class="text-4xl font-bold text-white">${payload.rawRoll ?? '?'}</span><span class="text-slate-400 text-sm">${payload.modifier ? `${payload.modifier >= 0 ? '+' : ''}${payload.modifier}` : ''}</span><span class="text-xl font-bold ${success ? 'text-green-300' : 'text-red-300'}">${payload.result ?? '?'}</span></div>
+            <div class="mt-1 text-[10px] text-slate-400">${payload.diceType || 'W20'} gegen DC ${payload.targetDC ?? '-'}</div>
+        `);
+        layer.appendChild(card);
+        const count = layer.children.length;
+        layer.style.gridTemplateColumns = `repeat(${Math.min(count, 3)}, minmax(180px, 220px))`;
+        setTimeout(() => {
+            card.remove();
+            if (!layer.children.length) layer.remove();
+        }, 2200);
+    },
     showAnimatedDiceModal: function (name, targetDC, modifier, callback, closeAfter = true, diceType = 'W20') {
         Sound.play('dice');
         let sides = 20;
@@ -987,4 +1076,3 @@ export const UI = {
         }
     }
 };
-

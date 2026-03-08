@@ -29,6 +29,40 @@ export const Engine = {
         return false;
     },
 
+    _submitInventoryAction(action, payload, options = {}) {
+        const { showDetailsId = null, closeModal = false } = options;
+        if (closeModal) DOM.itemActionModal.classList.add('hidden');
+
+        if (Network.isClient() && Network.isConnected()) {
+            Network.sendInventoryAction(action, payload);
+            UI.hideDetails();
+            return true;
+        }
+
+        const result = Network._applyInventoryAction(action, payload, Network.isConnected() ? Network.playerName : null);
+        if (!result?.ok) {
+            if (result?.error) UI.addChatLog('System', result.error);
+            return false;
+        }
+
+        UI.addChatLog('System', result.message);
+        UI.updateAll();
+        if (showDetailsId) UI.showDetails(showDetailsId);
+        if (Network.isHost() && Network.isConnected()) {
+            Network.broadcastSystemChat('System', result.message);
+            Network.broadcastState();
+        }
+        return true;
+    },
+
+    _sanitizeSuggestionText(text) {
+        return String(text || '')
+            .replace(/^.*?">\s*/g, '')
+            .replace(/^[::][^\s]+\s+/g, '')
+            .replace(/^[-*]\s*/, '')
+            .trim();
+    },
+
     setCustomApiKey: function () { DOM.customKeyInput.value = localStorage.getItem("custom_gemini_key") || ""; DOM.apiKeyModal.classList.remove('hidden'); setTimeout(() => DOM.customKeyInput.focus(), 100); },
     saveApiKey: function () { localStorage.setItem("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "🔑 API-Key wurde gespeichert."); },
     startGame: function () { if (this._requireHost('Abenteuer starten')) return; if (State.party.length === 0) { UI.addChatLog("System", "⚠️ Erstelle zuerst einen Helden!"); return; } State.gameStarted = true; UI.toggleViews(true); this.interactWithAI("Die Reise beginnt."); },
@@ -278,8 +312,10 @@ export const Engine = {
             cleanText = cleanText.replace(/\[(Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave).*?\]/gi, '').trim();
             const suggestionClass = 'mt-1.5 suggestion-option flex items-center gap-2 w-full text-left bg-slate-800/70 hover:bg-indigo-900/40 border border-slate-600/40 hover:border-indigo-500/50 text-indigo-200 hover:text-indigo-100 rounded-lg px-3 py-2.5 cursor-pointer transition-all shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.2)] text-xs';
             cleanText = cleanText.replace(/(?:^|\n)(?:-|\*)\s+([^\n]+)/g, (m, p1) => {
-                const safeValue = p1.replace(/"/g, '&quot;');
-                return `<div class="${suggestionClass}" data-prompt="${safeValue}"><span class="leading-relaxed">${p1}</span></div>`;
+                const suggestionText = this._sanitizeSuggestionText(p1);
+                if (!suggestionText) return '';
+                const safeValue = suggestionText.replace(/"/g, '&quot;');
+                return `<div class="${suggestionClass}" data-prompt="${safeValue}"><span class="leading-relaxed">${suggestionText}</span></div>`;
             });
 
             const hasSuggestions = cleanText.includes('suggestion-option');
@@ -376,6 +412,7 @@ export const Engine = {
         const isStr = typeof actionOverride === 'string';
         const action = isStr ? actionOverride.trim() : DOM.playerInput.value.trim();
         if (!action || State.isProcessing) return;
+        UI.clearSuggestions();
         State.routeChoices = [];
         if (!isStr) DOM.playerInput.value = "";
         let actingName;
@@ -454,9 +491,22 @@ export const Engine = {
             return;
         }
         UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
-            roll.rolled = true; roll.result = result; roll.rawRoll = rawRoll;
+            roll.rolled = true;
+            roll.result = result;
+            roll.rawRoll = rawRoll;
             if (Network.isClient() && Network.isConnected()) {
                 Network.sendDiceResult(roll.id, result, rawRoll);
+            } else if (Network.isHost() && Network.isConnected()) {
+                Network.broadcastDiceAnimation({
+                    name: roll.name,
+                    targetDC: roll.dc,
+                    modifier: roll.mod || 0,
+                    diceType: roll.diceType || 'W20',
+                    result,
+                    rawRoll,
+                });
+                Network._queuePendingRollResolution();
+                Network.broadcastState();
             }
             UI.updateActionBox();
         }, true, roll.diceType);
@@ -671,18 +721,14 @@ export const Engine = {
         UI.addChatLog("System", statusText);
     },
 
-    assignLoot: function (i, cid) { const c = State.party.find(p => p.id === cid); if (c && State.lootDrops[i]) { c.inventory.push(State.lootDrops[i]); State.lootDrops.splice(i, 1); UI.updateAll(); } },
+    assignLoot: function (i, cid) {
+        this._submitInventoryAction('ASSIGN_LOOT', { index: i, charId: cid }, { showDetailsId: cid });
+    },
     collectAllLoot: function (cid) {
-        const c = State.party.find(p => p.id === cid);
-        if (c && State.lootDrops.length > 0) {
-            c.inventory.push(...State.lootDrops);
-            State.lootDrops = [];
-            UI.addChatLog("System", `🎒 **${c.name}** hat die gesamte Beute eingesammelt.`);
-            UI.updateAll();
-        }
+        this._submitInventoryAction('COLLECT_ALL_LOOT', { charId: cid }, { showDetailsId: cid });
     },
 
-    leaveMerchant: function () { State.activeMerchant = null; UI.updateAll(); UI.addChatLog("System", "Ihr wendet euch vom Händler ab."); },
+    leaveMerchant: function () { State.activeMerchant = null; UI.updateAll(); UI.addChatLog("System", "Ihr wendet euch vom H�ndler ab."); },
 
     handleItemClick: function (cid, itemName, isEquipped = false, count = 1) {
         const c = State.party.find(p => p.id === cid); if (!c) return;
@@ -736,20 +782,10 @@ export const Engine = {
     },
     confirmDropItem: function () {
         const amt = parseInt(document.getElementById('item-action-amount')?.value) || 1;
-        if (confirm(`Bist du sicher, dass du ${amt}x dieses Item unwiderruflich wegwerfen möchtest?`)) {
-            const cid = DOM.itemActionCid.value;
-            const itemName = DOM.itemActionName.value;
-            const c = State.party.find(p => p.id === cid);
-            if (c) {
-                for (let i = 0; i < amt; i++) {
-                    const idx = c.inventory.indexOf(itemName);
-                    if (idx > -1) c.inventory.splice(idx, 1);
-                }
-                UI.addChatLog("System", `🗑️ **${c.name}** hat **${amt}x ${itemName}** weggeworfen.`);
-            }
-            DOM.itemActionModal.classList.add('hidden');
-            UI.showDetails(cid); UI.updateAll();
-        }
+        if (!confirm(`Bist du sicher, dass du ${amt}x dieses Item unwiderruflich wegwerfen m�chtest?`)) return;
+        const cid = DOM.itemActionCid.value;
+        const itemName = DOM.itemActionName.value;
+        this._submitInventoryAction('DROP_ITEM', { charId: cid, itemName, amount: amt }, { showDetailsId: cid, closeModal: true });
     },
     confirmUseItem: function () {
         const amt = parseInt(document.getElementById('item-action-amount')?.value) || 1;
@@ -768,25 +804,7 @@ export const Engine = {
         const targetId = DOM.itemActionTarget.value;
         const itemName = DOM.itemActionName.value;
         if (!targetId) return;
-
-        const fromChar = State.party.find(p => p.id === cid);
-        const toChar = State.party.find(p => p.id === targetId);
-
-        if (fromChar && toChar) {
-            for (let i = 0; i < amt; i++) {
-                const idx = fromChar.inventory.indexOf(itemName);
-                if (idx > -1) {
-                    fromChar.inventory.splice(idx, 1);
-                    toChar.inventory.push(itemName);
-                }
-            }
-            const effMax = PartyManager.getEffectiveMaxHp(fromChar);
-            if (fromChar.hp > effMax) fromChar.hp = effMax;
-
-            UI.addChatLog("System", `🤝 **${fromChar.name}** übergibt **${amt}x ${itemName}** an **${toChar.name}**.`);
-            DOM.itemActionModal.classList.add('hidden');
-            UI.showDetails(cid); UI.updateAll();
-        }
+        this._submitInventoryAction('GIVE_ITEM', { fromCharId: cid, toCharId: targetId, itemName, amount: amt }, { showDetailsId: cid, closeModal: true });
     },
     confirmOfferItem: function () {
         const cid = DOM.itemActionCid.value;
@@ -795,7 +813,7 @@ export const Engine = {
         DOM.itemActionModal.classList.add('hidden');
         if (c && State.activeMerchant) {
             DOM.actingChar.value = c.name;
-            DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? Können wir tauschen?"`;
+            DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? K�nnen wir tauschen?"`;
             UI.hideDetails();
             DOM.playerInput.focus();
         }
@@ -803,57 +821,12 @@ export const Engine = {
     confirmEquipItem: function () {
         const cid = DOM.itemActionCid.value;
         const itemName = DOM.itemActionName.value;
-        const c = State.party.find(p => p.id === cid);
-        if (c) {
-            const idx = c.inventory.indexOf(itemName);
-            if (idx > -1) {
-                const oldMax = PartyManager.getEffectiveMaxHp(c);
-                c.inventory.splice(idx, 1);
-                c.equipment = c.equipment || [];
-
-                if (c.equipment.length >= EQUIPMENT_LIMIT) {
-                    const unequippedItem = c.equipment.shift();
-                    c.inventory.push(unequippedItem);
-                    UI.addChatLog("System", `🎒 **${c.name}** hat das Ausrüstungslimit (10) erreicht und legt automatisch **${unequippedItem}** ab.`);
-                }
-
-                c.equipment.push(itemName);
-
-                const newMax = PartyManager.getEffectiveMaxHp(c);
-                if (newMax > oldMax) {
-                    c.hp += (newMax - oldMax);
-                } else if (newMax < oldMax) {
-                    c.hp -= (oldMax - newMax);
-                    if (c.hp <= 0) c.hp = 1;
-                }
-
-                UI.addChatLog("System", `🛡️ **${c.name}** rüstet **${itemName}** aus.`);
-            }
-        }
-        DOM.itemActionModal.classList.add('hidden');
-        UI.showDetails(cid); UI.updateAll();
+        this._submitInventoryAction('EQUIP_ITEM', { charId: cid, itemName }, { showDetailsId: cid, closeModal: true });
     },
     confirmUnequipItem: function () {
         const cid = DOM.itemActionCid.value;
         const itemName = DOM.itemActionName.value;
-        const c = State.party.find(p => p.id === cid);
-        if (c) {
-            const idx = c.equipment.indexOf(itemName);
-            if (idx > -1) {
-                const oldMax = PartyManager.getEffectiveMaxHp(c);
-                c.equipment.splice(idx, 1);
-                c.inventory.push(itemName);
-
-                const newMax = PartyManager.getEffectiveMaxHp(c);
-                if (newMax < oldMax) {
-                    c.hp -= (oldMax - newMax);
-                    if (c.hp <= 0) c.hp = 1;
-                }
-                UI.addChatLog("System", `🎒 **${c.name}** legt **${itemName}** ab.`);
-            }
-        }
-        DOM.itemActionModal.classList.add('hidden');
-        UI.showDetails(cid); UI.updateAll();
+        this._submitInventoryAction('UNEQUIP_ITEM', { charId: cid, itemName }, { showDetailsId: cid, closeModal: true });
     },
 
     startCrafting: function (cid) {
@@ -1111,14 +1084,22 @@ export const Engine = {
                 let h = JSON.parse(ev.target.result);
                 h = validateHeroData(h);
                 h.id = Utils.generateId();
-                State.party.push(Utils.sanitizeCharacter(h));
-                UI.updateAll();
+                const hero = Utils.sanitizeCharacter(h);
+                if (Network.isClient() && Network.isConnected()) {
+                    Network.sendCharacterCreate(hero);
+                } else {
+                    State.party.push(hero);
+                    if (Network.isHost() && Network.isConnected()) {
+                        Network.registerCharacter(Network.playerName, hero.id);
+                        Network.broadcastState();
+                    }
+                    UI.updateAll();
+                }
             } catch (err) {
-                UI.addChatLog('System', `⚠️ Hero-Import fehlgeschlagen: ${err.message}`);
+                UI.addChatLog('System', `?? Hero-Import fehlgeschlagen: ${err.message}`);
             }
         };
         r.readAsText(e.target.files[0]);
         e.target.value = "";
     }
 };
-
