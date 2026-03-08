@@ -20,6 +20,7 @@ import {
 
 export const Engine = {
     _isRollingAll: false,
+    _pendingRollSubmissionQueued: false,
 
     _requireHost(actionName) {
         if (Network.isClient() && Network.isConnected()) {
@@ -58,11 +59,16 @@ export const Engine = {
     _sanitizeSuggestionText(text) {
         return String(text || '')
             .replace(/^.*?">\s*/g, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/&amp;/gi, '&')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#39;/gi, "'")
             .replace(/^[::][^\s]+\s+/g, '')
             .replace(/^[-*]\s*/, '')
+            .replace(/\s+/g, ' ')
             .trim();
     },
-
     setCustomApiKey: function () { DOM.customKeyInput.value = localStorage.getItem("custom_gemini_key") || ""; DOM.apiKeyModal.classList.remove('hidden'); setTimeout(() => DOM.customKeyInput.focus(), 100); },
     saveApiKey: function () { localStorage.setItem("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "Ã°Å¸â€â€˜ API-Key wurde gespeichert."); },
     startGame: function () { if (this._requireHost('Abenteuer starten')) return; if (State.party.length === 0) { UI.addChatLog("System", "Ã¢Å¡Â Ã¯Â¸Â Erstelle zuerst einen Helden!"); return; } State.gameStarted = true; UI.toggleViews(true); this.interactWithAI("Die Reise beginnt."); },
@@ -491,6 +497,23 @@ export const Engine = {
             return;
         }
 
+        const startPayload = {
+            id: roll.id,
+            name: roll.name,
+            reason: roll.desc || 'Probe',
+            targetDC: roll.dc,
+            modifier: roll.mod || 0,
+            diceType: roll.diceType || 'W20',
+            result: null,
+            rawRoll: null,
+        };
+        UI.pushDiceFeedEntry(startPayload);
+        if (Network.isClient() && Network.isConnected()) {
+            Network.sendDiceRollStarted(roll.id);
+        } else if (Network.isHost() && Network.isConnected()) {
+            Network.broadcastDiceRollStarted(startPayload);
+        }
+
         UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
             roll.rolled = true;
             roll.result = result;
@@ -519,6 +542,7 @@ export const Engine = {
             }
 
             UI.updateActionBox();
+            this._queuePendingRollSubmission();
         }, true, roll.diceType);
     },
     rollAllPending: async function () {
@@ -537,6 +561,21 @@ export const Engine = {
         for (let i = 0; i < unrolled.length; i++) {
             const roll = unrolled[i];
             const isLast = i === unrolled.length - 1;
+
+            const startPayload = {
+                id: roll.id,
+                name: roll.name,
+                reason: roll.desc || 'Probe',
+                targetDC: roll.dc,
+                modifier: roll.mod || 0,
+                diceType: roll.diceType || 'W20',
+                result: null,
+                rawRoll: null,
+            };
+            UI.pushDiceFeedEntry(startPayload);
+            if (Network.isHost() && Network.isConnected()) {
+                Network.broadcastDiceRollStarted(startPayload);
+            }
 
             await new Promise(resolve => {
                 UI.showAnimatedDiceModal(roll.name, roll.dc, roll.mod, (result, success, rawRoll) => {
@@ -562,6 +601,7 @@ export const Engine = {
                     }
 
                     UI.updateActionBox();
+                    this._queuePendingRollSubmission();
                     resolve();
                 }, isLast, roll.diceType);
             });
@@ -576,7 +616,23 @@ export const Engine = {
 
         this._isRollingAll = false;
     },
+    _queuePendingRollSubmission: function () {
+        const allResolved = State.pendingRolls.length > 0 && State.pendingRolls.every(r => r.rolled);
+        if (!allResolved || State.isProcessing || this._pendingRollSubmissionQueued) return;
+        if (Network.isHost() && Network.isConnected()) {
+            Network._queuePendingRollResolution();
+            return;
+        }
+        this._pendingRollSubmissionQueued = true;
+        setTimeout(() => {
+            this._pendingRollSubmissionQueued = false;
+            const stillReady = State.pendingRolls.length > 0 && State.pendingRolls.every(r => r.rolled);
+            if (stillReady && !State.isProcessing) this.submitPendingRolls();
+        }, 150);
+    },
+
     submitPendingRolls: function () {
+        this._pendingRollSubmissionQueued = false;
         if (this._requireHost('Ergebnisse bestaetigen')) return;
         const rollsCopy = [...State.pendingRolls];
         let resText = 'Die Wuerfel sind gefallen:\n';

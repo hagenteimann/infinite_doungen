@@ -307,6 +307,15 @@ export const Network = {
         });
     },
 
+    sendDiceRollStarted(rollId) {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], {
+            type: 'DICE_ROLL_STARTED',
+            rollId,
+            playerName: this.playerName,
+        });
+    },
+
     sendDiceResult(rollId, result, rawRoll) {
         if (!this.isClient() || this.connections.length === 0) return;
         this._sendTo(this.connections[0], {
@@ -764,6 +773,11 @@ export const Network = {
         this._updateTurnUI();
     },
 
+    broadcastDiceRollStarted(payload) {
+        if (!this.isHost()) return;
+        this.connections.forEach(c => this._sendTo(c, { type: 'DICE_ROLL_STARTED', payload }));
+    },
+
     broadcastDiceAnimation(payload) {
         if (!this.isHost()) return;
         this.connections.forEach(c => this._sendTo(c, { type: 'DICE_ANIMATION', payload }));
@@ -948,6 +962,25 @@ export const Network = {
                     this.currentVote.votes[msg.playerName] = msg.option;
                     this._broadcastVoteStatus();
                     this._updateTurnUI();
+                }
+                break;
+            }
+            case 'DICE_ROLL_STARTED': {
+                const roll = State.pendingRolls.find(r => r.id === msg.rollId);
+                if (roll && this._isAuthorizedCharacter(msg.playerName, roll.name)) {
+                    const startPayload = {
+                        id: roll.id,
+                        name: roll.name,
+                        reason: roll.desc || 'Probe',
+                        targetDC: roll.dc,
+                        modifier: roll.mod || 0,
+                        diceType: roll.diceType || 'W20',
+                        result: null,
+                        rawRoll: null,
+                    };
+                    UI.pushDiceFeedEntry(startPayload);
+                    this.broadcastDiceRollStarted(startPayload);
+                    this._markDirty();
                 }
                 break;
             }

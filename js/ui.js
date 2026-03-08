@@ -1,4 +1,4 @@
-import { State } from './state.js';
+﻿import { State } from './state.js';
 import { PRESETS, TALENT_TREES, EQUIPMENT_SETS } from './prompts.js';
 import { PartyManager } from './party.js';
 import { Sound } from './sound.js';
@@ -125,8 +125,8 @@ export const initDOM = () => {
         'modal-eq-actions', 'load-input', 'merchant-section', 'merchant-name', 'merchant-items', 'btn-offer-item',
         'crafting-modal', 'craft-inv-list', 'craft-sel-list', 'craft-target-item',
         'journal-content', 'stats-content', 'quick-actions-container', 'sound-toggle',
-        'tab-party', 'tab-journal', 'tab-stats',
-        'tab-content-party', 'tab-content-journal', 'tab-content-stats'
+        'tab-party', 'tab-dice', 'tab-journal', 'tab-stats',
+        'tab-content-party', 'tab-content-dice', 'tab-content-journal', 'tab-content-stats'
     ];
     ids.forEach(id => {
         const camelCaseId = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
@@ -160,7 +160,7 @@ export const UIBuilders = {
         const nameColor = isDead ? 'text-red-500 line-through' :
             (c.isSummon ? 'text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.5)]' :
                 (c.isNPC ? 'text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]' : 'text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]'));
-        const badge = isDead ? 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬' : (c.isSummon ? 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬' : 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¹Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤');
+        const badge = isDead ? '<i class="fas fa-skull"></i>' : (c.isSummon ? '<i class="fas fa-hat-wizard"></i>' : '<i class="fas fa-user"></i>');
         const effMaxHp = PartyManager.getEffectiveMaxHp(c);
         if (c.hp > effMaxHp) c.hp = effMaxHp;
         const hpPercent = (c.hp / effMaxHp) * 100;
@@ -227,7 +227,16 @@ export const UI = {
     },
     selectOption: function (t) {
         this.clearSuggestions();
-        DOM.playerInput.value = t;
+        const optionText = String(t || '');
+        const normalized = optionText
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/&amp;/gi, '&')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#39;/gi, "'")
+            .replace(/\s+/g, ' ')
+            .trim();
+        DOM.playerInput.value = normalized;
         DOM.playerInput.focus();
     },
 
@@ -278,7 +287,7 @@ export const UI = {
     },
 
     switchTab: function (tab) {
-        ['party', 'journal', 'stats'].forEach(t => {
+        ['party', 'dice', 'journal', 'stats'].forEach(t => {
             const btn = DOM[`tab${t.charAt(0).toUpperCase() + t.slice(1)}`];
             const content = DOM[`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`];
             if (!btn || !content) return;
@@ -287,10 +296,10 @@ export const UI = {
             content.classList.toggle('hidden', !active);
             content.classList.toggle('flex', active);
         });
+        if (tab === 'dice') this.renderDiceFeed();
         if (tab === 'journal') this.renderJournal();
         if (tab === 'stats') this.renderStats();
     },
-
     renderJournal: function () {
         if (!DOM.journalContent) return;
         if (State.journal.length === 0) {
@@ -537,7 +546,7 @@ export const UI = {
                     html += '<button id="btn-roll-all" data-action="roll-all" class="mt-3 w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"><i class="fas fa-dice mr-1"></i> Alle automatisch auswuerfeln</button>';
                 }
             } else if (!isClient) {
-                html += '<button data-action="submit-rolls" class="mt-3 w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded text-xs font-bold animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.4)]">Ergebnisse bestaetigen und fortfahren</button>';
+                html += '<p class="mt-3 text-center text-[10px] text-emerald-300 animate-pulse"><i class="fas fa-wand-sparkles mr-1"></i>Alle Wuerfe liegen vor. Die Probe wird automatisch ausgewertet...</p>';
             } else {
                 html += '<p class="mt-3 text-center text-[10px] text-amber-400 animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte auf den Host...</p>';
             }
@@ -641,23 +650,22 @@ export const UI = {
             const resultClass = roll.success === null ? 'text-slate-300' : (roll.success ? 'text-emerald-300' : 'text-rose-300');
             const modifierText = roll.modifier ? `${roll.modifier >= 0 ? '+' : ''}${roll.modifier}` : '+0';
             const dcText = roll.targetDC != null ? `DC ${roll.targetDC}` : 'Freier Wurf';
+            const statusText = roll.success === null ? 'Laeuft' : (roll.success ? 'Erfolg' : 'Fehlschlag');
             return `<article class="dice-feed-card ${successClass}">
                 <div class="dice-feed-avatar">${this.getRollPortraitMarkup(roll.name)}</div>
-                <div class="min-w-0 flex-1">
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="truncate">
-                            <div class="text-[10px] uppercase tracking-[0.18em] text-slate-500">${roll.diceType}</div>
-                            <div class="text-sm font-bold text-amber-200 truncate">${roll.name}</div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-[10px] text-slate-500">${dcText}</div>
-                            <div class="text-lg font-bold ${resultClass}">${roll.result ?? '-'}</div>
+                <div class="dice-feed-body min-w-0 flex-1">
+                    <div class="dice-feed-main min-w-0">
+                        <div class="dice-feed-name truncate">${roll.name}</div>
+                        <div class="dice-feed-reason">${roll.reason}</div>
+                        <div class="dice-feed-meta">
+                            <span class="dice-feed-die">${roll.diceType}</span>
+                            <span class="dice-feed-roll">Wurf ${roll.rawRoll ?? '-'} ${modifierText}</span>
                         </div>
                     </div>
-                    <p class="mt-1 text-[11px] text-slate-300 leading-snug">${roll.reason}</p>
-                    <div class="mt-2 flex items-center justify-between text-[10px]">
-                        <span class="text-slate-500">Wurf ${roll.rawRoll ?? '-'} <span class="text-slate-600">${modifierText}</span></span>
-                        <span class="${resultClass}">${roll.success === null ? 'Laeuft' : (roll.success ? 'Erfolg' : 'Fehlschlag')}</span>
+                    <div class="dice-feed-outcome">
+                        <div class="dice-feed-dc">${dcText}</div>
+                        <div class="dice-feed-result ${resultClass}">${roll.result ?? '-'}</div>
+                        <div class="dice-feed-status ${roll.success === null ? 'dice-feed-status-rolling' : ''} ${resultClass}">${statusText}</div>
                     </div>
                 </div>
             </article>`;
@@ -665,8 +673,8 @@ export const UI = {
     },
     addChatLog: function (s, t, options = {}) {
         const isAI = s === 'DM' || s.includes('Orakel') || s.includes('Schicksal');
-        const isDice = s.includes('ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã‚Â½Ãƒâ€šÃ‚Â²') || s.includes('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â²');
-        const isWeather = s.includes('ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã¢â‚¬â„¢Ãƒâ€šÃ‚Â¦') || s.includes('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦');
+        const isDice = s.includes('Wurf') || s.includes('Wuerfel') || s.includes('Dice');
+        const isWeather = s.includes('Wetter') || s.includes('Weather');
         const isSys = !isAI && !isDice && !isWeather && s.includes('System');
 
         const persist = options.persist !== false;
@@ -699,7 +707,7 @@ export const UI = {
         const d = document.createElement('div');
 
         if (isAI) {
-            d.className = 'max-w-[88%] mr-auto p-4 rounded-2xl relative fade-in mb-3 bg-black/40 backdrop-blur-md border border-white/10 border-l-4 border-l-purple-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)]';
+            d.className = 'w-full mr-auto p-4 rounded-2xl relative fade-in mb-3 bg-black/40 backdrop-blur-md border border-white/10 border-l-4 border-l-purple-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)]';
             const ttsBtn = `<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>`;
             const safeText = sanitizeStrict(formattedText);
             d.innerHTML = sanitize(`<div class="text-[10px] font-bold uppercase mb-2 tracking-[0.2em] text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">${s}${ttsBtn}</div><div class="tts-text text-sm md:text-base leading-relaxed text-slate-200">${safeText}</div>`);
@@ -713,7 +721,7 @@ export const UI = {
             d.className = 'chat-sys-group px-3 py-1.5 rounded-md fade-in mb-1 border-l-2 border-l-slate-600/40 bg-black/15';
             d.innerHTML = sanitize(`<div class="sys-lines"><div class="text-[10px] text-slate-500 leading-snug">${formattedText}</div></div>`);
         } else {
-            d.className = 'max-w-[82%] ml-auto px-3 py-2 rounded-2xl fade-in mb-2 bg-amber-900/20 backdrop-blur-sm border border-amber-500/20 shadow-[0_4px_18px_rgba(245,158,11,0.08)]';
+            d.className = 'w-full ml-auto px-3 py-2 rounded-2xl fade-in mb-2 bg-amber-900/20 backdrop-blur-sm border border-amber-500/20 shadow-[0_4px_18px_rgba(245,158,11,0.08)]';
             d.innerHTML = sanitize(`<div class="text-[9px] font-bold uppercase mb-0.5 tracking-wider text-amber-400">${s}</div><div class="tts-text text-sm leading-relaxed text-slate-300">${formattedText}</div>`);
         }
 
@@ -809,7 +817,7 @@ export const UI = {
 
         const sumBadge = c.isSummon ? `<span class="text-purple-400 text-[8px] border border-purple-500 px-1 rounded ml-1">Kreatur</span>` : '';
         const portraitSrc = c.portrait || '';
-        const portraitFallback = c.isSummon ? 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬' : 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¹Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤';
+        const portraitFallback = c.isSummon ? '<i class="fas fa-hat-wizard"></i>' : '<i class="fas fa-user"></i>'; 
         const xpNeeded = Math.floor(XP_BASE * Math.pow(c.level, XP_SCALING_EXPONENT));
         const detailPortraitHtml = `
             <div class="hero-detail-header sticky top-0 z-20 rounded-xl overflow-hidden border ${c.isNPC ? (c.isSummon ? 'border-purple-600/50' : 'border-blue-600/50') : 'border-slate-600/60'} shadow-[0_10px_30px_rgba(0,0,0,0.45)] mb-3">
@@ -819,7 +827,7 @@ export const UI = {
                 </div>
                 <div class="hero-detail-header-meta">
                     <h3 class="cinzel text-amber-300 text-sm tracking-wide">${c.name} ${sumBadge}</h3>
-                    <p class="text-[10px] text-slate-200/90">${c.class} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ Lvl ${c.level}</p>
+                    <p class="text-[10px] text-slate-200/90">${c.class} | Lvl ${c.level}</p>
                     <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-purple-500 to-indigo-400 h-full" style="width: ${Math.min(100, (c.xp / xpNeeded) * 100)}%"></div></div>
                     <p class="text-[9px] text-slate-300/80 mt-1">${c.xp}/${xpNeeded} XP</p>
                 </div>
@@ -833,8 +841,8 @@ export const UI = {
                 let abilities = [];
                 if (c.abilities) abilities = [...c.abilities];
                 if (c.ability && !abilities.includes(c.ability)) abilities.push(c.ability);
-                if (abilities.length === 0) return '<div class="mb-2 text-[9px] text-slate-500 italic">Keine FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten erlernt</div>';
-                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-amber-700/50 pb-1 mb-2 text-amber-400 uppercase tracking-wider"><i class="fas fa-fire mr-1"></i>FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten</h4>' + abilities.map(ab => {
+                if (abilities.length === 0) return '<div class="mb-2 text-[9px] text-slate-500 italic">Keine Faehigkeiten erlernt</div>'; 
+                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-amber-700/50 pb-1 mb-2 text-amber-400 uppercase tracking-wider"><i class="fas fa-fire mr-1"></i>Faehigkeiten</h4>' + abilities.map(ab => {
                     let cdKey = `${c.id}_${ab}`;
                     let cdRemaining = State.abilityCooldowns[cdKey] || 0;
                     let onCooldown = cdRemaining > 0;
@@ -843,7 +851,7 @@ export const UI = {
                     if (onCooldown) {
                         cdBarHtml = `<div class="mt-1 flex items-center gap-1.5"><div class="flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700/50"><div class="bg-gradient-to-r from-orange-600 to-amber-500 h-full rounded-full transition-all" style="width: ${Math.min(100, cdRemaining * 20)}%"></div></div><span class="text-[8px] text-orange-400 font-mono font-bold whitespace-nowrap">${cdRemaining} Rdn</span></div>`;
                     }
-                    return `<div ${onCooldown ? '' : `data-action="use-ability" data-char-id="${c.id}" data-ability="${safeAb}"`} class="mb-2 p-1.5 ${onCooldown ? 'bg-slate-800/60 border-slate-600/50 opacity-60 cursor-not-allowed' : 'bg-amber-900/40 hover:bg-amber-800/80 border-amber-700/50 hover:border-amber-500 cursor-pointer'} border rounded text-center text-[9px] shadow-sm transition-all ${onCooldown ? '' : 'shadow-[0_0_10px_rgba(245,158,11,0.2)] hover:shadow-[0_0_15px_rgba(245,158,11,0.4)]'} group"><span class="${onCooldown ? 'text-slate-500' : 'text-amber-500'} font-bold block mb-0.5 ${onCooldown ? '' : 'group-hover:animate-pulse'}">${onCooldown ? '<i class="fas fa-hourglass-half"></i> Abklingzeit' : '<i class="fas fa-meteor"></i> FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeit (Klicken)'}:</span>${ab}${cdBarHtml}</div>`;
+                    return `<div ${onCooldown ? '' : `data-action="use-ability" data-char-id="${c.id}" data-ability="${safeAb}"`} class="mb-2 p-1.5 ${onCooldown ? 'bg-slate-800/60 border-slate-600/50 opacity-60 cursor-not-allowed' : 'bg-amber-900/40 hover:bg-amber-800/80 border-amber-700/50 hover:border-amber-500 cursor-pointer'} border rounded text-center text-[9px] shadow-sm transition-all ${onCooldown ? '' : 'shadow-[0_0_10px_rgba(245,158,11,0.2)] hover:shadow-[0_0_15px_rgba(245,158,11,0.4)]'} group"><span class="${onCooldown ? 'text-slate-500' : 'text-amber-500'} font-bold block mb-0.5 ${onCooldown ? '' : 'group-hover:animate-pulse'}">${onCooldown ? '<i class="fas fa-hourglass-half"></i> Abklingzeit' : '<i class="fas fa-meteor"></i> Faehigkeit (Klicken)'}:</span>${ab}${cdBarHtml}</div>`;
                 }).join('') + '</div>';
             })()}
             ${(() => {
@@ -863,7 +871,7 @@ export const UI = {
                     });
                 });
                 if (itemAbilities.length === 0) return '';
-                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-teal-700/50 pb-1 mb-2 text-teal-400 uppercase tracking-wider"><i class="fas fa-shield-alt mr-1"></i>Item-FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten</h4>' + itemAbilities.map(ia => {
+                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-teal-700/50 pb-1 mb-2 text-teal-400 uppercase tracking-wider"><i class="fas fa-shield-alt mr-1"></i>Item-Faehigkeiten</h4>' + itemAbilities.map(ia => {
                     let safeEffect = ia.effect.replace(/'/g, "\\'").replace(/"/g, "&quot;");
                     return `<div data-action="use-ability" data-char-id="${c.id}" data-ability="${safeEffect}" data-item-ability="true" class="mb-2 p-1.5 bg-teal-900/30 hover:bg-teal-800/50 border border-teal-700/40 hover:border-teal-500 rounded text-center text-[9px] cursor-pointer shadow-sm transition-all shadow-[0_0_10px_rgba(20,184,166,0.15)] hover:shadow-[0_0_15px_rgba(20,184,166,0.3)] group"><span class="text-teal-400 font-bold block mb-0.5 group-hover:animate-pulse"><i class="fas fa-gem"></i> ${ia.source}:</span>${ia.effect}</div>`;
                 }).join('') + '</div>';
@@ -871,7 +879,7 @@ export const UI = {
             
             ${(c.talents && c.talents.length > 0) ? `<div class="mb-3"><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-emerald-400 uppercase">Spezialisierung</h4><div class="flex flex-wrap gap-1">${c.talents.map(t => `<span class="bg-emerald-900/30 border border-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded text-[10px]"><i class="fas fa-leaf mr-1 opacity-70"></i>${t}</span>`).join('')}</div></div>` : ''}
             
-            ${(c.pendingTalentPoints > 0 && TALENT_TREES[c.class]) ? `<div class="mb-3 p-2 border border-emerald-500/50 rounded bg-emerald-950/30 shadow-inner"><div class="text-[10px] text-emerald-400 font-bold mb-2 uppercase tracking-wider"><i class="fas fa-star animate-pulse mr-1"></i> Talent wÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤hlbar!</div><div class="flex gap-1.5">` +
+            ${(c.pendingTalentPoints > 0 && TALENT_TREES[c.class]) ? `<div class="mb-3 p-2 border border-emerald-500/50 rounded bg-emerald-950/30 shadow-inner"><div class="text-[10px] text-emerald-400 font-bold mb-2 uppercase tracking-wider"><i class="fas fa-star animate-pulse mr-1"></i> Talent waehlbar!</div><div class="flex gap-1.5">` +
                 Object.keys(TALENT_TREES[c.class]).map(lvlReq => {
                     if (c.level >= parseInt(lvlReq) && TALENT_TREES[c.class][lvlReq].some(t => !c.talents.includes(t))) {
                         return TALENT_TREES[c.class][lvlReq].filter(t => !c.talents.includes(t)).map(t => `<button data-action="learn-talent" data-char-id="${c.id}" data-talent="${t}" class="flex-1 bg-emerald-700/50 hover:bg-emerald-600/70 border border-emerald-500/50 text-white text-[9px] font-bold py-1.5 rounded shadow-sm transition-colors">${t}</button>`).join('');
@@ -886,7 +894,7 @@ export const UI = {
                 <p class="text-[10px] text-slate-500 italic">Privates Inventar</p>
             </div>` : `
             <div class="mt-3">
-                <h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-indigo-300">AUSRÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“STUNG</h4>
+                <h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-indigo-300">AUSRUESTUNG</h4>
                 <ul id="equipment-list-${c.id}" class="text-[10px] space-y-1.5 mb-3"></ul>
                 <h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2">INVENTAR</h4>
                 <ul id="inventory-list-${c.id}" class="text-[10px] space-y-1.5"></ul>
@@ -914,8 +922,8 @@ export const UI = {
             const formatted = UI.formatItemDisplay(it);
             const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
             const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-indigo-400/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="true" data-count="${count}" class="bg-indigo-900/30 p-1.5 rounded cursor-pointer hover:bg-indigo-800/50 border border-indigo-700/50 flex justify-between group transition-colors" ${titleAttr}><span class="text-indigo-200">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-indigo-400 mt-0.5"></i></li>`;
-        }).join('') || '<li class="text-slate-500 italic">Nichts ausgerÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼stet</li>');
+            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="true" data-count="${count}" class="bg-indigo-900/30 p-1.5 rounded cursor-pointer hover:bg-indigo-800/50 border border-indigo-700/50 flex justify-between group transition-colors" ${titleAttr}><span class="text-indigo-200">${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-indigo-400 mt-0.5"></i></li>`;
+        }).join('') || '<li class="text-slate-500 italic">Nichts ausgeruestet</li>');
 
         const invMap = new Map();
         c.inventory.forEach(it => { invMap.set(it, (invMap.get(it) || 0) + 1); });
@@ -925,7 +933,7 @@ export const UI = {
             const formatted = UI.formatItemDisplay(it);
             const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
             const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="false" data-count="${count}" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors" ${titleAttr}><span>ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
+            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="false" data-count="${count}" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors" ${titleAttr}><span>${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
         }).join('') || '<li class="text-slate-500 italic">Leer</li>');
         }
 

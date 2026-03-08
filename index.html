@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="de">
 
 <head>
@@ -39,11 +39,11 @@
                         class="fas fa-hourglass-half text-purple-400"></i> SCHICKSAL: <span id="hud-fate"
                         class="text-green-400 text-xs">0/100</span></div>
                 <div class="text-[10px] font-bold tracking-widest text-slate-300"><i
-                        class="fas fa-bed text-amber-500"></i> ERSCHÃ–PFUNG: <span id="hud-fatigue"
+                        class="fas fa-bed text-amber-500"></i> ERSCHOEPFUNG: <span id="hud-fatigue"
                         class="text-white text-xs">0</span></div>
                 <div id="weather-badge" class="text-[10px] font-bold tracking-widest text-slate-300"
                     title="Aktuelles Wetter">
-                    <span id="hud-weather-icon">â˜€ï¸</span> <span id="hud-weather-name"
+                    <span id="hud-weather-icon">&#9728;</span> <span id="hud-weather-name"
                         class="text-yellow-300 text-xs">Sonnig</span>
                 </div>
             </div>
@@ -55,13 +55,13 @@
                 title="Multiplayer"><i class="fas fa-users text-cyan-400"></i> MP</button>
             <button data-action="show-api-settings"
                 class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-purple-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
-                title="API Einstellungen Ã¶ffnen"><i class="fas fa-plug text-purple-400"></i> API</button>
+                title="API Einstellungen oeffnen"><i class="fas fa-plug text-purple-400"></i> API</button>
             <button id="sound-toggle" data-action="toggle-sound"
                 class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-indigo-400/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(129,140,248,0.4)] transition-all duration-300 backdrop-blur-md sound-on"
-                title="Sound an/aus">ðŸ”Š</button>
+                title="Sound an/aus"><i class="fas fa-volume-up text-indigo-300"></i></button>
             <button data-action="tts-open-picker"
                 class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-purple-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
-                title="ErzÃ¤hlerstimme wÃ¤hlen"><i class="fas fa-microphone text-purple-400"></i> Stimme</button>
+                title="Erzaehlerstimme waehlen"><i class="fas fa-microphone text-purple-400"></i> Stimme</button>
             <button data-action="download-save"
                 class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-emerald-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white">
                 <i class="fas fa-save text-emerald-400"></i> Welt speichern</button>
@@ -79,10 +79,10 @@
     <main class="flex-1 flex overflow-hidden">
 
         <!-- Linker Bereich: Story & Aktionen -->
-        <section class="flex-1 flex flex-col p-3 md:p-4 gap-3 relative">
+        <section class="flex-1 min-w-0 flex flex-col p-3 md:p-4 gap-3 relative">
 
             <div id="story-log"
-                class="chat-container flex-1 overflow-y-auto space-y-4 p-4 parchment rounded-lg shadow-inner">
+                class="chat-container flex-1 min-h-[24rem] overflow-y-auto space-y-4 p-4 parchment rounded-lg shadow-inner">
                 <div id="lobby-view" class="h-full flex flex-col items-center justify-center text-center p-8">
                     <h2
                         class="text-4xl cinzel text-transparent bg-clip-text bg-gradient-to-b from-purple-300 to-indigo-500 mb-4 glow-text drop-shadow-lg tracking-wider">
@@ -149,18 +149,6 @@
                             <i class="fas fa-campground text-amber-500 group-hover:text-amber-400"></i>
                             Lager aufschlagen</button>
 
-                        <section class="w-full rounded-2xl border border-white/10 bg-black/25 backdrop-blur-md p-3 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-                            <div class="flex items-center justify-between gap-3 mb-2">
-                                <div>
-                                    <p class="text-[10px] uppercase tracking-[0.22em] text-slate-500 font-bold">Wuerfelchronik</p>
-                                    <p class="text-[11px] text-slate-400">Aktuelle Proben der Gruppe bleiben hier sichtbar.</p>
-                                </div>
-                                <i class="fas fa-dice-d20 text-slate-500 text-lg"></i>
-                            </div>
-                            <div id="dynamic-roll-container"
-                                class="grid grid-cols-1 xl:grid-cols-2 gap-2 min-h-[70px] max-h-44 overflow-y-auto custom-scrollbar"></div>
-                        </section>
-
                         <button data-action="ask-oracle"
                             class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-indigo-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
                             <i class="fas fa-sparkles text-indigo-400/70 group-hover:text-indigo-400"></i>
@@ -222,7 +210,7 @@
 
         <!-- Rechter Bereich: Sidebar -->
         <aside
-            class="w-72 md:w-80 lg:w-96 bg-black/20 backdrop-blur-xl border-l border-white/5 p-4 flex flex-col gap-4 overflow-hidden hidden md:flex shadow-[-10px_0_30px_rgba(0,0,0,0.5)] z-40 relative">
+            class="w-[23rem] lg:w-[25rem] bg-black/20 backdrop-blur-xl border-l border-white/5 p-4 flex flex-col gap-4 overflow-hidden hidden md:flex shadow-[-10px_0_30px_rgba(0,0,0,0.5)] z-40 relative">
 
             <!-- Gruppe & Charaktere -->
             <div class="flex-[2] flex flex-col overflow-hidden">
@@ -247,11 +235,26 @@
                 <!-- Sidebar Tabs -->
                 <div class="flex border-b border-white/5 mb-2 text-[10px]">
                     <button class="tab-btn active px-3 py-1.5 text-slate-300 hover:text-white"
-                        data-action="switch-tab" data-tab="party" id="tab-party">ðŸ‘¥ Gruppe</button>
+                        data-action="switch-tab" data-tab="party" id="tab-party">Gruppe</button>
                     <button class="tab-btn px-3 py-1.5 text-slate-400 hover:text-white"
-                        data-action="switch-tab" data-tab="journal" id="tab-journal">ðŸ“– Journal</button>
+                        data-action="switch-tab" data-tab="dice" id="tab-dice">Wuerfel</button>
                     <button class="tab-btn px-3 py-1.5 text-slate-400 hover:text-white"
-                        data-action="switch-tab" data-tab="stats" id="tab-stats">ðŸ“Š Stats</button>
+                        data-action="switch-tab" data-tab="journal" id="tab-journal">Journal</button>
+                    <button class="tab-btn px-3 py-1.5 text-slate-400 hover:text-white"
+                        data-action="switch-tab" data-tab="stats" id="tab-stats">Stats</button>
+                </div>
+
+                <div id="tab-content-dice" class="hidden flex-col overflow-hidden flex-1">
+                    <section class="dice-sidebar-panel flex-1">
+                        <div class="dice-sidebar-head">
+                            <div>
+                                <p class="dice-sidebar-kicker">Wuerfel</p>
+                                <p class="dice-sidebar-copy">Live-Proben und Ergebnisse der Gruppe.</p>
+                            </div>
+                            <i class="fas fa-dice-d20 text-slate-500 text-lg"></i>
+                        </div>
+                        <div id="dynamic-roll-container" class="dice-sidebar-feed custom-scrollbar"></div>
+                    </section>
                 </div>
 
                 <div id="tab-content-party" class="flex flex-col overflow-hidden flex-1">
@@ -262,7 +265,7 @@
                         <div class="flex justify-between items-center border-b border-white/10 pb-2">
                             <button data-action="hide-details"
                                 class="text-xs text-slate-400 hover:text-white transition-colors duration-300 px-2 py-1 flex items-center gap-1"><i
-                                    class="fas fa-chevron-left text-[10px]"></i> ZurÃ¼ck</button>
+                                    class="fas fa-chevron-left text-[10px]"></i> Zurueck</button>
                             <button id="export-hero-btn"
                                 class="text-xs bg-white/5 hover:bg-black/40 border border-white/10 px-2.5 py-1 rounded-lg shadow-[0_0_8px_rgba(0,0,0,0.3)] hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] hover:border-amber-500/50 text-slate-300 hover:text-white transition-all duration-300 backdrop-blur-sm">Export
                                 <i class="fas fa-file-export ml-1 text-amber-400/70"></i></button>
@@ -280,7 +283,7 @@
                     </div>
                     <div id="journal-content"
                         class="overflow-y-auto custom-scrollbar flex-1 space-y-3 text-[11px] text-slate-300 pr-1">
-                        <p class="text-slate-500 italic">Noch keine EintrÃ¤ge. Beginne ein Abenteuer!</p>
+                        <p class="text-slate-500 italic">Noch keine Eintraege. Beginne ein Abenteuer!</p>
                     </div>
                 </div>
 
@@ -830,3 +833,4 @@
 </body>
 
 </html>
+
