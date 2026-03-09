@@ -196,6 +196,13 @@ export const UIBuilders = {
 };
 
 export const UI = {
+    _setHtmlIfChanged: function (element, html) {
+        if (!element) return;
+        const nextHtml = String(html ?? '');
+        if (element.innerHTML !== nextHtml) {
+            element.innerHTML = nextHtml;
+        }
+    },
     formatItemDisplay: function (fullItemString) {
         const sourceText = repairDisplayText(fullItemString || '');
         let effects = [];
@@ -401,7 +408,7 @@ export const UI = {
             if (b.id === myCharId) return 1;
             return 0;
         });
-        DOM.partyList.innerHTML = sanitize(sorted.map(c => UIBuilders.buildHeroCard(c, c.id === myCharId)).join(''));
+        this._setHtmlIfChanged(DOM.partyList, sanitize(sorted.map(c => UIBuilders.buildHeroCard(c, c.id === myCharId)).join('')));
         const isMp = State._mpRole && myCharId;
         if (isMp) {
             const myChar = State.party.find(p => p.id === myCharId);
@@ -417,18 +424,19 @@ export const UI = {
             if (prevActing && DOM.actingChar.querySelector('option[value="' + CSS.escape(prevActing) + '"]')) DOM.actingChar.value = prevActing;
         }
         DOM.enemySection.classList.toggle('hidden', !State.activeEnemies.length && !State.defeatedEnemies.length);
-        DOM.enemyHistoryContainer.innerHTML = sanitize(State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join(''));
-        DOM.currentEnemyContainer.innerHTML = sanitize(State.activeEnemies.map(e => UIBuilders.buildEnemyCard(e, false)).join(''));
+        this._setHtmlIfChanged(DOM.enemyHistoryContainer, sanitize(State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join('')));
+        this._setHtmlIfChanged(DOM.currentEnemyContainer, sanitize(State.activeEnemies.map(e => UIBuilders.buildEnemyCard(e, false)).join('')));
 
         if (DOM.lootDropSection && DOM.lootList) {
             const hadLoot = !DOM.lootDropSection.classList.contains('hidden');
             DOM.lootDropSection.classList.toggle('hidden', !State.lootDrops.length);
-            DOM.lootList.innerHTML = sanitize(State.lootDrops.map((it, idx) => {
+            const lootHtml = sanitize(State.lootDrops.map((it, idx) => {
                 const formatted = UI.formatItemDisplay(it);
                 const titleAttr = formatted.hasEffects ? 'title="' + formatted.tooltip.replace(/"/g, '&quot;') + '"' : '';
                 const effectIcon = formatted.hasEffects ? '<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ' + titleAttr + '></i>' : '';
                 return '<div class="text-[10px] bg-amber-950/60 p-1.5 rounded border border-amber-800/50 flex justify-between items-center mt-1.5 shadow-sm loot-item-entrance" ' + titleAttr + '><span class="text-amber-300 font-mono truncate mr-2 flex-1">+ ' + formatted.displayName + ' ' + effectIcon + '</span><select data-action="assign-loot" data-idx="' + idx + '" class="bg-slate-800 text-slate-300 border border-slate-600 rounded outline-none p-1 max-w-[85px] cursor-pointer"><option value="">Geben...</option>' + State.party.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('') + '</select></div>';
             }).join(''));
+            this._setHtmlIfChanged(DOM.lootList, lootHtml);
             if (!hadLoot && State.lootDrops.length > 0) this.showLootAnimation();
         }
 
@@ -438,7 +446,7 @@ export const UI = {
         if (State.activeMerchant) {
             DOM.merchantSection.classList.remove('hidden');
             DOM.merchantName.innerText = State.activeMerchant.name;
-            DOM.merchantItems.innerHTML = sanitize(State.activeMerchant.items.map(it => '<div class="bg-blue-950/60 p-1.5 rounded border border-blue-800/50 flex justify-between items-center mt-1.5 shadow-sm"><span class="text-blue-200">' + it + '</span></div>').join(''));
+            this._setHtmlIfChanged(DOM.merchantItems, sanitize(State.activeMerchant.items.map(it => '<div class="bg-blue-950/60 p-1.5 rounded border border-blue-800/50 flex justify-between items-center mt-1.5 shadow-sm"><span class="text-blue-200">' + it + '</span></div>').join('')));
         } else {
             DOM.merchantSection.classList.add('hidden');
         }
@@ -464,8 +472,7 @@ export const UI = {
         this.renderDiceFeed();
         this.renderSystemLog();
 
-        const network = window.App?.Network;
-        if (network?.isHost?.() && network?.isConnected?.()) network.broadcastState();
+
     },
 
     toggleTargetMode: function () {
@@ -658,11 +665,11 @@ export const UI = {
         if (!DOM.dynamicRollContainer) return;
         const rolls = Array.isArray(State.recentRolls) ? State.recentRolls : [];
         if (!rolls.length) {
-            DOM.dynamicRollContainer.innerHTML = '<div class="dice-feed-empty">Noch keine Wuerfe in dieser Szene.</div>';
+            this._setHtmlIfChanged(DOM.dynamicRollContainer, '<div class="dice-feed-empty">Noch keine Wuerfe in dieser Szene.</div>');
             return;
         }
 
-        DOM.dynamicRollContainer.innerHTML = sanitize(rolls.map(roll => {
+        const diceFeedHtml = sanitize(rolls.map(roll => {
             const successClass = roll.success === null ? 'border-slate-700/70 is-rolling' : (roll.success ? 'border-emerald-500/40' : 'border-rose-500/40');
             const resultClass = roll.success === null ? 'text-slate-300' : (roll.success ? 'text-emerald-300' : 'text-rose-300');
             const modifierText = roll.modifier ? `${roll.modifier >= 0 ? '+' : ''}${roll.modifier}` : '+0';
@@ -687,15 +694,16 @@ export const UI = {
                 </div>
             </article>`;
         }).join(''));
+        this._setHtmlIfChanged(DOM.dynamicRollContainer, diceFeedHtml);
     },
     renderSystemLog: function () {
         if (!DOM.systemContent) return;
         const entries = Array.isArray(State.systemMessages) ? State.systemMessages : [];
         if (!entries.length) {
-            DOM.systemContent.innerHTML = '<p class="system-feed-empty">Noch keine Systemmeldungen.</p>';
+            this._setHtmlIfChanged(DOM.systemContent, '<p class="system-feed-empty">Noch keine Systemmeldungen.</p>');
             return;
         }
-        DOM.systemContent.innerHTML = sanitize([...entries].reverse().map(entry => {
+        const systemHtml = sanitize([...entries].reverse().map(entry => {
             const tone = entry.tone || 'neutral';
             const content = sanitize(repairHtmlText(String(entry.text || '').replace(/\n/g, '<br>')));
             return `<article class="system-feed-item system-feed-${tone}">
@@ -706,6 +714,7 @@ export const UI = {
                 <div class="system-feed-text">${content}</div>
             </article>`;
         }).join(''));
+        this._setHtmlIfChanged(DOM.systemContent, systemHtml);
     },
     _appendSystemMessage: function (sender, text, tone = 'neutral', options = {}) {
         State.systemMessages = Array.isArray(State.systemMessages) ? State.systemMessages : [];
@@ -798,7 +807,8 @@ export const UI = {
         if (State.gameStarted || State.sessionPhase === 'in_game') return;
         const phase = State.sessionPhase || 'start';
         const html = phase === 'pregame' ? this._buildPregameLobbyHtml() : this._buildEntryScreenHtml();
-        DOM.lobbyView.innerHTML = sanitize(html);
+        const nextHtml = sanitize(html);
+        this._setHtmlIfChanged(DOM.lobbyView, nextHtml);
     },
 
     _buildEntryScreenHtml: function () {
@@ -1402,5 +1412,6 @@ export const UI = {
         }
     }
 };
+
 
 
