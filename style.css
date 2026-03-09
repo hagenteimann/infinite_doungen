@@ -1177,14 +1177,19 @@
 }
 
 .thinking-status-chip:not(.hidden) {
-  display: inline-flex;
+  display: flex;
 }
 
 .thinking-status-chip {
+  position: fixed;
+  left: 50%;
+  top: 0.9rem;
+  transform: translateX(-50%);
+  z-index: 120;
   align-items: center;
   gap: 0.7rem;
   min-width: 172px;
-  max-width: 220px;
+  max-width: min(320px, calc(100vw - 2rem));
   padding: 0.55rem 0.8rem;
   border-radius: 0.95rem;
   border: 1px solid rgba(251, 191, 36, 0.28);
@@ -1410,6 +1415,18 @@
   font-weight: 700;
 }
 
+.chat-turn-label {
+  margin: 0.25rem 0 0.55rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(250, 204, 21, 0.82);
+}
+
+body.session-startscreen .thinking-status-chip {
+  display: none !important;
+}
 .chat-sender-dm {
   color: #c084fc;
 }
@@ -1889,3 +1906,5 @@ body.session-startscreen #story-log {
     border: 0;
     box-shadow: none;
 }
+
+

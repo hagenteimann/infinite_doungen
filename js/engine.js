@@ -34,6 +34,17 @@ export const Engine = {
         return String(Network.playerName || State.localPlayerName || '').trim();
     },
 
+    _getActiveDmContext() {
+        const activePlayer = Network.isConnected() ? (Network.turnOrder?.[Network.currentTurnIndex] || '') : '';
+        const actingValue = String(DOM.actingChar?.value || '').trim();
+        const actingName = actingValue && actingValue !== 'party' ? actingValue : '';
+        const fallbackPlayer = this._getResolvedLocalPlayerName();
+        return {
+            relatedPlayer: activePlayer || fallbackPlayer || actingName || '',
+            relatedCharacter: actingName || ''
+        };
+    },
+
     _syncLocalProfile(updates = {}) {
         const name = updates.name || this._getResolvedLocalPlayerName();
         if (!name) return null;
@@ -473,8 +484,9 @@ export const Engine = {
             }
 
             if (cleanText.length > 0) {
-                if (Network.isHost() && Network.isConnected()) Network.broadcastChat("DM", cleanText);
-                else UI.addChatLog("DM", cleanText);
+                const dmContext = this._getActiveDmContext();
+                if (Network.isHost() && Network.isConnected()) Network.broadcastChat("DM", cleanText, dmContext);
+                else UI.addChatLog({ sender: "DM", text: cleanText, senderType: 'dm', relatedPlayer: dmContext.relatedPlayer, relatedCharacter: dmContext.relatedCharacter });
             }
         } catch (e) { UI.addChatLog("System", `Fehler: ${e.message}`); }
         finally {
@@ -663,6 +675,7 @@ export const Engine = {
             };
 
             if (Network.isClient() && Network.isConnected()) {
+                UI.pushDiceFeedEntry(animationPayload);
                 Network.sendDiceResult(roll.id, result, rawRoll);
             } else if (Network.isHost() && Network.isConnected()) {
                 UI.pushDiceFeedEntry(animationPayload);
@@ -751,6 +764,10 @@ export const Engine = {
     _queuePendingRollSubmission: function () {
         const allResolved = State.pendingRolls.length > 0 && State.pendingRolls.every(r => r.rolled);
         if (!allResolved || State.isProcessing || this._pendingRollSubmissionQueued) return;
+        if (Network.isClient() && Network.isConnected()) {
+            UI.updateActionBox();
+            return;
+        }
         if (Network.isHost() && Network.isConnected()) {
             Network._queuePendingRollResolution();
             return;
@@ -1337,3 +1354,6 @@ export const Engine = {
         e.target.value = "";
     }
 };
+
+
+

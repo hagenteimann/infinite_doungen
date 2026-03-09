@@ -521,14 +521,24 @@ export const Network = {
         });
     },
 
+    sendInventoryAction(action, payload) {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], {
+            type: 'ITEM_ACTION',
+            action,
+            payload,
+            playerName: this.playerName,
+        });
+    },
+
     broadcastState() {
         if (!this.isHost()) return;
         this._markDirty();
     },
 
-    broadcastChat(sender, text) {
+    broadcastChat(sender, text, meta = {}) {
         if (!this.isHost()) return;
-        this._recordChatEntry({ id: this._nextId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: false, createdAt: Date.now() }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
+        this._recordChatEntry({ id: this._nextId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: false, createdAt: Date.now(), relatedPlayer: meta.relatedPlayer || '', relatedCharacter: meta.relatedCharacter || '' }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
     },
 
     broadcastSystemChat(sender, text) {
@@ -550,7 +560,7 @@ export const Network = {
             if (char && char.hp > 0) {
                 setTimeout(() => {
                     const action = this._generateAutoAction(char);
-                    this._recordChatEntry({ id: this._nextId('msg'), sender: char.name, text: action, senderType: 'player', isAiControlled: true, createdAt: Date.now() }, 'PLAYER_CHAT');
+                    this._recordChatEntry({ id: this._nextId('msg'), sender: char.name, text: action, senderType: 'player', isAiControlled: true, createdAt: Date.now(), relatedPlayer: currentPlayer, relatedCharacter: char.name }, 'PLAYER_CHAT');
                     Engine.interactWithAI(action);
                 }, 600);
             }
@@ -1078,7 +1088,7 @@ export const Network = {
         switch (msg.type) {
             case 'PLAYER_ACTION': {
                 Sound.play('turn');
-                this._recordChatEntry({ id: this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: Date.now() }, 'PLAYER_CHAT');
+                this._recordChatEntry({ id: this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: Date.now(), relatedPlayer: msg.playerName || name, relatedCharacter: msg.actingChar || '' }, 'PLAYER_CHAT');
                 if (DOM.actingChar) DOM.actingChar.value = msg.actingChar || 'party';
                 Engine.interactWithAI(msg.action);
                 break;
@@ -1091,7 +1101,7 @@ export const Network = {
                 Sound.play('turn');
                 this.combatActions[msg.playerName] = { action: msg.action, charName: msg.charName };
                 const combatSender = msg.charName || msg.playerName;
-                this._recordChatEntry({ id: this._nextId('msg'), sender: combatSender, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(msg.playerName) === 'ai', createdAt: Date.now() }, 'PLAYER_CHAT');
+                this._recordChatEntry({ id: this._nextId('msg'), sender: combatSender, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(msg.playerName) === 'ai', createdAt: Date.now(), relatedPlayer: msg.playerName || combatSender, relatedCharacter: msg.charName || combatSender }, 'PLAYER_CHAT');
                 this._broadcastCombatStatus();
                 this._queueCombatExecution();
                 break;
@@ -1284,10 +1294,12 @@ export const Network = {
                 if (msg.entry?.id && this._seenMessageIds.has(msg.entry.id)) break;
                 UI.addChatLog(msg.entry || { id: this._nextId('msg'), sender: msg.sender || 'DM', text: msg.text, senderType: 'dm', createdAt: Date.now() }, null, { persist: true });
                 break;
+            case 'DICE_ROLL_STARTED':
+                if (msg.payload?.id) UI.pushDiceFeedEntry(msg.payload);
+                break;
             case 'DICE_ANIMATION':
                 UI.showNetworkDiceAnimation(msg.payload || {});
                 break;
-            case 'TRANSIENT_EVENT':
                 if (msg.event?.id && this._seenEventIds.has(msg.event.id)) break;
                 this._pushTransientEvent(msg.event || {}, { broadcast: false });
                 break;
@@ -1730,3 +1742,7 @@ export const Network = {
         });
     },
 };
+
+
+
+
