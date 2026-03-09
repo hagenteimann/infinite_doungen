@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull:*)",
+      "Bash(git:*)",
+      "Bash(mv:*)",
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "WebSearch",
+      "Bash(npx get-shit-done-cc:*)",
+      "Bash(grep:*)",
+      "Bash(python3:*)",
+      "Bash(gh repo:*)",
+      "WebFetch(domain:openrouter.ai)",
+      "WebFetch(domain:ai.google.dev)"
+    ]
+  }
+}
