@@ -559,13 +559,21 @@ export const UI = {
             DOM.playerInput.placeholder = 'Was tut ihr?';
         }
     },
+    _chatScrollRaf: null,
     scrollChatToBottom: function () {
         if (!DOM.storyLog) return;
-        const scroll = () => {
-            DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
-        };
-        scroll();
-        requestAnimationFrame(scroll);
+        if (this._chatScrollRaf) cancelAnimationFrame(this._chatScrollRaf);
+        this._chatScrollRaf = requestAnimationFrame(() => {
+            DOM.storyLog.scrollTo({ top: DOM.storyLog.scrollHeight, behavior: 'auto' });
+            this._chatScrollRaf = null;
+        });
+    },
+    _insertChatRow: function (row, createdAt) {
+        if (!DOM.storyLog) return;
+        const rows = Array.from(DOM.storyLog.querySelectorAll('[data-chat-id]'));
+        const nextRow = rows.find(node => Number(node.dataset.createdAt || 0) > Number(createdAt || 0));
+        if (nextRow) DOM.storyLog.insertBefore(row, nextRow);
+        else DOM.storyLog.appendChild(row);
     },
 
     rebuildChatLog: function () {
@@ -793,16 +801,17 @@ export const UI = {
         const row = document.createElement('article');
         row.dataset.chatId = entry.id;
         row.className = 'tts-msg chat-message-glide chat-row ' + (entry.senderType === 'dm' ? 'chat-row-dm' : 'chat-row-player');
+        row.dataset.createdAt = String(entry.createdAt || Date.now());
         const speaker = entry.isAiControlled ? entry.sender + ' <span class="chat-ai-badge">AI</span>' : entry.sender;
         if (entry.senderType === 'dm') {
             const ttsBtn = '<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>';
-            const relation = entry.relatedPlayer ? '<div class="chat-turn-label">Zug von ' + entry.relatedPlayer + (entry.relatedCharacter ? ' - ' + entry.relatedCharacter : '') + '</div>' : '';
+            const relation = entry.relatedPlayer ? '<div class="chat-turn-label">Zug von ' + entry.relatedPlayer + '</div>' : '';
             row.innerHTML = sanitize('<div class="dm-message-card chat-bubble chat-bubble-dm"><div class="chat-meta-row"><span class="chat-sender chat-sender-dm">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span>' + ttsBtn + '</div>' + relation + '<div class="tts-text dm-copy text-sm md:text-base leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, true) + '</div></div>');
         } else {
             const mine = window.App?.Network?.playerName && entry.sender === window.App.Network.playerName ? ' chat-bubble-self' : '';
             row.innerHTML = sanitize('<div class="chat-bubble chat-bubble-player' + mine + '"><div class="chat-meta-row"><span class="chat-sender">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span></div><div class="tts-text text-sm leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, false) + '</div></div>');
         }
-        DOM.storyLog.appendChild(row);
+        this._insertChatRow(row, entry.createdAt);
         if (!options.deferScroll) this.scrollChatToBottom();
     },
     renderLobbyView: function () {
@@ -1426,6 +1435,7 @@ export const UI = {
         }
     }
 };
+
 
 
 
