@@ -1,10 +1,10 @@
-﻿import { State } from './state.js';
+import { State } from './state.js';
 import { PRESETS, TALENT_TREES, EQUIPMENT_SETS } from './prompts.js';
 import { PartyManager } from './party.js';
 import { Sound } from './sound.js';
 import { Utils } from './utils.js';
 import { API } from './api.js';
-import { sanitize, sanitizeStrict } from './sanitize.js';
+import { repairDisplayText, repairHtmlText, sanitize, sanitizeStrict } from './sanitize.js';
 import { DICE_ANIMATION_TICKS, DICE_ANIMATION_INTERVAL_MS, XP_BASE, XP_SCALING_EXPONENT } from './constants.js';
 
 /* ==========================================
@@ -124,9 +124,9 @@ export const initDOM = () => {
         'item-action-is-equipped', 'modal-inv-actions', 'item-action-target',
         'modal-eq-actions', 'load-input', 'merchant-section', 'merchant-name', 'merchant-items', 'btn-offer-item',
         'crafting-modal', 'craft-inv-list', 'craft-sel-list', 'craft-target-item',
-        'journal-content', 'stats-content', 'quick-actions-container', 'sound-toggle',
-        'tab-party', 'tab-dice', 'tab-journal', 'tab-stats',
-        'tab-content-party', 'tab-content-dice', 'tab-content-journal', 'tab-content-stats'
+        'journal-content', 'stats-content', 'system-content', 'quick-actions-container', 'sound-toggle',
+        'topbar-thinking-status', 'topbar-thinking-text', 'tab-party', 'tab-dice', 'tab-system', 'tab-journal', 'tab-stats',
+        'tab-content-party', 'tab-content-dice', 'tab-content-system', 'tab-content-journal', 'tab-content-stats'
     ];
     ids.forEach(id => {
         const camelCaseId = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
@@ -152,6 +152,7 @@ export const initDOM = () => {
    ========================================== */
 export const UIBuilders = {
     buildHeroCard: function (c, isOwnHero = false) {
+        c = { ...c, name: repairDisplayText(c.name || ''), class: repairDisplayText(c.class || '') };
         const isDead = c.hp === 0;
         const ownHighlight = isOwnHero && !isDead ? 'border-cyan-400/70 shadow-[0_0_20px_rgba(34,211,238,0.35)] ring-1 ring-cyan-500/30' : '';
         const borderClass = ownHighlight || (isDead ? 'border-red-900 shadow-[0_0_15px_rgba(220,38,38,0.3)] grayscale opacity-80' :
@@ -178,6 +179,7 @@ export const UIBuilders = {
         </div>`;
     },
     buildEnemyCard: function (e, isDeadFlag) {
+        e = { ...e, name: repairDisplayText(e.name || ''), description: repairDisplayText(e.description || ''), appearance: repairDisplayText(e.appearance || ''), loot: repairDisplayText(e.loot || '') };
         const isDead = isDeadFlag || e.hp <= 0;
         const hpDisplay = isDead ? 0 : e.hp;
         const hpBarWidth = isDead ? 0 : (e.hp / e.maxHp) * 100;
@@ -194,12 +196,13 @@ export const UIBuilders = {
 
 export const UI = {
     formatItemDisplay: function (fullItemString) {
+        const sourceText = repairDisplayText(fullItemString || '');
         let effects = [];
-        let cleanName = fullItemString.replace(/\s*\((.*?)\)/g, (match, p1) => {
-            effects.push(p1);
+        let cleanName = sourceText.replace(/\s*\((.*?)\)/g, (match, p1) => {
+            effects.push(repairDisplayText(p1));
             return '';
         }).trim();
-        if (!cleanName) cleanName = fullItemString;
+        if (!cleanName) cleanName = sourceText;
 
         let visibleStats = [];
         let hiddenEffects = [];
@@ -221,22 +224,30 @@ export const UI = {
     },
     toggleViews: function (s) { DOM.lobbyView.classList.toggle('hidden', s); DOM.actionArea.classList.toggle('hidden', !s); },
     showLoader: function (s, t = 'Laedt...') {
-        DOM.loadingSpinner.classList.toggle('hidden', !s);
-        DOM.loadingSpinner.classList.add('pointer-events-none');
-        DOM.loadingText.innerText = t || 'Laedt...';
+        const text = repairDisplayText(t || 'Laedt...');
+        if (DOM.loadingSpinner) DOM.loadingSpinner.classList.add('hidden');
+        if (DOM.loadingText) DOM.loadingText.innerText = text;
+        if (DOM.topbarThinkingStatus) DOM.topbarThinkingStatus.classList.toggle('hidden', !s);
+        if (DOM.topbarThinkingText) DOM.topbarThinkingText.innerText = text;
     },
     selectOption: function (t) {
         this.clearSuggestions();
-        const optionText = String(t || '');
+        const optionText = repairDisplayText(String(t || ''));
         const normalized = optionText
-            .replace(/<[^>]+>/g, ' ')
+            .replace(/<br\s*\/?>/gi, ' ')
+            .replace(/<strong[^>]*>.*?<\/strong>/gi, match => match.replace(/<[^>]+>/g, ''))
+            .replace(/<[^>]+>/g, '')
             .replace(/&nbsp;/gi, ' ')
             .replace(/&amp;/gi, '&')
             .replace(/&quot;/gi, '"')
             .replace(/&#39;/gi, "'")
+            .replace(/^[::][^\s]+\s+/g, '')
+            .replace(/^[-*]\s*/g, '')
+            .replace(/\s+[|>]+\s*/g, ' ')
+            .replace(/^(?:[\p{Extended_Pictographic}\p{Emoji_Presentation}\u2600-\u27BF]\s*)+/gu, '')
             .replace(/\s+/g, ' ')
             .trim();
-        DOM.playerInput.value = normalized;
+        DOM.playerInput.value = normalized.replace(/<[^>]+>/g, '').trim();
         DOM.playerInput.focus();
     },
 
@@ -287,7 +298,7 @@ export const UI = {
     },
 
     switchTab: function (tab) {
-        ['party', 'dice', 'journal', 'stats'].forEach(t => {
+        ['party', 'dice', 'system', 'journal', 'stats'].forEach(t => {
             const btn = DOM[`tab${t.charAt(0).toUpperCase() + t.slice(1)}`];
             const content = DOM[`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`];
             if (!btn || !content) return;
@@ -297,6 +308,7 @@ export const UI = {
             content.classList.toggle('flex', active);
         });
         if (tab === 'dice') this.renderDiceFeed();
+        if (tab === 'system') this.renderSystemLog();
         if (tab === 'journal') this.renderJournal();
         if (tab === 'stats') this.renderStats();
     },
@@ -306,15 +318,15 @@ export const UI = {
             DOM.journalContent.innerHTML = '<p class="text-slate-500 italic">Noch keine Eintraege. Starte ein Abenteuer und klicke auf Update!</p>';
             return;
         }
-        DOM.journalContent.innerHTML = sanitize(State.journal.map((e, i) => `
+        DOM.journalContent.innerHTML = sanitize(repairHtmlText(State.journal.map((e, i) =>             `
             <div class="journal-entry fade-in">
                 <div class="flex justify-between text-[9px] text-slate-500 mb-1">
                     <span>Eintrag #${State.journal.length - i}</span>
-                    <span>${e.timestamp}</span>
+                    <span>${repairDisplayText(e.timestamp || '')}</span>
                 </div>
-                <p class="text-slate-300 leading-relaxed">${e.text}</p>
+                <p class="text-slate-300 leading-relaxed">${repairDisplayText(e.text || '')}</p>
             </div>
-        `).join(''));
+        `).join('')));
     },
 
     renderStats: function () {
@@ -339,7 +351,7 @@ export const UI = {
             </div>`;
         }).join('');
 
-        DOM.statsContent.innerHTML = `
+        DOM.statsContent.innerHTML = sanitize(repairHtmlText(`
             <div class="space-y-3">
                 <div>
                     <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-wider">Kampf</div>
@@ -368,7 +380,7 @@ export const UI = {
                     </div>
                 </div>
             </div>
-        `;
+        `));
     },
     toggleTargetMode: function () {
         State.targetMapMode = !State.targetMapMode;
@@ -395,7 +407,17 @@ export const UI = {
         }
     },
 
+    _updateAllTimeout: null,
     updateAll: function () {
+        if (this._updateAllTimeout) {
+            cancelAnimationFrame(this._updateAllTimeout);
+        }
+        this._updateAllTimeout = requestAnimationFrame(() => {
+            this._updateAllInternal();
+        });
+    },
+
+    _updateAllInternal: function () {
         const myCharId = State._mpMyCharId || null;
         const sorted = [...State.party].sort((a, b) => {
             if (a.id === myCharId) return -1;
@@ -481,9 +503,10 @@ export const UI = {
                 } else if (State.fatigue >= 8) {
                     fatigueEl.classList.add('text-amber-500');
                     fatigueEl.classList.remove('text-red-500', 'animate-pulse', 'text-white');
-                } else {
-                    fatigueEl.classList.add('text-white');
-                    fatigueEl.classList.remove('text-red-500', 'text-amber-500', 'animate-pulse');
+        this.updateTargetModeButton();
+        this.updateActionBox();
+        this.renderDiceFeed();
+        this.renderSystemLog();
                 }
             }
         }
@@ -499,7 +522,17 @@ export const UI = {
 
     },
 
+    _updateActionBoxTimeout: null,
     updateActionBox: function () {
+        if (this._updateActionBoxTimeout) {
+            cancelAnimationFrame(this._updateActionBoxTimeout);
+        }
+        this._updateActionBoxTimeout = requestAnimationFrame(() => {
+            this._updateActionBoxInternal();
+        });
+    },
+
+    _updateActionBoxInternal: function () {
         if (State.pendingRolls.length > 0) {
             DOM.actionBoxContainer.classList.remove('hidden');
             DOM.playerInput.disabled = true;
@@ -621,9 +654,9 @@ export const UI = {
         State.recentRolls = Array.isArray(State.recentRolls) ? State.recentRolls : [];
         const normalized = {
             id: entry.id || `${entry.name}-${Date.now()}`,
-            name: entry.name,
-            reason: entry.reason || 'Probe',
-            diceType: entry.diceType || 'W20',
+            name: repairDisplayText(entry.name),
+            reason: repairDisplayText(entry.reason || 'Probe'),
+            diceType: repairDisplayText(entry.diceType || 'W20'),
             rawRoll: entry.rawRoll ?? null,
             modifier: entry.modifier || 0,
             result: entry.result ?? null,
@@ -646,7 +679,7 @@ export const UI = {
         }
 
         DOM.dynamicRollContainer.innerHTML = sanitize(rolls.map(roll => {
-            const successClass = roll.success === null ? 'border-slate-700/70' : (roll.success ? 'border-emerald-500/40' : 'border-rose-500/40');
+            const successClass = roll.success === null ? 'border-slate-700/70 is-rolling' : (roll.success ? 'border-emerald-500/40' : 'border-rose-500/40');
             const resultClass = roll.success === null ? 'text-slate-300' : (roll.success ? 'text-emerald-300' : 'text-rose-300');
             const modifierText = roll.modifier ? `${roll.modifier >= 0 ? '+' : ''}${roll.modifier}` : '+0';
             const dcText = roll.targetDC != null ? `DC ${roll.targetDC}` : 'Freier Wurf';
@@ -671,64 +704,104 @@ export const UI = {
             </article>`;
         }).join(''));
     },
+    renderSystemLog: function () {
+        if (!DOM.systemContent) return;
+        const entries = Array.isArray(State.systemMessages) ? State.systemMessages : [];
+        if (!entries.length) {
+            DOM.systemContent.innerHTML = '<p class="system-feed-empty">Noch keine Systemmeldungen.</p>';
+            return;
+        }
+        DOM.systemContent.innerHTML = sanitize([...entries].reverse().map(entry => {
+            const tone = entry.tone || 'neutral';
+            const content = sanitize(repairHtmlText(String(entry.text || '').replace(/\n/g, '<br>')));
+            return `<article class="system-feed-item system-feed-${tone}">
+                <div class="system-feed-meta">
+                    <span class="system-feed-sender">${repairDisplayText(entry.sender || 'System')}</span>
+                    <span class="system-feed-time">${repairDisplayText(entry.timestamp || '')}</span>
+                </div>
+                <div class="system-feed-text">${content}</div>
+            </article>`;
+        }).join(''));
+    },
+    _appendSystemMessage: function (sender, text, tone = 'neutral', options = {}) {
+        State.systemMessages = Array.isArray(State.systemMessages) ? State.systemMessages : [];
+        if (options.persist !== false) {
+            State.systemMessages.push({
+                sender,
+                text,
+                tone,
+                timestamp: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+            });
+            if (State.systemMessages.length > 120) State.systemMessages.shift();
+        }
+        this.renderSystemLog();
+    },
+
+    _formatDmText: function (html) {
+        let content = String(html || '').trim();
+        if (!content) return content;
+
+        content = content.replace(/(<div class="mt-3">[\s\S]*<\/div>)$/i, '<div class="dm-suggestions-wrap">$1</div>');
+        const parts = content.split(/<div class="dm-suggestions-wrap">/i);
+        let narrative = parts[0] || '';
+        const suggestions = parts[1] ? '<div class="dm-suggestions-wrap">' + parts[1] : '';
+
+        narrative = narrative
+            .replace(/(?:<br>\s*){3,}/g, '<br><br>')
+            .replace(/([^>])<br><br>/g, '$1</p><p class="dm-copy-block">')
+            .replace(/^/, '<p class="dm-copy-block">')
+            .replace(/$/, '</p>')
+            .replace(/<p class="dm-copy-block">\s*<\/p>/g, '')
+            .replace(/<p class="dm-copy-block">(.*?\?)<\/p>/g, '<p class="dm-copy-block dm-question-line">$1</p>');
+
+        return narrative + suggestions;
+    },
+
     addChatLog: function (s, t, options = {}) {
+        s = repairDisplayText(s || '');
+        t = repairDisplayText(t || '');
         const isAI = s === 'DM' || s.includes('Orakel') || s.includes('Schicksal');
         const isDice = s.includes('Wurf') || s.includes('Wuerfel') || s.includes('Dice');
         const isWeather = s.includes('Wetter') || s.includes('Weather');
         const isSys = !isAI && !isDice && !isWeather && s.includes('System');
 
         const persist = options.persist !== false;
+        if (isSys || isWeather) {
+            const tone = isWeather ? 'weather' : (t.includes('Fehler') ? 'danger' : 'neutral');
+            this._appendSystemMessage(s, t, tone, { persist });
+            return;
+        }
+
         if (persist) {
             State.chatMessages = State.chatMessages || [];
             State.chatMessages.push({ sender: s, text: t });
             if (State.chatMessages.length > 200) State.chatMessages.shift();
         }
 
+        if (isDice) return;
+
         let formattedText = t;
         formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-amber-300">$1</strong>');
         formattedText = formattedText.replace(/\*(.*?)\*/g, '<em class="text-slate-300">$1</em>');
         formattedText = formattedText.replace(/\n/g, '<br>');
 
-        if (isSys) {
-            const lastMsg = DOM.storyLog.lastElementChild;
-            if (lastMsg && lastMsg.classList.contains('chat-sys-group')) {
-                const content = lastMsg.querySelector('.sys-lines');
-                if (content) {
-                    const line = document.createElement('div');
-                    line.className = 'text-[10px] text-slate-500 leading-snug';
-                    line.innerHTML = sanitize(formattedText);
-                    content.appendChild(line);
-                    DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
-                    return;
-                }
-            }
-        }
-
         const d = document.createElement('div');
 
         if (isAI) {
-            d.className = 'w-full mr-auto p-4 rounded-2xl relative fade-in mb-3 bg-black/40 backdrop-blur-md border border-white/10 border-l-4 border-l-purple-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)]';
-            const ttsBtn = `<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>`;
-            const safeText = sanitizeStrict(formattedText);
-            d.innerHTML = sanitize(`<div class="text-[10px] font-bold uppercase mb-2 tracking-[0.2em] text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">${s}${ttsBtn}</div><div class="tts-text text-sm md:text-base leading-relaxed text-slate-200">${safeText}</div>`);
-        } else if (isDice) {
-            d.className = 'px-3 py-1.5 rounded-lg fade-in mb-1.5 bg-indigo-950/30 border border-indigo-500/20 backdrop-blur-sm';
-            d.innerHTML = sanitize(`<div class="flex items-baseline gap-2"><span class="text-[9px] font-bold uppercase text-indigo-400 shrink-0">${s}</span><span class="tts-text text-[11px] leading-snug text-slate-300 font-mono">${formattedText}</span></div>`);
-        } else if (isWeather) {
-            d.className = 'px-3 py-2 rounded-lg fade-in mb-2 bg-sky-950/25 border border-sky-500/15 backdrop-blur-sm';
-            d.innerHTML = sanitize(`<div class="text-[9px] font-bold uppercase text-sky-400 mb-1">${s}</div><div class="tts-text text-[11px] leading-relaxed text-slate-300">${formattedText}</div>`);
-        } else if (isSys) {
-            d.className = 'chat-sys-group px-3 py-1.5 rounded-md fade-in mb-1 border-l-2 border-l-slate-600/40 bg-black/15';
-            d.innerHTML = sanitize(`<div class="sys-lines"><div class="text-[10px] text-slate-500 leading-snug">${formattedText}</div></div>`);
+            d.className = 'dm-message-card w-full mr-auto p-4 rounded-2xl relative fade-in mb-3 bg-black/40 backdrop-blur-md border border-white/10 border-l-4 border-l-purple-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)]';
+            const ttsBtn = '<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>';
+            const safeText = sanitize(this._formatDmText(formattedText));
+            d.innerHTML = sanitize('<div class="text-[10px] font-bold uppercase mb-2 tracking-[0.2em] text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">' + s + ttsBtn + '</div><div class="tts-text dm-copy text-sm md:text-base leading-relaxed text-slate-200">' + safeText + '</div>');
         } else {
             d.className = 'w-full ml-auto px-3 py-2 rounded-2xl fade-in mb-2 bg-amber-900/20 backdrop-blur-sm border border-amber-500/20 shadow-[0_4px_18px_rgba(245,158,11,0.08)]';
-            d.innerHTML = sanitize(`<div class="text-[9px] font-bold uppercase mb-0.5 tracking-wider text-amber-400">${s}</div><div class="tts-text text-sm leading-relaxed text-slate-300">${formattedText}</div>`);
+            d.innerHTML = sanitize('<div class="text-[9px] font-bold uppercase mb-0.5 tracking-wider text-amber-400">' + s + '</div><div class="tts-text text-sm leading-relaxed text-slate-300">' + formattedText + '</div>');
         }
 
         d.classList.add('tts-msg');
         DOM.storyLog.appendChild(d);
         DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
     },
+
 
     showCreator: function () { DOM.creatorModal.classList.remove('hidden'); },
     showAbilityReplaceModal: function (charId, newAbility) {
@@ -835,7 +908,7 @@ export const UI = {
             <div class="hero-details-stack">
         `;
 
-        DOM.detailsContent.innerHTML = sanitize(`
+        DOM.detailsContent.innerHTML = sanitize(repairHtmlText(`
             ${detailPortraitHtml}
             ${(() => {
                 let abilities = [];
@@ -855,7 +928,7 @@ export const UI = {
                 }).join('') + '</div>';
             })()}
             ${(() => {
-                // Feature 1: Item-FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten aus ausgerÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼steten Items extrahieren
+                // Feature 1: Item-Fähigkeiten aus ausgerüsteten Items extrahieren
                 let itemAbilities = [];
                 (c.equipment || []).forEach(item => {
                     let effects = [];
@@ -864,7 +937,7 @@ export const UI = {
                         return '';
                     });
                     effects.forEach(e => {
-                        // Nur Nicht-Stat-Effekte als FÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤higkeiten zÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤hlen
+                        // Nur Nicht-Stat-Effekte als Fähigkeiten zählen
                         if (!e.match(/^[+-]\d+\s*(STR|DEX|INT|CON)|(STR|DEX|INT|CON)\s*[+-]\d+$/i)) {
                             itemAbilities.push({ effect: e, source: item.replace(/\s*\(.*?\)/g, '').trim() });
                         }
@@ -900,7 +973,7 @@ export const UI = {
                 <ul id="inventory-list-${c.id}" class="text-[10px] space-y-1.5"></ul>
                 <button data-action="start-crafting" data-char-id="${c.id}" class="w-full mt-2 bg-indigo-700/40 hover:bg-indigo-600/60 border border-indigo-500/50 text-indigo-200 text-[10px] py-1.5 rounded font-bold shadow-sm transition-all"><i class="fas fa-hammer mr-1"></i> Schmiede / Verzaubern</button>
             </div>`}
-            </div>`);
+            </div>`));
 
         if (!isPrivateInventory) {
         const eqMap = new Map();
@@ -949,7 +1022,7 @@ export const UI = {
         const portrait = enemy.portrait
             ? `<img src="${enemy.portrait}" class="hero-detail-header-bg" aria-hidden="true"><img src="${enemy.portrait}" class="hero-detail-header-portrait">`
             : `<div class="hero-detail-fallback-icon">??</div>`;
-        DOM.detailsContent.innerHTML = sanitize(`
+        DOM.detailsContent.innerHTML = sanitize(repairHtmlText(`
             <div class="hero-detail-header sticky top-0 z-20 rounded-xl overflow-hidden border border-red-600/50 shadow-[0_10px_30px_rgba(0,0,0,0.45)] mb-3">
                 <div class="hero-detail-header-media ${enemy.portrait ? '' : 'hero-detail-header-fallback'}">
                     ${portrait}
@@ -957,7 +1030,7 @@ export const UI = {
                 </div>
                 <div class="hero-detail-header-meta">
                     <h3 class="cinzel text-red-300 text-sm tracking-wide">${enemy.name}</h3>
-                    <p class="text-[10px] text-slate-200/90">Monster ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
+                    <p class="text-[10px] text-slate-200/90">Monster • ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
                     <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-red-700 to-red-400 h-full" style="width: ${Math.max(0, Math.min(100, (enemy.hp / enemy.maxHp) * 100))}%"></div></div>
                     <p class="text-[9px] text-slate-300/80 mt-1">${Math.max(0, enemy.hp)}/${enemy.maxHp} HP</p>
                 </div>
@@ -976,7 +1049,7 @@ export const UI = {
                     </div>
                 </div>
             </div>
-        `);
+        `));
         DOM.exportHeroBtn.removeAttribute('data-char-id');
         DOM.exportHeroBtn.removeAttribute('data-action');
     },
@@ -1182,3 +1255,5 @@ export const UI = {
         }
     }
 };
+
+

@@ -10,12 +10,21 @@
     "test": "vitest"
   },
   "packageManager": "bun@1.3.10",
-  "keywords": ["dnd", "ai", "dungeon-master", "peerjs", "webrtc"],
+  "keywords": [
+    "dnd",
+    "ai",
+    "dungeon-master",
+    "peerjs",
+    "webrtc"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.59.0",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.2.1",
     "@tailwindcss/vite": "^4.2.1",
     "jsdom": "^28.1.0",
+    "lightningcss-win32-x64-msvc": "^1.31.1",
     "tailwindcss": "^4.2.1",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"

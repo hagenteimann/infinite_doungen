@@ -3,7 +3,7 @@ export const State = {
     lastStoryPart: "", gameStarted: false, isProcessing: false,
     tempPortraitData: "", tempImagePrompt: "",
     pendingRolls: [], recentRolls: [], craftingIngredients: [], routeChoices: [],
-    chatMessages: [],
+    chatMessages: [], systemMessages: [],
     targetMapMode: false,
     imageQuotaExceeded: false,
     combatEnded: false,

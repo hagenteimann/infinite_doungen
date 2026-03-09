@@ -29,10 +29,10 @@
     <!-- HEADER                                     -->
     <!-- ========================================== -->
     <header
-        class="p-4 border-b border-purple-900/40 bg-black/30 backdrop-blur-xl flex justify-between items-center shadow-[0_4px_30px_rgba(0,0,0,0.5)] z-50">
+        class="p-4 border-b border-purple-900/40 bg-black/40 backdrop-blur-xl flex justify-between items-center shadow-[0_4px_30px_rgba(0,0,0,0.6)] z-50">
         <div class="flex items-center gap-4">
             <h1
-                class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300 tracking-wider logo-shake cursor-default">
+                class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300 tracking-wider logo-shake cursor-default drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]">
                 INFINITE DUNGEONS</h1>
             <div id="dungeon-hud" class="hidden md:flex items-center gap-3 ml-4 border-l border-white/20 pl-4">
                 <div class="text-[10px] font-bold tracking-widest text-slate-300"><i
@@ -56,6 +56,13 @@
             <button data-action="show-api-settings"
                 class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-purple-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
                 title="API Einstellungen oeffnen"><i class="fas fa-plug text-purple-400"></i> API</button>
+            <div id="topbar-thinking-status" class="hidden thinking-status-chip" aria-live="polite">
+                <span class="thinking-status-dot"></span>
+                <div class="min-w-0">
+                    <div class="thinking-status-label">DM denkt</div>
+                    <p id="topbar-thinking-text" class="thinking-status-text">Laedt...</p>
+                </div>
+            </div>
             <button id="sound-toggle" data-action="toggle-sound"
                 class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-indigo-400/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(129,140,248,0.4)] transition-all duration-300 backdrop-blur-md sound-on"
                 title="Sound an/aus"><i class="fas fa-volume-up text-indigo-300"></i></button>
@@ -239,6 +246,8 @@
                     <button class="tab-btn px-3 py-1.5 text-slate-400 hover:text-white"
                         data-action="switch-tab" data-tab="dice" id="tab-dice">Wuerfel</button>
                     <button class="tab-btn px-3 py-1.5 text-slate-400 hover:text-white"
+                        data-action="switch-tab" data-tab="system" id="tab-system">System</button>
+                    <button class="tab-btn px-3 py-1.5 text-slate-400 hover:text-white"
                         data-action="switch-tab" data-tab="journal" id="tab-journal">Journal</button>
                     <button class="tab-btn px-3 py-1.5 text-slate-400 hover:text-white"
                         data-action="switch-tab" data-tab="stats" id="tab-stats">Stats</button>
@@ -272,6 +281,21 @@
                         </div>
                         <div id="details-content"></div>
                     </div>
+                </div>
+
+                <div id="tab-content-system" class="hidden flex-col overflow-hidden flex-1">
+                    <section class="system-sidebar-panel flex-1">
+                        <div class="system-sidebar-head">
+                            <div>
+                                <p class="system-sidebar-kicker">System</p>
+                                <p class="system-sidebar-copy">Status, Hinweise und wichtige Spielereignisse.</p>
+                            </div>
+                            <i class="fas fa-scroll text-slate-500 text-lg"></i>
+                        </div>
+                        <div id="system-content" class="system-sidebar-feed custom-scrollbar">
+                            <p class="system-feed-empty">Noch keine Systemmeldungen.</p>
+                        </div>
+                    </section>
                 </div>
 
                 <div id="tab-content-journal" class="hidden flex-col overflow-hidden flex-1">

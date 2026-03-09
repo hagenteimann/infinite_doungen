@@ -1,3 +1,4 @@
+import { repairDisplayText, repairStoredText } from './sanitize.js';
 export const Utils = {
     GOLD_ITEM_NAME: 'Goldmuenze',
     generateId: function () {
@@ -22,7 +23,7 @@ export const Utils = {
         return res;
     },
     parseItemQuantity: function (str) {
-        let amt = 1, name = str.trim();
+        let amt = 1, name = repairDisplayText(str).trim();
         const prefixMatch = name.match(/^(\d+)x?\s+(.*)$/i);
         const suffixMatch = name.match(/^(.*?)\s*\(?x(\d+)\)?$/i);
         if (prefixMatch) { amt = parseInt(prefixMatch[1]); name = prefixMatch[2].trim(); }
@@ -65,6 +66,7 @@ export const Utils = {
         }).filter(entry => entry.amount > 0);
     },
     sanitizeCharacter: function (c) {
+        c = repairStoredText(c || {});
         c.level = c.level || 1; c.xp = c.xp || 0; c.statPoints = c.statPoints || 0;
         c.attributes = c.attributes || { STR: 10, DEX: 10, INT: 10, CON: 10 };
         c.imagePrompt = c.imagePrompt || ""; c.isSummon = c.isSummon || false; c.ability = c.ability || null;
@@ -121,3 +123,4 @@ export const Utils = {
         return scored[0]?.item || null;
     }
 };
+

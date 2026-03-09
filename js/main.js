@@ -5,7 +5,7 @@ import { Sound } from './sound.js';
 import { Utils } from './utils.js';
 import { API } from './api.js';
 import { Engine } from './engine.js';
-import { validateSaveData } from './sanitize.js';
+import { repairStoredText, validateSaveData } from './sanitize.js';
 import { AUTO_SAVE_KEY } from './constants.js';
 import { initEvents } from './events.js';
 import { Network } from './network.js';
@@ -17,7 +17,7 @@ const init = () => {
     if (autoSave) {
         try {
             let saved = JSON.parse(autoSave);
-            saved = validateSaveData(saved);
+            saved = repairStoredText(validateSaveData(saved));
             if (saved.party && saved.party.length > 0 && saved.gameStarted) {
                 const time = saved._autoSaveTime ? new Date(saved._autoSaveTime).toLocaleString('de-DE') : 'Unbekannt';
                 if (confirm('Auto-Save gefunden (' + time + ').\nFortsetzen?')) {
@@ -70,3 +70,4 @@ if (import.meta.env?.DEV) {
 init();
 initEvents();
 initFeatures();
+

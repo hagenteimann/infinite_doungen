@@ -8,7 +8,7 @@ import { API } from './api.js';
 import { PartyManager } from './party.js';
 import { CombatManager } from './combat.js';
 import { TagParser } from './tagparser.js';
-import { sanitize, validateSaveData, validateHeroData } from './sanitize.js';
+import { repairDisplayText, repairStoredText, sanitize, validateSaveData, validateHeroData } from './sanitize.js';
 import { Network } from './network.js';
 import {
     EQUIPMENT_LIMIT, ABILITY_LIMIT, SUMMON_COOLDOWN,
@@ -24,7 +24,7 @@ export const Engine = {
 
     _requireHost(actionName) {
         if (Network.isClient() && Network.isConnected()) {
-            UI.addChatLog('System', `**${actionName}** ist nur fÃƒÂ¼r den Host verfÃƒÂ¼gbar.`);
+            UI.addChatLog('System', `**${actionName}** ist nur für den Host verfügbar.`);
             return true;
         }
         return false;
@@ -57,27 +57,78 @@ export const Engine = {
     },
 
     _sanitizeSuggestionText(text) {
-        return String(text || '')
-            .replace(/^.*?">\s*/g, '')
-            .replace(/<[^>]+>/g, ' ')
+        let cleaned = repairDisplayText(String(text || ''))
+            .replace(/<br\s*\/?>/gi, ' ')
+            .replace(/<strong[^>]*>.*?<\/strong>/gi, match => match.replace(/<[^>]+>/g, ''))
+            .replace(/<[^>]+>/g, '')
             .replace(/&nbsp;/gi, ' ')
             .replace(/&amp;/gi, '&')
             .replace(/&quot;/gi, '"')
             .replace(/&#39;/gi, "'")
             .replace(/^[::][^\s]+\s+/g, '')
-            .replace(/^[-*]\s*/, '')
+            .replace(/^[-*]\s*/g, '')
+            .replace(/\s+[|>]+\s*/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
+
+        const firstColon = cleaned.indexOf(':');
+        if (firstColon !== -1) {
+            const title = cleaned.slice(0, firstColon).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            if (title) {
+                const titlePattern = new RegExp(`${title}\s*:`, 'gi');
+                const matches = [...cleaned.matchAll(titlePattern)];
+                if (matches.length > 1) {
+                    cleaned = cleaned.slice(matches[matches.length - 1].index).trim();
+                }
+            }
+        }
+
+        return cleaned.replace(/^(?:[\p{Extended_Pictographic}\p{Emoji_Presentation}\u2600-\u27BF]\s*)+/gu, '').trim();
+    },
+    _getSuggestionMeta(text) {
+        // First strip any existing HTML tags to avoid processing `<strong class=...>`
+        const strippedText = String(text || '').replace(/<[^>]+>/g, '');
+        const normalized = this._sanitizeSuggestionText(strippedText);
+        const lower = normalized.toLowerCase();
+        let icon = '\u2022';
+        if (/(angreifen|attack|schlag|hieb|sturm|treffer)/.test(lower)) icon = '\u2694\uFE0F';
+        else if (/(verteid|abwehr|block|deckung|haltung)/.test(lower)) icon = '\uD83D\uDEE1\uFE0F';
+        else if (/(flieh|rueckzug|entkommen)/.test(lower)) icon = '\uD83C\uDFC3';
+        else if (/(untersuch|spur|such|analys|entziffer|pruef)/.test(lower)) icon = '\uD83D\uDD0D';
+        else if (/(rede|frage|spreche|verhand|ueberzeug|droh)/.test(lower)) icon = '\uD83D\uDCAC';
+        else if (/(zauber|magie|ritual|spruch|wirke)/.test(lower)) icon = '\u2728';
+        else if (/(lager|ruhe|rast|camp)/.test(lower)) icon = '\uD83C\uDFD5';
+        else if (/(beute|nehmen|sammel|pluender)/.test(lower)) icon = '\uD83C\uDF92';
+        else if (/(weiter|erkund|pfad|weg|folge)/.test(lower)) icon = '\uD83E\uDDED';
+
+        const separator = normalized.indexOf(':');
+        const title = separator === -1 ? normalized : normalized.slice(0, separator).trim();
+        const detail = separator === -1 ? '' : normalized.slice(separator + 1).trim();
+        return {
+            icon,
+            prompt: normalized,
+            title: title || normalized,
+            detail
+        };
+    },
+    _renderSuggestionOption(text, suggestionClass) {
+        const meta = this._getSuggestionMeta(text);
+        if (!meta.prompt) return '';
+        // Completely strip all HTML tags (like <strong>) from the prompt data attribute
+        const strippedPrompt = meta.prompt.replace(/<[^>]+>/g, '');
+        const safeValue = strippedPrompt.replace(/"/g, '&quot;');
+        const detailHtml = meta.detail ? `<span class="suggestion-detail">${meta.detail}</span>` : '';
+        return `<div class="${suggestionClass}" data-prompt="${safeValue}"><span class="suggestion-icon" aria-hidden="true">${meta.icon}</span><span class="suggestion-copy"><span class="suggestion-title">${meta.title}</span>${detailHtml}</span></div>`;
     },
     setCustomApiKey: function () { DOM.customKeyInput.value = localStorage.getItem("custom_gemini_key") || ""; DOM.apiKeyModal.classList.remove('hidden'); setTimeout(() => DOM.customKeyInput.focus(), 100); },
-    saveApiKey: function () { localStorage.setItem("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "Ã°Å¸â€â€˜ API-Key wurde gespeichert."); },
-    startGame: function () { if (this._requireHost('Abenteuer starten')) return; if (State.party.length === 0) { UI.addChatLog("System", "Ã¢Å¡Â Ã¯Â¸Â Erstelle zuerst einen Helden!"); return; } State.gameStarted = true; UI.toggleViews(true); this.interactWithAI("Die Reise beginnt."); },
+    saveApiKey: function () { localStorage.setItem("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "API-Key wurde gespeichert."); },
+    startGame: function () { if (this._requireHost('Abenteuer starten')) return; if (State.party.length === 0) { UI.addChatLog("System", "Erstelle zuerst einen Helden!"); return; } State.gameStarted = true; UI.toggleViews(true); this.interactWithAI("Die Reise beginnt."); },
 
     toggleSound: function () {
         State.soundEnabled = !State.soundEnabled;
         const btn = DOM.soundToggle;
         if (btn) {
-            btn.textContent = State.soundEnabled ? 'Ã°Å¸â€Å ' : 'Ã°Å¸â€â€¡';
+            btn.innerHTML = State.soundEnabled ? '<i class="fas fa-volume-up text-indigo-300"></i>' : '<i class="fas fa-volume-mute text-slate-400"></i>';
             btn.className = `bg-slate-800/80 hover:bg-slate-700 px-3 py-2 rounded-lg text-xs font-medium border border-slate-600/50 hover:border-slate-400 shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(148,163,184,0.4)] transition-all duration-300 backdrop-blur-sm ${State.soundEnabled ? 'sound-on' : 'sound-off'}`;
         }
         if (State.soundEnabled) Sound.play('dice');
@@ -89,11 +140,11 @@ export const Engine = {
         if (State.quickplayEnabled) {
             btn.className = "bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white px-3.5 py-2 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.6)] transition-all duration-300 backdrop-blur-sm tracking-wide flex items-center gap-1.5 animate-pulse";
             btn.innerHTML = `<i class="fas fa-bolt text-yellow-300"></i> Quickplay (AN)`;
-            UI.addChatLog("System", "Ã¢Å¡Â¡ **Quickplay aktiviert:** Der DM wird sich nun kurz fassen, um den Spielfluss zu beschleunigen.");
+            UI.addChatLog("System", "**Quickplay aktiviert:** Der DM wird sich nun kurz fassen, um den Spielfluss zu beschleunigen.");
         } else {
             btn.className = "bg-blue-900/40 hover:bg-blue-800/60 border border-blue-700/50 hover:border-blue-400 text-blue-200 px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300 backdrop-blur-sm tracking-wide flex items-center gap-1.5";
-            btn.innerHTML = `Ã¢Å¡Â¡ Quickplay`;
-            UI.addChatLog("System", "Ã¢Å¡Â¡ **Quickplay deaktiviert:** Der DM beschreibt die Welt wieder ausfÃƒÂ¼hrlicher.");
+            btn.innerHTML = `<i class="fas fa-forward text-blue-400/70 group-hover:text-blue-400"></i> Quickplay`;
+            UI.addChatLog("System", "**Quickplay deaktiviert:** Der DM beschreibt die Welt wieder ausfuehrlicher.");
         }
     },
 
@@ -101,19 +152,19 @@ export const Engine = {
         if (this._requireHost('Journal-Eintrag')) return;
         if (!State.lastStoryPart || !State.gameStarted) return;
         const oldJournalBtn = document.querySelector('[data-action="gen-journal"]');
-        if (oldJournalBtn) { oldJournalBtn.textContent = 'Ã¢ÂÂ³'; oldJournalBtn.disabled = true; }
+        if (oldJournalBtn) { oldJournalBtn.textContent = '...'; oldJournalBtn.disabled = true; }
         try {
             const partyNames = State.party.filter(p => !p.isSummon).map(p => p.name).join(', ');
             const summary = await API.generateText(
-                `Fasse diese Szene in 1-2 SÃƒÂ¤tzen als Tagebucheintrag zusammen (Vergangenheit, dramatisch, kurz): "${State.lastStoryPart.substring(0, 500)}"`,
-                "Du bist ein Chronist. Antworte NUR mit dem Tagebucheintrag, ohne AnfÃƒÂ¼hrungszeichen oder PrÃƒÂ¤ambel. Deutsch, max 2 SÃƒÂ¤tze."
+                `Fasse diese Szene in 1-2 Sätzen als Tagebucheintrag zusammen (Vergangenheit, dramatisch, kurz): "${State.lastStoryPart.substring(0, 500)}"`,
+                "Du bist ein Chronist. Antworte NUR mit dem Tagebucheintrag, ohne Anführungszeichen oder Präambel. Deutsch, max 2 Sätze."
             );
             const entry = { text: summary, timestamp: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), party: partyNames };
             State.journal.unshift(entry);
             if (State.journal.length > JOURNAL_MAX_ENTRIES) State.journal.pop();
             UI.renderJournal();
         } catch (e) { console.error('Journal generation failed:', e); } finally {
-            if (oldJournalBtn) { oldJournalBtn.textContent = 'Ã¢Å“Â¨ Update'; oldJournalBtn.disabled = false; }
+            if (oldJournalBtn) { oldJournalBtn.textContent = 'Update'; oldJournalBtn.disabled = false; }
         }
     },
 
@@ -155,7 +206,7 @@ export const Engine = {
             }
         }
         if (readyAbilities.length > 0) {
-            UI.addChatLog("System", `Ã¢Å“â€¦ FÃƒÂ¤higkeiten wieder bereit: ${readyAbilities.join(', ')}`);
+            UI.addChatLog("System", `✅ Fähigkeiten wieder bereit: ${readyAbilities.join(', ')}`);
         }
 
         State.isBossFight = (State.fate || 0) >= FATE_BOSS_THRESHOLD && State.activeEnemies.length > 0;
@@ -168,161 +219,72 @@ export const Engine = {
             const effMax = PartyManager.getEffectiveMaxHp(p);
             const specEffects = PartyManager.getItemSpecialEffects(p);
             const specStr = specEffects.length > 0 ? `, Item-Effekte: [${specEffects.join(', ')}]` : '';
-            return `${p.name} (Lvl ${p.level} ${p.class}, HP: ${p.hp}/${effMax}, Stats (inkl. Item-Boni): STR ${eff.STR} DEX ${eff.DEX} INT ${eff.INT} CON ${eff.CON}, Inv: [${p.inventory.join(', ')}], AusgerÃƒÂ¼stet: [${(p.equipment || []).join(', ')}]${specStr})`;
+            return `${p.name} (Lvl ${p.level} ${p.class}, HP: ${p.hp}/${effMax}, Stats (inkl. Item-Boni): STR ${eff.STR} DEX ${eff.DEX} INT ${eff.INT} CON ${eff.CON}, Inv: [${p.inventory.join(', ')}], Ausgerüstet: [${(p.equipment || []).join(', ')}]${specStr})`;
         }).join(' | ');
 
         const diff = DOM.gameDifficulty.value; const rate = DOM.enemyRate.value;
-        const dInstr = diff === "Einfach" ? "Gegner-Schaden 1-2, Proben-DC ~10, Belohnungen: Normales Loot" : diff === "Normal" ? "Gegner-Schaden 3-5, Proben-DC ~12, Belohnungen: Gutes Loot" : diff === "Schwer" ? "Gegner-Schaden 6-8, Proben-DC ~14, Belohnungen: Sehr gutes magisches Loot" : "Gegner-Schaden 10-15, Proben-DC ~18, Belohnungen: Episches legendÃƒÂ¤res Loot";
+        const dInstr = diff === "Einfach" ? "Gegner-Schaden 1-2, Proben-DC ~10, Belohnungen: Normales Loot" : diff === "Normal" ? "Gegner-Schaden 3-5, Proben-DC ~12, Belohnungen: Gutes Loot" : diff === "Schwer" ? "Gegner-Schaden 6-8, Proben-DC ~14, Belohnungen: Sehr gutes magisches Loot" : "Gegner-Schaden 10-15, Proben-DC ~18, Belohnungen: Episches legendäres Loot";
         const qpAddendum = State.quickplayEnabled
-            ? " QUICKPLAY AKTIV: Antworten extrem kurz (1-2 SÃƒÂ¤tze). Du darfst auch Angriffsproben fÃƒÂ¼r Spieler vorschlagen."
-            : " NORMALER MODUS Ã¢â‚¬â€œ ANGRIFF-REGEL (ABSOLUT): Du darfst NIEMALS selbst eine Angriffs-Probe fÃƒÂ¼r einen Spieler fordern oder vorgeben wie dieser angreift. NUR Ausweichen/Blocken-Proben fÃƒÂ¼r Spieler sind erlaubt. Warte zwingend, bis der Spieler explizit schreibt dass er angreift (z.B. 'Ich greife an'). Erst dann und nur dann eine Probe fordern.";
+            ? " QUICKPLAY AKTIV: Antworten extrem kurz (1-2 Sätze). Du darfst auch Angriffsproben für Spieler vorschlagen."
+            : " NORMALER MODUS – ANGRIFF-REGEL (ABSOLUT): Du darfst NIEMALS selbst eine Angriffs-Probe für einen Spieler fordern oder vorgeben wie dieser angreift. NUR Ausweichen/Blocken-Proben für Spieler sind erlaubt. Warte zwingend, bis der Spieler explizit schreibt dass er angreift (z.B. 'Ich greife an'). Erst dann und nur dann eine Probe fordern.";
 
         let dungeonContext = "";
         const fate = State.fate || 0;
         if (fate >= FATE_BOSS_THRESHOLD) {
-            dungeonContext = ` [WICHTIGE DM-ANWEISUNG: Ein mÃƒÂ¤chtiges Schicksal hat sich erfÃƒÂ¼llt! Initiiere JETZT SOFORT einen epischen Bosskampf. Der Boss MUSS massiven Loot fallen lassen (Beute-Tag). ErwÃƒÂ¤hne das Schicksal NICHT beim Namen.]`;
+            dungeonContext = ` [WICHTIGE DM-ANWEISUNG: Ein mächtiges Schicksal hat sich erfüllt! Initiiere JETZT SOFORT einen epischen Bosskampf. Der Boss MUSS massiven Loot fallen lassen (Beute-Tag). Erwähne das Schicksal NICHT beim Namen.]`;
         } else if (fate >= FATE_DARK_THRESHOLD) {
-            dungeonContext = ` [DM-HINWEIS: Eine dunkle Macht nÃƒÂ¤hert sich unaufhaltsam. Lass die AtmosphÃƒÂ¤re bedrohlicher werden Ã¢â‚¬â€œ verstÃƒÂ¶rte NPCs, unheimliche Zeichen, ein GefÃƒÂ¼hl drohenden Unheils. Kein konkreter Hinweis auf den Ursprung.]`;
+            dungeonContext = ` [DM-HINWEIS: Eine dunkle Macht nähert sich unaufhaltsam. Lass die Atmosphäre bedrohlicher werden – verstörte NPCs, unheimliche Zeichen, ein Gefühl drohenden Unheils. Kein konkreter Hinweis auf den Ursprung.]`;
         } else if (fate >= FATE_UNREST_THRESHOLD) {
-            dungeonContext = ` [DM-HINWEIS: Eine leichte Unruhe liegt in der Luft. Streue subtile Vorzeichen ein Ã¢â‚¬â€œ ein merkwÃƒÂ¼rdiges Detail, ein GerÃƒÂ¼cht, ein diffuses Unbehagen. Halte es unterschwellig.]`;
+            dungeonContext = ` [DM-HINWEIS: Eine leichte Unruhe liegt in der Luft. Streue subtile Vorzeichen ein – ein merkwürdiges Detail, ein Gerücht, ein diffuses Unbehagen. Halte es unterschwellig.]`;
         }
 
         const pendingRollsCount = State.pendingRolls.filter(r => !r.rolled).length;
         const rollsAddendum = pendingRollsCount > 0
-            ? ` [WICHTIG: Es stehen ${pendingRollsCount} Probe(n) aus. Gib KEINE HandlungsvorschlÃƒÂ¤ge am Ende deiner Antwort. Der Spieler muss zuerst diese Proben wÃƒÂ¼rfeln. Warte auf deren Ergebnisse.]`
+            ? ` [WICHTIG: Es stehen ${pendingRollsCount} Probe(n) aus. Gib KEINE Handlungsvorschläge am Ende deiner Antwort. Der Spieler muss zuerst diese Proben würfeln. Warte auf deren Ergebnisse.]`
             : "";
 
         const historyCtx = State.chatHistory.slice(-5).join(' | ').substring(0, CHAT_HISTORY_CHAR_LIMIT);
         const weatherCtx = Weather.getWeatherContext();
         const momentum = State.momentum || 0;
         const momentumCtx = momentum >= 3
-            ? ` [HELDENMOMENTUM: Die Gruppe hat ${momentum} aufeinanderfolgende Erfolge! Beschreibe ihre nÃƒÂ¤chste Aktion besonders episch oder gewÃƒÂ¤hre einen kleinen narrativen Vorteil.]`
+            ? ` [HELDENMOMENTUM: Die Gruppe hat ${momentum} aufeinanderfolgende Erfolge! Beschreibe ihre nächste Aktion besonders episch oder gewähre einen kleinen narrativen Vorteil.]`
             : '';
-        const goldCtx = State.gold > 0 ? ` [Gruppenkapital: ${State.gold} GoldmÃƒÂ¼nzen]` : '';
+        const goldCtx = State.gold > 0 ? ` [Gruppenkapital: ${State.gold} Goldmünzen]` : '';
         const context = `Party: ${partyCtx}. Feinde: ${enemyCtx}. Vorherige Szenen: [${historyCtx}]. Aktuelle Szene: ${State.lastStoryPart}. Aktion (${acting}): ${actionMsg}. [Regeln: Diff=${diff} (${dInstr}), Rate=${rate}]${qpAddendum}${dungeonContext}${weatherCtx}${rollsAddendum}${momentumCtx}${goldCtx}`;
 
         try {
-            const aiResponse = await API.generateText(context);
-            const cleanStory = aiResponse
-                .replace(/\[(?:Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave|Schaden|GegnerSchaden|Heilung|Probe|Route).*?\]/gi, '')
-                .replace(/\n{3,}/g, '\n\n').trim();
+            const aiResponseJSON = await API.generateText(context);
+            
+            // JSON parsen
+            let parsedData;
+            try {
+                parsedData = JSON.parse(aiResponseJSON);
+            } catch (err) {
+                console.error("Fehler beim Parsen der KI-Antwort:", err);
+                throw new Error("Konnte die Antwort der KI nicht verarbeiten.");
+            }
+            
+            let cleanStory = parsedData.narrative || "Die Geschichte geht weiter...";
             State.lastStoryPart = cleanStory.substring(0, 1500);
             Weather.randomChange();
             State.chatHistory.push(cleanStory.substring(0, CHAT_CONTEXT_CHAR_LIMIT));
             if (State.chatHistory.length > CHAT_HISTORY_MAX) State.chatHistory.shift();
-            let cleanText = aiResponse;
 
-            const probeRegex = /\[Probe:\s*([^|\]]+)\s*\|\s*([^|\]]+)\s*(?:\|\s*([^|\]]+))?\s*\|\s*(\d+)(?:\s*\|\s*(W\d+|w\d+))?\s*\]/gi;
-            let match;
-            while ((match = probeRegex.exec(cleanText)) !== null) {
-                let charName = match[1].trim();
-                let p2 = match[2].trim();
-                let p3 = match[3] ? match[3].trim() : "";
-                let dc = parseInt(match[4]) || 10;
-                let dt = match[5] ? match[5].trim().toUpperCase() : 'W20';
-
-                let rawStat = p2.toUpperCase();
-                let desc = p3 || p2;
-
-                let statName = "";
-                let modifier = 0;
-
-                if (rawStat.includes('STÃƒâ€žR') || rawStat.includes('STR')) statName = 'STR';
-                else if (rawStat.includes('GESCHICK') || rawStat.includes('DEX')) statName = 'DEX';
-                else if (rawStat.includes('INTELLIGENZ') || rawStat.includes('INT')) statName = 'INT';
-                else if (rawStat.includes('KONST') || rawStat.includes('CON')) statName = 'CON';
-                else {
-                    let upperDesc = desc.toUpperCase();
-                    if (upperDesc.includes('STÃƒâ€žR') || upperDesc.includes('STR')) statName = 'STR';
-                    else if (upperDesc.includes('GESCHICK') || upperDesc.includes('DEX')) statName = 'DEX';
-                    else if (upperDesc.includes('INTELLIGENZ') || upperDesc.includes('INT')) statName = 'INT';
-                    else if (upperDesc.includes('KONST') || upperDesc.includes('CON')) statName = 'CON';
-                }
-
-                const c = Utils.findTarget(State.party, charName);
-                if (c && statName) {
-                    const baseAttr = (c.attributes || {})[statName] || 10;
-                    const eff = PartyManager.getEffectiveAttributes(c);
-                    const totalAttr = eff[statName] || 10;
-                    const itemBonus = totalAttr - baseAttr;
-                    modifier = totalAttr;
-                    State.pendingRolls._nextModBreakdown = { base: baseAttr, item: itemBonus, total: totalAttr };
-                }
-
-                const breakdown = State.pendingRolls._nextModBreakdown || null;
-                delete State.pendingRolls._nextModBreakdown;
-                const weatherDcMod = (State.weather && State.weather.dcMod) || 0;
-                const fatigueDcMod = State.fatigue >= 10 ? Math.floor((State.fatigue - 7) / 3) : 0;
-                const finalDc = dc + weatherDcMod + fatigueDcMod;
-                const dcNote = (weatherDcMod > 0 || fatigueDcMod > 0)
-                    ? ` [DC ${dc}${weatherDcMod > 0 ? ` +${weatherDcMod} ${State.weather.name}` : ''}${fatigueDcMod > 0 ? ` +${fatigueDcMod} ErschÃƒÂ¶pfung` : ''}]`
-                    : '';
-                State.pendingRolls.push({ id: Utils.generateId(), name: charName, stat: statName, mod: modifier, desc: desc + dcNote, dc: finalDc, diceType: dt, rolled: false, result: 0, rawRoll: 0, modBreakdown: breakdown });
+            // Optionen für das UI vorbereiten
+            const suggestionClass = 'mt-1.5 suggestion-option w-full text-left rounded-xl px-3 py-2.5 cursor-pointer transition-all text-xs';
+            let optionsHtml = '';
+            if (Array.isArray(parsedData.options) && parsedData.options.length > 0) {
+                optionsHtml = '<div class="mt-4">' + parsedData.options.map(opt => this._renderSuggestionOption(opt, suggestionClass)).join('') + '</div>';
             }
-            cleanText = cleanText.replace(probeRegex, '');
 
-            UI.updateActionBox();
+            // Neues HTML für den Chat zusammensetzen
+            let cleanText = cleanStory + optionsHtml;
 
-            cleanText = cleanText.replace(/\[Erfolg:\s*(.*?)\]/gi, '<span class="border border-green-500/50 bg-green-900/30 text-green-300 rounded-lg px-2.5 py-1 font-bold inline-flex items-center align-middle shadow-[0_0_10px_rgba(34,197,94,0.15)] mx-0.5 my-1 backdrop-blur-sm"><i class="fas fa-check text-green-400 mr-1.5"></i> $1</span>');
-            cleanText = cleanText.replace(/\[Scheitern:\s*(.*?)\]/gi, '<span class="border border-red-500/50 bg-red-900/30 text-red-300 rounded-lg px-2.5 py-1 font-bold inline-flex items-center align-middle shadow-[0_0_10px_rgba(239,68,68,0.15)] mx-0.5 my-1 backdrop-blur-sm"><i class="fas fa-times text-red-400 mr-1.5"></i> $1</span>');
-            cleanText = cleanText.replace(/\[Zauber:\s*(.*?)\]/gi, '<span class="border border-blue-400/50 bg-blue-900/30 text-blue-200 rounded-lg px-2.5 py-1 font-bold inline-flex items-center align-middle shadow-[0_0_10px_rgba(59,130,246,0.15)] mx-0.5 my-1 backdrop-blur-sm tracking-wide"><i class="fas fa-magic text-blue-400 mr-2 drop-shadow-[0_0_5px_rgba(96,165,250,0.8)]"></i> $1</span>');
-            cleanText = cleanText.replace(/\[Knapp:\s*(.*?)\]/gi, '<span class="border border-yellow-500/50 bg-yellow-900/30 text-yellow-200 rounded-lg px-2.5 py-1 font-bold inline-flex items-center align-middle shadow-[0_0_12px_rgba(234,179,8,0.25)] mx-0.5 my-1 backdrop-blur-sm"><i class="fas fa-bullseye text-yellow-400 mr-1.5 animate-pulse"></i> $1</span>');
-            cleanText = cleanText.replace(/\[Schaden[\s:]*([^,\]]+)[\s,]+(\d+)\s*\]/gi, (m, name, amt) => `<span class="border border-red-600/50 bg-red-950/50 text-red-300 rounded-lg px-2 py-0.5 font-bold inline-flex items-center align-middle shadow-[inset_0_0_8px_rgba(220,38,38,0.2)] mx-0.5 my-0.5 backdrop-blur-sm"><i class="fas fa-tint text-red-500 mr-1.5"></i> ${name.trim()} <span class="text-white ml-0.5">-${amt} HP</span></span>`);
-            cleanText = cleanText.replace(/\[GegnerSchaden[\s:]*([^,\]]+)[\s,]+(\d+)\s*\]/gi, (m, name, amt) => `<span class="border border-orange-600/50 bg-orange-950/50 text-orange-300 rounded-lg px-2 py-0.5 font-bold inline-flex items-center align-middle shadow-[inset_0_0_8px_rgba(249,115,22,0.2)] mx-0.5 my-0.5 backdrop-blur-sm"><i class="fas fa-bolt text-orange-500 mr-1.5"></i> ${name.trim()} <span class="text-white ml-0.5">-${amt} HP</span></span>`);
-            cleanText = cleanText.replace(/\[Heilung[\s:]*([^,\]]+)[\s,]+(\d+)\s*\]/gi, (m, name, amt) => `<span class="border border-emerald-500/50 bg-emerald-950/50 text-emerald-300 rounded-lg px-2 py-0.5 font-bold inline-flex items-center align-middle shadow-[inset_0_0_8px_rgba(16,185,129,0.2)] mx-0.5 my-0.5 backdrop-blur-sm"><i class="fas fa-heart text-emerald-400 mr-1.5"></i> ${name.trim()} <span class="text-white ml-0.5">+${amt} HP</span></span>`);
-
-            cleanText = cleanText.replace(/\[Haendler[\s:]*([^|\]]+)\|\s*(.*?)\]/gi, (m, name, itemsStr) => {
-                const mName = name.trim();
-                const items = itemsStr.split(',').map(s => s.trim());
-
-                let merchantOptions = items.map(it => `<option value="${it.replace(/"/g, '&quot;')}">${it}</option>`).join('');
-
-                let partyOptions = '<option value="">-- WÃƒÂ¤hle ein Item zum Tausch --</option>';
-                let hasItems = false;
-                State.party.forEach(p => {
-                    if (p.inventory.length > 0) {
-                        hasItems = true;
-                        let uniqueInv = [...new Set(p.inventory)];
-                        partyOptions += `<optgroup label="Inventar von ${p.name}">`;
-                        uniqueInv.forEach(it => {
-                            partyOptions += `<option value="${p.id}|${it.replace(/"/g, '&quot;')}">${it}</option>`;
-                        });
-                        partyOptions += `</optgroup>`;
-                    }
-                });
-                if (!hasItems) partyOptions = '<option value="">Ihr habt keine Items zum Tauschen</option>';
-
-                const safeId = mName.replace(/[^a-zA-Z0-9]/g, '');
-
-                return `<div class="mt-4 block w-full text-left bg-gradient-to-br from-slate-900 to-slate-800 border border-amber-600/40 p-4 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600"></div>
-                    <h4 class="text-amber-400 font-bold text-sm mb-3 border-b border-amber-900/50 pb-2 uppercase tracking-wider cinzel"><i class="fas fa-store mr-2 text-amber-500"></i>Handelsangebot: ${mName}</h4>
-                    <div class="space-y-3 mt-3">
-                        <div class="bg-black/20 p-2 rounded-lg border border-white/5">
-                            <label class="text-[10px] text-amber-600/80 uppercase font-bold tracking-widest"><i class="fas fa-box-open mr-1"></i> Warenangebot:</label>
-                            <select id="trade-want-${safeId}" class="w-full bg-slate-900/80 hover:bg-slate-900 border border-amber-900/40 rounded p-2 text-xs text-amber-100 outline-none focus:border-amber-500 mt-1 transition-colors cursor-pointer shadow-inner">
-                                ${merchantOptions}
-                            </select>
-                        </div>
-                        <div class="bg-black/20 p-2 rounded-lg border border-white/5">
-                            <label class="text-[10px] text-blue-500/80 uppercase font-bold tracking-widest"><i class="fas fa-hand-holding-usd mr-1"></i> Mein Gegenangebot:</label>
-                            <select id="trade-offer-${safeId}" class="w-full bg-slate-900/80 hover:bg-slate-900 border border-blue-900/40 rounded p-2 text-xs text-blue-100 outline-none focus:border-blue-500 mt-1 transition-colors cursor-pointer shadow-inner">
-                                ${partyOptions}
-                            </select>
-                        </div>
-                        <button data-action="propose-trade" data-safe-id="${safeId}" data-merchant-name="${mName.replace(/"/g, '&quot;')}" class="w-full bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md mt-2 border border-amber-500 text-white uppercase tracking-wider"><i class="fas fa-handshake mr-2"></i> Handel Vorschlagen</button>
-                    </div>
-                </div>`;
-            });
-
-            cleanText = cleanText.replace(/\[(Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave).*?\]/gi, '').trim();
-            const suggestionClass = 'mt-1.5 suggestion-option flex items-center gap-2 w-full text-left bg-slate-800/70 hover:bg-indigo-900/40 border border-slate-600/40 hover:border-indigo-500/50 text-indigo-200 hover:text-indigo-100 rounded-lg px-3 py-2.5 cursor-pointer transition-all shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.2)] text-xs';
-            cleanText = cleanText.replace(/(?:^|\n)(?:-|\*)\s+([^\n]+)/g, (m, p1) => {
-                const suggestionText = this._sanitizeSuggestionText(p1);
-                if (!suggestionText) return '';
-                const safeValue = suggestionText.replace(/"/g, '&quot;');
-                return `<div class="${suggestionClass}" data-prompt="${safeValue}"><span class="leading-relaxed">${suggestionText}</span></div>`;
-            });
+            // Events an den TagParser/EventProcessor übergeben
+            if (Array.isArray(parsedData.events)) {
+                // Wir übergeben das Array als String, damit die bestehende Catch-Logik in block 3 umgebaut werden kann
+                TagParser.process(JSON.stringify(parsedData.events));
+            }
 
             const hasSuggestions = cleanText.includes('suggestion-option');
             const hasPendingRolls = State.pendingRolls.some(r => !r.rolled);
@@ -330,21 +292,18 @@ export const Engine = {
                 const inCombat = State.activeEnemies.some(e => e.hp > 0);
                 const hasLoot = State.lootDrops && State.lootDrops.length > 0;
                 const fallback = inCombat
-                    ? [['Ã¢Å¡â€Ã¯Â¸Â', 'Angreifen'], ['Ã°Å¸â€ºÂ¡Ã¯Â¸Â', 'Verteidigen'], ['Ã°Å¸ÂÆ’', 'Fliehen']]
+                    ? ['Angreifen', 'Verteidigen', 'Fliehen']
                     : hasLoot
-                        ? [['Ã°Å¸Â¤Å¡', 'Beute einsammeln'], ['Ã°Å¸â€Â', 'Umgebung untersuchen'], ['Ã°Å¸Å¡Â¶', 'Weiter erkunden']]
-                        : [['Ã°Å¸â€Â', 'Umgebung untersuchen'], ['Ã°Å¸Å¡Â¶', 'Weiter erkunden'], ['Ã¢â€ºÂº', 'Lager aufschlagen']];
-                cleanText += '<div class="mt-3">' + fallback.map(([emoji, text]) =>
-                    `<div class="${suggestionClass}" data-prompt="${text}"><span>${emoji} ${text}</span></div>`
-                ).join('') + '</div>';
+                        ? ['Beute einsammeln', 'Umgebung untersuchen', 'Weiter erkunden']
+                        : ['Umgebung untersuchen', 'Weiter erkunden', 'Lager aufschlagen'];
+                cleanText += '<div class="mt-3 border-t border-white/10 pt-3">' + fallback.map((text) => this._renderSuggestionOption(text, suggestionClass)).join('') + '</div>';
             }
 
             if (cleanText.length > 0) {
                 UI.addChatLog("DM", cleanText);
                 if (Network.isHost()) Network.broadcastChat("DM", cleanText);
             }
-            TagParser.process(aiResponse);
-        } catch (e) { UI.addChatLog("System", `Ã¢Å¡Â Ã¯Â¸Â Fehler: ${e.message}`); }
+        } catch (e) { UI.addChatLog("System", `Fehler: ${e.message}`); }
         finally {
             State.isProcessing = false; UI.showLoader(false);
             CombatManager.cleanupDead();
@@ -372,7 +331,7 @@ export const Engine = {
     chooseRoute: function (route) {
         DOM.actionBoxContainer.innerHTML = ''; DOM.actionBoxContainer.classList.add('hidden');
         UI.updateAll();
-        this.submitPlayerAction(`wÃƒÂ¤hlt den Weg: ${route}.`);
+        this.submitPlayerAction(`wählt den Weg: ${route}.`);
     },
 
     camp: function () {
@@ -384,9 +343,9 @@ export const Engine = {
         State.fatigue = Math.max(0, State.fatigue - reduction);
         const restored = before - State.fatigue;
 
-        let actionText = `Die Gruppe schlÃƒÂ¤gt ihr Lager auf, um sich auszuruhen.`;
-        if (hasProvisions) actionText += ` Dank der VorrÃƒÂ¤te erholen sie sich besonders gut.`;
-        if (State.fatigue > 0) actionText += ` [ErschÃƒÂ¶pfung sinkt um ${restored} auf ${State.fatigue}]`;
+        let actionText = `Die Gruppe schlägt ihr Lager auf, um sich auszuruhen.`;
+        if (hasProvisions) actionText += ` Dank der Vorräte erholen sie sich besonders gut.`;
+        if (State.fatigue > 0) actionText += ` [Erschöpfung sinkt um ${restored} auf ${State.fatigue}]`;
         else actionText += ` [Voll erholt]`;
 
         UI.updateAll();
@@ -400,7 +359,7 @@ export const Engine = {
         char.talents.push(talentName);
         char.pendingTalentPoints--;
         Sound.play('levelup');
-        UI.addChatLog("System", `Ã°Å¸Å’Å¸ **${char.name}** hat die Spezialisierung **${talentName}** erlernt!`);
+        UI.addChatLog("System", `🌟 **${char.name}** hat die Spezialisierung **${talentName}** erlernt!`);
         UI.showDetails(charId);
         UI.updateAll();
     },
@@ -669,13 +628,13 @@ export const Engine = {
         this.interactWithAI(`[Wuerfelergebnisse]\n${resText}\nBitte beschreibe basierend darauf die Konsequenzen.`);
     },
     submitManualDiceRoll: function () {
-        if (this._requireHost('WÃƒÂ¼rfeln')) return;
+        if (this._requireHost('Würfeln')) return;
         const r = DOM.diceResult.innerText;
         const name = DOM.diceRollerName.innerText;
         DOM.diceModal.classList.add('hidden');
         const pendingAction = DOM.playerInput.value.trim();
         if (pendingAction) {
-            UI.addChatLog(name, `${pendingAction} [Ã°Å¸Å½Â² ${r}]`);
+            UI.addChatLog(name, `${pendingAction} [🎲 ${r}]`);
             DOM.playerInput.value = "";
             this.interactWithAI(`${pendingAction}. [${name} wuerfelt eine ${r}]`);
         } else {
@@ -691,29 +650,29 @@ export const Engine = {
         UI.showLoader(true, "Orakel befragt...");
         try {
             const ctx = State.lastStoryPart ? `\n\nAktueller Spielkontext: "${State.lastStoryPart.substring(0, 400)}"` : '';
-            const ans = await API.generateText(q + ctx, "Du bist ein mystisches Orakel in einer Fantasy-Welt. Beantworte Fragen in 1-2 SÃƒÂ¤tzen Ã¢â‚¬â€œ geheimnisvoll, poetisch, aber spielrelevant. Keine Mechanik-Tags.");
-            UI.addChatLog("Ã¢Å“Â¨ Orakel", ans);
-        } catch (e) { UI.addChatLog('System', `Ã¢Å¡Â Ã¯Â¸Â Orakel-Fehler: ${e.message}`); } finally { UI.showLoader(false); }
+            const ans = await API.generateText(q + ctx, "Du bist ein mystisches Orakel in einer Fantasy-Welt. Beantworte Fragen in 1-2 Sätzen – geheimnisvoll, poetisch, aber spielrelevant. Keine Mechanik-Tags.");
+            UI.addChatLog("✨ Orakel", ans);
+        } catch (e) { UI.addChatLog('System', `⚠️ Orakel-Fehler: ${e.message}`); } finally { UI.showLoader(false); }
     },
     generatePlotTwist: async function () {
         if (this._requireHost('Plot-Twist')) return;
         UI.showLoader(true, "Schicksal weben...");
         try {
             const twistText = await API.generateText(
-                `Die Gruppe erlebt gerade: "${State.lastStoryPart}". Erschaffe jetzt einen dramatischen, unerwarteten Wendepunkt der die Geschichte vorantreibt. Nutze Mechanik-Tags wie nÃƒÂ¶tig (Gegner, XP, Beute, etc.).`,
+                `Die Gruppe erlebt gerade: "${State.lastStoryPart}". Erschaffe jetzt einen dramatischen, unerwarteten Wendepunkt der die Geschichte vorantreibt. Nutze Mechanik-Tags wie nötig (Gegner, XP, Beute, etc.).`,
                 CONFIG.systemPrompt
             );
             State.lastStoryPart = twistText.substring(0, 600);
             State.chatHistory.push({ role: 'assistant', content: twistText.substring(0, 400) });
             if (State.chatHistory.length > 8) State.chatHistory.shift();
             TagParser.process(twistText);
-            UI.addChatLog("Ã¢Å“Â¨ Schicksal", twistText);
-        } catch (e) { UI.addChatLog('System', `Ã¢Å¡Â Ã¯Â¸Â Plot-Twist Fehler: ${e.message}`); } finally { UI.showLoader(false); }
+            UI.addChatLog("✨ Schicksal", twistText);
+        } catch (e) { UI.addChatLog('System', `⚠️ Plot-Twist Fehler: ${e.message}`); } finally { UI.showLoader(false); }
     },
 
     generatePortrait: async function () {
         const a = DOM.newAppearance.value, c = DOM.newClass.value;
-        DOM.genImgBtn.innerText = "Ã¢ÂÂ³";
+        DOM.genImgBtn.innerText = "ÃƒÂ¢Ã‚ÂÃ‚Â³";
         const prompt = `Fantasy portrait, face only, highly detailed, ${c}${a ? ', ' + a : ''}`.replace(/\n/g, ' ').trim();
         State.tempImagePrompt = prompt;
 
@@ -733,7 +692,7 @@ export const Engine = {
         }
 
         DOM.saveCharBtn.disabled = false; DOM.saveCharBtn.classList.remove('opacity-50');
-        DOM.genImgBtn.innerText = State.imageQuotaExceeded ? "Ohne PortrÃƒÂ¤t Ã¢Å“Â¨" : "PortrÃƒÂ¤t Ã¢Å“Â¨";
+        DOM.genImgBtn.innerText = State.imageQuotaExceeded ? "Ohne Porträt ✨" : "Porträt ✨";
     },
 
     finalizeCharacter: function () {
@@ -758,7 +717,7 @@ export const Engine = {
         if (this._requireHost('NPC begegnen')) return;
         if (State.party.length === 0) return; UI.showLoader(true, "NPC wird rekrutiert...");
         try {
-            let aiText = await API.generateText(`Erstelle einen passenden NPC-Begleiter fÃƒÂ¼r diese Szene: "${State.lastStoryPart}".`, "Du bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown. Nutze ZWINGEND diese exakten Keys: {\"name\": \"Name\", \"class\": \"Klasse\", \"appearance\": \"Kurze optische Beschreibung\"}");
+            let aiText = await API.generateText(`Erstelle einen passenden NPC-Begleiter für diese Szene: "${State.lastStoryPart}".`, "Du bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown. Nutze ZWINGEND diese exakten Keys: {\"name\": \"Name\", \"class\": \"Klasse\", \"appearance\": \"Kurze optische Beschreibung\"}");
             const match = aiText.match(/\{[\s\S]*\}/);
             if (!match) throw new Error("Konnte kein JSON extrahieren.");
             const npcData = JSON.parse(match[0]);
@@ -775,17 +734,17 @@ export const Engine = {
             ]);
 
             State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name: npcName, class: npcClass, hp: 20, maxHp: 20, portrait: pUrl, imagePrompt: imgPrompt, inventory: [], isNPC: true }));
-            UI.addChatLog("System", `Ã¢Å“Â¨ NPC **${npcName}** schlieÃƒÅ¸t sich der Gruppe an!`);
+            UI.addChatLog("System", `✨ NPC **${npcName}** schließt sich der Gruppe an!`);
             UI.updateAll();
         } catch (e) {
-            UI.addChatLog("System", `Ã¢Å¡Â Ã¯Â¸Â NPC konnte nicht generiert werden (${e.message}). Bitte erneut versuchen.`);
+            UI.addChatLog("System", `⚠️ NPC konnte nicht generiert werden (${e.message}). Bitte erneut versuchen.`);
         } finally {
             UI.showLoader(false);
         }
     },
 
     spawnNPCFromTag: async function (name, cls, app) {
-        UI.addChatLog("System", `Ã¢ÂÂ³ **${name}** tritt der Gruppe bei...`);
+        UI.addChatLog("System", `ÃƒÂ¢Ã‚ÂÃ‚Â³ **${name}** tritt der Gruppe bei...`);
         try {
             let imgPrompt = `Fantasy portrait, face only, highly detailed, ${cls}, ${app}`.replace(/\n/g, ' ');
             let p = await API.generateImageWithFallbacks([
@@ -793,17 +752,17 @@ export const Engine = {
                 `Fantasy portrait, face only, highly detailed, ${cls}`
             ]);
             State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name, class: cls, hp: 20, maxHp: 20, portrait: p, inventory: [], isNPC: true }));
-            UI.addChatLog("System", `Ã¢Å“Â¨ **${name}** schlieÃƒÅ¸t sich der Gruppe an!`);
+            UI.addChatLog("System", `✨ **${name}** schließt sich der Gruppe an!`);
             UI.updateAll();
         } catch (e) { console.error('NPC spawn failed:', e); }
     },
 
     checkEnemies: function () {
         if (State.activeEnemies.length === 0) {
-            UI.addChatLog("System", "Ã°Å¸â€˜ÂÃ¯Â¸Â **Feindstatus:** Aktuell sind keine lebenden Feinde in Sicht.");
+            UI.addChatLog("System", "ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚ÂÃƒÂ¯Ã‚Â¸Ã‚Â **Feindstatus:** Aktuell sind keine lebenden Feinde in Sicht.");
             return;
         }
-        let statusText = "Ã°Å¸â€˜ÂÃ¯Â¸Â **Feindstatus:**\n";
+        let statusText = "ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚ÂÃƒÂ¯Ã‚Â¸Ã‚Â **Feindstatus:**\n";
         State.activeEnemies.forEach(e => {
             const healthPercent = (e.hp / e.maxHp) * 100;
             let healthDesc = "Gesund";
@@ -824,7 +783,7 @@ export const Engine = {
         this._submitInventoryAction('COLLECT_ALL_LOOT', { charId: cid }, { showDetailsId: cid });
     },
 
-    leaveMerchant: function () { State.activeMerchant = null; UI.updateAll(); UI.addChatLog("System", "Ihr wendet euch vom HÃƒÂ¤ndler ab."); },
+    leaveMerchant: function () { State.activeMerchant = null; UI.updateAll(); UI.addChatLog("System", "Ihr wendet euch vom Händler ab."); },
 
     handleItemClick: function (cid, itemName, isEquipped = false, count = 1) {
         const c = State.party.find(p => p.id === cid); if (!c) return;
@@ -878,7 +837,7 @@ export const Engine = {
     },
     confirmDropItem: function () {
         const amt = parseInt(document.getElementById('item-action-amount')?.value) || 1;
-        if (!confirm(`Bist du sicher, dass du ${amt}x dieses Item unwiderruflich wegwerfen mÃƒÂ¶chtest?`)) return;
+        if (!confirm(`Bist du sicher, dass du ${amt}x dieses Item unwiderruflich wegwerfen möchtest?`)) return;
         const cid = DOM.itemActionCid.value;
         const itemName = DOM.itemActionName.value;
         this._submitInventoryAction('DROP_ITEM', { charId: cid, itemName, amount: amt }, { showDetailsId: cid, closeModal: true });
@@ -909,7 +868,7 @@ export const Engine = {
         DOM.itemActionModal.classList.add('hidden');
         if (c && State.activeMerchant) {
             DOM.actingChar.value = c.name;
-            DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? KÃƒÂ¶nnen wir tauschen?"`;
+            DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? Können wir tauschen?"`;
             UI.hideDetails();
             DOM.playerInput.focus();
         }
@@ -942,7 +901,7 @@ export const Engine = {
     suggestCrafting: async function () {
         if (this._requireHost('KI-Vorschlag')) return;
         if (State.craftingIngredients.length === 0) {
-            UI.addChatLog("System", "Ã¢Å¡Â Ã¯Â¸Â Bitte wÃƒÂ¤hle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.");
+            UI.addChatLog("System", "⚠️ Bitte wähle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.");
             return;
         }
         const btn = document.getElementById('btn-craft-suggest');
@@ -951,7 +910,7 @@ export const Engine = {
         const materials = State.craftingIngredients.map(ing => ing.itemName).join(', ');
 
         try {
-            let aiText = await API.generateText(`Erfinde einen passenden, gut ausbalancierten Gegenstand, der logisch aus diesen Zutaten hergestellt werden kann: [${materials}]. WICHTIG: Wenn die Zutaten bereits starke Werte oder FÃƒÂ¤higkeiten haben, soll dein vorgeschlagener Gegenstand diese Werte logischerweise ÃƒÂ¼bernehmen oder ganz leicht verbessern. \n\nDu bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown oder Codeblock-Tags. Nutze ZWINGEND diese exakten Keys: {"name": "Gegenstandsname", "str": Zahl, "dex": Zahl, "int": Zahl, "con": Zahl}. WÃƒÂ¤hle 1-2 passende weise Attribute aus (Wert 1-3 oder hÃƒÂ¶her falls die Zutaten es rechtfertigen), die anderen 0.`);
+            let aiText = await API.generateText(`Erfinde einen passenden, gut ausbalancierten Gegenstand, der logisch aus diesen Zutaten hergestellt werden kann: [${materials}]. WICHTIG: Wenn die Zutaten bereits starke Werte oder Fähigkeiten haben, soll dein vorgeschlagener Gegenstand diese Werte logischerweise übernehmen oder ganz leicht verbessern. \n\nDu bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown oder Codeblock-Tags. Nutze ZWINGEND diese exakten Keys: {"name": "Gegenstandsname", "str": Zahl, "dex": Zahl, "int": Zahl, "con": Zahl}. Wähle 1-2 passende weise Attribute aus (Wert 1-3 oder höher falls die Zutaten es rechtfertigen), die anderen 0.`);
 
             const match = aiText.match(/\{[\s\S]*\}/);
             if (!match) throw new Error("Konnte kein JSON aus Antwort extrahieren.");
@@ -969,7 +928,7 @@ export const Engine = {
             if (elCon) elCon.value = data.con > 0 ? data.con : "";
 
         } catch (e) {
-            UI.addChatLog("System", `Ã¢Å¡Â Ã¯Â¸Â KI Konnte keinen Vorschlag generieren: ${e.message}`);
+            UI.addChatLog("System", `⚠️ KI Konnte keinen Vorschlag generieren: ${e.message}`);
         } finally {
             if (btn) { btn.innerHTML = '<i class="fas fa-magic mr-1"></i>Vorschlag'; btn.disabled = false; }
         }
@@ -1004,7 +963,7 @@ export const Engine = {
         if (!crafter && State.party.length > 0) crafter = State.party[0];
         const crafterName = crafter ? crafter.name : 'Ein Gruppenmitglied';
 
-        const msg = `Ich (${crafterName}) mÃƒÂ¶chte aus den gesammelten Materialien [${materials}] auf Basis meiner FÃƒÂ¤higkeiten folgenden Gegenstand verzaubern/schmieden: "${target}".\n\nBitte fordere mich GANZ EXPLIZIT im nÃƒÂ¤chsten Schritt zu einer [Probe: ${crafterName} | Intelligenz (Crafting)] auf! Die Difficulty Class (DC) bestimmst du passend zur Schwere dieses Eingriffs. WICHTIG: Wenn die verwendeten Materialien bereits starke magische Werte oder Spezifikationen besitzen, mach die DC NICHT schwerer, da die Magie/Macht ja bereits in den Zutaten steckt und nur umgeformt wird! Entscheide ERST NACH meinem Wurf ÃƒÂ¼ber Erfolg oder Misserfolg des Gegenstandes. FÃƒÂ¼ge bei Erfolg 1-2 passende ZusatzfÃƒÂ¤higkeiten passend zur Zutatenkombination (+ Stats) hinzu. (WICHTIGE DM-ANWEISUNG: Verwende ein [Verbraucht: ...] Tag AUSSCHLIESSLICH exakt fÃƒÂ¼r die genannten Zutaten hier! ZerstÃƒÂ¶re niemals andere Waffen/AusrÃƒÂ¼stung!)`;
+        const msg = `Ich (${crafterName}) möchte aus den gesammelten Materialien [${materials}] auf Basis meiner Fähigkeiten folgenden Gegenstand verzaubern/schmieden: "${target}".\n\nBitte fordere mich GANZ EXPLIZIT im nächsten Schritt zu einer [Probe: ${crafterName} | Intelligenz (Crafting)] auf! Die Difficulty Class (DC) bestimmst du passend zur Schwere dieses Eingriffs. WICHTIG: Wenn die verwendeten Materialien bereits starke magische Werte oder Spezifikationen besitzen, mach die DC NICHT schwerer, da die Magie/Macht ja bereits in den Zutaten steckt und nur umgeformt wird! Entscheide ERST NACH meinem Wurf über Erfolg oder Misserfolg des Gegenstandes. Füge bei Erfolg 1-2 passende Zusatzfähigkeiten passend zur Zutatenkombination (+ Stats) hinzu. (WICHTIGE DM-ANWEISUNG: Verwende ein [Verbraucht: ...] Tag AUSSCHLIESSLICH exakt für die genannten Zutaten hier! Zerstöre niemals andere Waffen/Ausrüstung!)`;
 
         DOM.craftingModal.classList.add('hidden');
         DOM.craftTargetItem.value = "";
@@ -1024,7 +983,7 @@ export const Engine = {
         if (c && c.abilities[idx]) {
             const oldAb = c.abilities[idx];
             c.abilities[idx] = State.pendingAbilityLearning.newAbility;
-            UI.addChatLog("System", `Ã°Å¸â€â€ž **${c.name}** hat die alte FÃƒÂ¤higkeit **${oldAb}** vergessen und dafÃƒÂ¼r **${State.pendingAbilityLearning.newAbility}** erlernt!`);
+            UI.addChatLog("System", `ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬Å¾ **${c.name}** hat die alte Fähigkeit **${oldAb}** vergessen und dafür **${State.pendingAbilityLearning.newAbility}** erlernt!`);
         }
         State.pendingAbilityLearning = null;
         document.getElementById('ability-replace-modal').classList.add('hidden');
@@ -1034,7 +993,7 @@ export const Engine = {
         if (!State.pendingAbilityLearning) return;
         const c = State.party.find(p => p.id === State.pendingAbilityLearning.charId);
         if (c) {
-            UI.addChatLog("System", `Ã¢ÂÅ’ **${c.name}** hat entschieden, **${State.pendingAbilityLearning.newAbility}** doch nicht zu erlernen.`);
+            UI.addChatLog("System", `ÃƒÂ¢Ã‚ÂÃ…’ **${c.name}** hat entschieden, **${State.pendingAbilityLearning.newAbility}** doch nicht zu erlernen.`);
         }
         State.pendingAbilityLearning = null;
         document.getElementById('ability-replace-modal').classList.add('hidden');
@@ -1051,7 +1010,7 @@ export const Engine = {
         localStorage.setItem('api_model_or_image', document.getElementById('api-model-or-image').value.trim());
 
         document.getElementById('api-settings-modal').classList.add('hidden');
-        UI.addChatLog("System", "Ã°Å¸â€Å’ API-Einstellungen gespeichert!");
+        UI.addChatLog("System", "ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ…’ API-Einstellungen gespeichert!");
     },
     savePrompt: function () {
         const inputEl = document.getElementById('new-prompt-input');
@@ -1089,7 +1048,7 @@ export const Engine = {
         if (c && ab) {
             let cdKey = `${c.id}_${ab}`;
             if (State.abilityCooldowns[cdKey]) {
-                UI.addChatLog("System", `Ã¢ÂÂ³ **${ab}** ist noch **${State.abilityCooldowns[cdKey]} Runden** auf Abklingzeit!`);
+                UI.addChatLog("System", `ÃƒÂ¢Ã‚ÂÃ‚Â³ **${ab}** ist noch **${State.abilityCooldowns[cdKey]} Runden** auf Abklingzeit!`);
                 return;
             }
             const abLower = ab.toLowerCase();
@@ -1103,7 +1062,7 @@ export const Engine = {
             }
             DOM.actingChar.value = c.name;
             const currentInput = DOM.playerInput.value.trim();
-            const src = isItemAbility ? 'Item-FÃƒÂ¤higkeit' : 'FÃƒÂ¤higkeit';
+            const src = isItemAbility ? 'Item-Fähigkeit' : 'Fähigkeit';
             DOM.playerInput.value = currentInput + ` Ich setze meine ${src}: "${ab}" ein. `;
 
             if (isSummonAbility) {
@@ -1116,14 +1075,14 @@ export const Engine = {
     },
     undoLastAction: function () {
         if (!State.undoSnapshot) {
-            UI.addChatLog("System", "Ã¢â€ Â©Ã¯Â¸Â Kein RÃƒÂ¼ckgÃƒÂ¤ngig-Snapshot vorhanden (nur die letzte Aktion kann rÃƒÂ¼ckgÃƒÂ¤ngig gemacht werden).");
+            UI.addChatLog("System", "ÃƒÂ¢Ã¢â‚¬Â Ã‚Â©ÃƒÂ¯Ã‚Â¸Ã‚Â Kein Rückgängig-Snapshot vorhanden (nur die letzte Aktion kann rückgängig gemacht werden).");
             return;
         }
         const snap = { ...State.undoSnapshot };
         snap.party = (snap.party || []).map(c => Utils.sanitizeCharacter(c));
         dispatch({ type: 'RESTORE_SNAPSHOT', snapshot: snap });
         UI.updateAll();
-        UI.addChatLog("System", "Ã¢â€ Â©Ã¯Â¸Â **Letzte Aktion rÃƒÂ¼ckgÃƒÂ¤ngig gemacht.** (Spielzustand wiederhergestellt)");
+        UI.addChatLog("System", "ÃƒÂ¢Ã¢â‚¬Â Ã‚Â©ÃƒÂ¯Ã‚Â¸Ã‚Â **Letzte Aktion rückgängig gemacht.** (Spielzustand wiederhergestellt)");
     },
     upgradeStat: function (cid, key) { const c = State.party.find(p => p.id === cid); if (c && c.statPoints > 0) { c.attributes[key]++; c.statPoints--; UI.showDetails(cid); UI.updateAll(); } },
     removeCharacter: function (id) { const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); } },
@@ -1131,7 +1090,7 @@ export const Engine = {
     bulkExportHeroes: async function () {
         const heroes = State.party.filter(p => !p.isSummon);
         if (heroes.length === 0) {
-            UI.addChatLog("System", "Ã¢Å¡Â Ã¯Â¸Â Keine Helden zum Exportieren vorhanden.");
+            UI.addChatLog("System", "⚠️ Keine Helden zum Exportieren vorhanden.");
             return;
         }
         const now = new Date();
@@ -1148,7 +1107,7 @@ export const Engine = {
             document.body.removeChild(a);
             await new Promise(r => setTimeout(r, 250));
         }
-        UI.addChatLog("System", `Ã°Å¸â€™Â¾ **${heroes.length} Helden** wurden erfolgreich exportiert (Sammel-Download).`);
+        UI.addChatLog("System", `💾 **${heroes.length} Helden** wurden erfolgreich exportiert (Sammel-Download).`);
     },
     downloadSave: function () { const now = new Date(); const pad = n => n.toString().padStart(2, '0'); const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(State)], { type: 'application/json' })); a.download = `InfiniteDungeon_${ts}.json`; document.body.appendChild(a); a.click(); },
     importSave: function (e) {
@@ -1157,7 +1116,7 @@ export const Engine = {
         r.onload = (ev) => {
             try {
                 let data = JSON.parse(ev.target.result);
-                data = validateSaveData(data);
+                data = repairStoredText(validateSaveData(data));
                 const allowed = Object.keys(State);
                 Object.keys(data).forEach(k => { if (!allowed.includes(k)) delete data[k]; });
                 Object.assign(State, data);
@@ -1166,7 +1125,7 @@ export const Engine = {
                 UI.toggleViews(State.gameStarted);
                 UI.updateAll();
             } catch (err) {
-                UI.addChatLog('System', `Ã¢Å¡Â Ã¯Â¸Â Save-Import fehlgeschlagen: ${err.message}`);
+                UI.addChatLog('System', `Save-Import fehlgeschlagen: ${repairDisplayText(err.message)}`);
             }
         };
         r.readAsText(e.target.files[0]);
@@ -1178,7 +1137,7 @@ export const Engine = {
         r.onload = (ev) => {
             try {
                 let h = JSON.parse(ev.target.result);
-                h = validateHeroData(h);
+                h = repairStoredText(validateHeroData(h));
                 h.id = Utils.generateId();
                 const hero = Utils.sanitizeCharacter(h);
                 if (Network.isClient() && Network.isConnected()) {
@@ -1192,7 +1151,7 @@ export const Engine = {
                     UI.updateAll();
                 }
             } catch (err) {
-                UI.addChatLog('System', `?? Hero-Import fehlgeschlagen: ${err.message}`);
+                UI.addChatLog('System', `Hero-Import fehlgeschlagen: ${repairDisplayText(err.message)}`);
             }
         };
         r.readAsText(e.target.files[0]);

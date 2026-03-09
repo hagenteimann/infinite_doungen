@@ -9,198 +9,136 @@ import { sanitize } from './sanitize.js';
 import { ABILITY_LIMIT, DEATH_SAVE_DC } from './constants.js';
 
 export const TagParser = {
-    process: function (text) {
-        const tagRegex = /\[(Schaden|Gegner[\s\-]*Schaden|Heilung|Gegner|GegnerTot|GegnerFlucht|Beute|Verbraucht|KampfBeendet|XP|NeuerNPC|Tausch|EndgueltigTot|Haendler|Faehigkeit|Cooldown|Flucht|Gold|DeathSave|Route)[\s:]*(.*?)\]/gi;
-        let match;
-        while ((match = tagRegex.exec(text)) !== null) {
-            let type = match[1].toLowerCase().replace(/[\s\-]+/g, '');
-            let argsStr = match[2] || "";
-            let args = argsStr.includes(',') ? argsStr.split(',').map(s => s.trim()) : argsStr.split(/\s+/).map(s => s.trim());
-            let targetName = args[0] || ""; let amount = parseInt(args[1]);
-            if (args.length > 1 && isNaN(amount) && !isNaN(parseInt(args[0]))) { amount = parseInt(args[0]); targetName = args.slice(1).join(' '); }
-            else if (args.length > 1 && !isNaN(amount)) { if (!argsStr.includes(',')) { targetName = args.slice(0, args.length - 1).join(' '); amount = parseInt(args[args.length - 1]); } }
-            this.applyEvent(type, targetName, amount || 0, argsStr);
+    // Process JSON event array string instead of raw text
+    process: function (jsonString) {
+        if (!jsonString) return;
+        
+        try {
+            const events = JSON.parse(jsonString);
+            if (!Array.isArray(events)) return;
+            
+            events.forEach(evt => {
+                this.applyEvent(evt);
+            });
+            
+            CombatManager.cleanupDead(); 
+            UI.updateAll();
+        } catch(e) {
+            console.error("TagParser failed to parse events JSON:", e);
         }
-        CombatManager.cleanupDead(); UI.updateAll();
     },
-    applyEvent: function (type, targetName, amount, rawArgs) {
-        if (['schaden', 'gegnerschaden', 'heilung', 'xp'].includes(type)) {
-            if (isNaN(amount) || amount < 0) return;
-        }
+    
+    applyEvent: function (evt) {
+        if (!evt || !evt.type) return;
+        const type = evt.type.toUpperCase();
 
-        if (type === 'gegnerschaden') {
-            let e = Utils.findTarget(State.activeEnemies, targetName);
-            if (e) CombatManager.damage(e, amount);
-            else UI.addChatLog("System", `⚠️ Mechanik verworfen: Feind '${targetName}' nicht gefunden.`);
+        if (type === 'GEGNER_SCHADEN') {
+            let e = Utils.findTarget(State.activeEnemies, evt.target);
+            if (e) CombatManager.damage(e, evt.amount || 0);
+            else UI.addChatLog("System", `⚠️ Mechanik verworfen: Feind '${evt.target}' nicht gefunden.`);
         }
-        else if (type === 'schaden') {
-            let c = Utils.findTarget(State.party, targetName);
-            if (c) PartyManager.damage(c, amount);
+        else if (type === 'SCHADEN') {
+            let c = Utils.findTarget(State.party, evt.target);
+            if (c) PartyManager.damage(c, evt.amount || 0);
             else {
-                let e = Utils.findTarget(State.activeEnemies, targetName);
-                if (e) CombatManager.damage(e, amount);
-                else UI.addChatLog("System", `⚠️ Mechanik verworfen: Ziel '${targetName}' für Schaden nicht gefunden.`);
+                let e = Utils.findTarget(State.activeEnemies, evt.target);
+                if (e) CombatManager.damage(e, evt.amount || 0);
+                else UI.addChatLog("System", `⚠️ Mechanik verworfen: Ziel '${evt.target}' für Schaden nicht gefunden.`);
             }
         }
-        else if (type === 'heilung') {
-            let c = Utils.findTarget(State.party, targetName);
-            if (c) PartyManager.heal(c, amount);
-            else UI.addChatLog("System", `⚠️ Mechanik verworfen: Ziel '${targetName}' für Heilung nicht gefunden.`);
+        else if (type === 'HEILUNG') {
+            let c = Utils.findTarget(State.party, evt.target);
+            if (c) PartyManager.heal(c, evt.amount || 0);
+            else UI.addChatLog("System", `⚠️ Mechanik verworfen: Ziel '${evt.target}' für Heilung nicht gefunden.`);
         }
-        else if (type === 'gegner') {
-            let sArgs = rawArgs.includes(',') ? rawArgs.split(',').map(s => s.trim()) : rawArgs.split(/\s+/).map(s => s.trim());
-            let sName = sArgs[0] || "Gegner"; let sHp = parseInt(sArgs[1]) || 20;
-            if (!isNaN(parseInt(sArgs[0])) && isNaN(parseInt(sArgs[1]))) { sHp = parseInt(sArgs[0]); sName = sArgs[1]; }
-            if (sHp > 0) CombatManager.spawn(sName, sHp, sArgs.slice(2).join(', ') || '');
+        else if (type === 'GEGNER') {
+            if (evt.hp > 0) {
+                CombatManager.spawn(evt.name || "Gegner", evt.hp || 20, evt.desc || "");
+            }
         }
-        else if (type === 'gegnertot') {
-            let e = Utils.findTarget(State.activeEnemies, targetName || rawArgs.trim());
+        else if (type === 'GEGNER_TOT') {
+            let e = Utils.findTarget(State.activeEnemies, evt.name);
             if (e) CombatManager.damage(e, e.hp);
         }
-        else if (type === 'beute') {
-            let lootItems = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : [rawArgs.trim()];
+        else if (type === 'GEGNER_FLUCHT') {
+            let e = Utils.findTarget(State.activeEnemies, evt.name);
+            if (e) {
+                CombatManager.damage(e, e.hp); // For now just kill them to remove from combat
+                UI.addChatLog("System", `🏃 **${e.name}** ist geflohen!`);
+            }
+        }
+        else if (type === 'BEUTE') {
             const items = [];
-            lootItems.filter(a => a).forEach(itemStr => {
-                const { amt, name } = Utils.parseItemQuantity(itemStr);
-                for (let i = 0; i < amt; i++) items.push(name);
-            });
+            if (Array.isArray(evt.items)) {
+                evt.items.filter(a => a).forEach(itemStr => {
+                    const { amt, name } = Utils.parseItemQuantity(itemStr);
+                    for (let i = 0; i < amt; i++) items.push(name);
+                });
+            }
             if (items.length > 0) dispatch({ type: 'ADD_LOOT', items });
         }
-        else if (type === 'route') {
-            let routeName = rawArgs.trim();
+        else if (type === 'ROUTE') {
+            let routeName = evt.name;
             if (routeName && !State.routeChoices.includes(routeName)) {
                 State.routeChoices.push(routeName);
             }
         }
-        else if (type === 'verbraucht') {
-            let vArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/);
-            let c = Utils.findTarget(State.party, vArgs[0]);
-            let rawItemStr = vArgs.slice(1).join(', ').trim() || rawArgs;
-            const { amt, name } = Utils.parseItemQuantity(rawItemStr);
-            if (c) PartyManager.consumeItem(c, name, amt);
-        }
-        else if (type === 'kampfbeendet') { State.activeEnemies = []; CombatManager.endCombat(); }
-        else if (type === 'xp') {
-            if (targetName && targetName.toLowerCase() === 'alle') State.party.forEach(p => PartyManager.addXP(p, amount));
-            else {
-                let c = Utils.findTarget(State.party, targetName);
-                if (c) PartyManager.addXP(c, amount);
+        else if (type === 'VERBRAUCHT') {
+            let c = Utils.findTarget(State.party, evt.char);
+            if (c && Array.isArray(evt.items)) {
+                evt.items.forEach(itemStr => {
+                    const { amt, name } = Utils.parseItemQuantity(itemStr);
+                    PartyManager.consumeItem(c, name, amt);
+                });
             }
         }
-        else if (type === 'neuernpc') {
-            let nArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/);
-            Engine.spawnNPCFromTag(nArgs[0] || 'Unbekannt', nArgs[1] || 'Bürger', nArgs.slice(2).join(',') || 'Begleiter');
+        else if (type === 'KAMPF_BEENDET') { 
+            State.activeEnemies = []; 
+            CombatManager.endCombat(); 
         }
-        else if (type === 'tausch') {
-            let tArgs = rawArgs.includes(',') ? Utils.splitByCommaOutsideBrackets(rawArgs) : rawArgs.split(/\s+/);
-            let c = Utils.findTarget(State.party, tArgs[0]);
-            if (c && tArgs.length >= 3) {
-                PartyManager.consumeItem(c, tArgs[1]);
-                c.inventory.push(tArgs[2].trim().charAt(0).toUpperCase() + tArgs[2].trim().slice(1));
-                UI.addChatLog("System", `🤝 **${c.name}** tauschte **${tArgs[1]}** gegen **${tArgs[2]}**.`);
-            } else if (!c) {
-                UI.addChatLog("System", `⚠️ Tausch verworfen: Charakter '${tArgs[0]}' nicht gefunden.`);
+        else if (type === 'XP') {
+            if (evt.target && evt.target.toLowerCase() === 'alle') {
+                State.party.forEach(p => PartyManager.addXP(p, evt.amount || 0));
+            } else {
+                let c = Utils.findTarget(State.party, evt.target);
+                if (c) PartyManager.addXP(c, evt.amount || 0);
             }
         }
-        else if (type === 'endgueltigtot') {
-            let c = Utils.findTarget(State.party, targetName);
-            if (c) { State.party = State.party.filter(p => p.id !== c.id); UI.addChatLog("System", `⚰️ **${c.name}** ist endgültig von uns gegangen...`); UI.hideDetails(); }
+        else if (type === 'NEUER_NPC') {
+            Engine.spawnNPCFromTag(evt.name || 'Unbekannt', evt.class || 'Bürger', evt.appearance || 'Begleiter');
         }
-        else if (type === 'haendler') {
-            const parts = rawArgs.split('|');
-            const mName = parts[0] ? parts[0].trim() : "Händler";
-            const mItems = parts.length > 1 ? Utils.splitByCommaOutsideBrackets(parts[1]) : ["Bietet derzeit nichts an"];
-            State.activeMerchant = { name: mName, items: mItems };
-        }
-        else if (type === 'faehigkeit') {
-            let fParts = rawArgs.includes('|') ? rawArgs.split('|') : rawArgs.split(/\s+/);
-            let c = Utils.findTarget(State.party, fParts[0].trim());
-            if (c) {
-                let fName = fParts.slice(1).join(' ').trim();
-                if (!c.abilities) c.abilities = [];
-                if (c.ability && !c.abilities.includes(c.ability)) c.abilities.push(c.ability);
-                if (fName) {
-                    let fNameBase = fName.replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/i, '').trim();
-                    let existingIdx = c.abilities.findIndex(ab => {
-                        let abBase = ab.replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/i, '').trim();
-                        return abBase.toLowerCase() === fNameBase.toLowerCase();
-                    });
-                    if (existingIdx !== -1) {
-                        let existing = c.abilities[existingIdx];
-                        let existingBase = existing.replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/i, '').trim();
-                        let tierMatch = existing.match(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/i);
-                        let currentTier = tierMatch ? tierMatch[1].toUpperCase() : 'I';
-                        const tiers = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-                        let tierIdx = tiers.indexOf(currentTier);
-                        let nextTier = tierIdx < tiers.length - 1 ? tiers[tierIdx + 1] : tiers[tiers.length - 1];
-                        c.abilities[existingIdx] = `${existingBase} ${nextTier}`;
-                        UI.addChatLog("System", `⚡ **${c.name}** hat die Fähigkeit **${existingBase}** verstärkt → **${c.abilities[existingIdx]}**!`);
-                    } else {
-                        if (c.abilities.length >= ABILITY_LIMIT) {
-                            State.pendingAbilityLearning = { charId: c.id, newAbility: fName };
-                            UI.showAbilityReplaceModal(c.id, fName);
-                        } else {
-                            c.abilities.push(fName);
-                            UI.addChatLog("System", `🌟 **${c.name}** hat eine neue Fähigkeit erlernt: **${fName}**`);
-                        }
-                    }
-                }
+        else if (type === 'TAUSCH') {
+            let c = Utils.findTarget(State.party, evt.char);
+            if (c && evt.given && evt.received) {
+                PartyManager.consumeItem(c, evt.given);
+                const receivedItem = evt.received.trim().charAt(0).toUpperCase() + evt.received.trim().slice(1);
+                c.inventory.push(receivedItem);
+                UI.addChatLog("System", `🤝 **${c.name}** tauschte **${evt.given}** gegen **${receivedItem}**.`);
             }
         }
-        else if (type === 'cooldown') {
-            let cdParts = rawArgs.split('|').map(s => s.trim());
-            if (cdParts.length >= 3) {
-                let charName = cdParts[0];
-                let abilityName = cdParts[1];
-                let rounds = parseInt(cdParts[2]) || 3;
-                let c = Utils.findTarget(State.party, charName);
-                if (c) {
-                    let cdKey = `${c.id}_${abilityName}`;
-                    State.abilityCooldowns[cdKey] = rounds;
-                    UI.addChatLog("System", `⏳ **${c.name}**: Fähigkeit **${abilityName}** hat **${rounds} Runden** Abklingzeit.`);
-                }
+        else if (type === 'GOLD') {
+            if (evt.amount > 0) {
+                dispatch({ type: 'ADD_LOOT', items: [`${evt.amount} Goldmünzen`] });
             }
         }
-        else if (type === 'flucht') {
-            let fluchtArg = rawArgs.trim().toLowerCase();
-            if (fluchtArg.includes('erfolg')) {
-                if (State.isBossFight) {
-                    UI.addChatLog("System", `🚫 **Flucht unmöglich!** Der Boss blockiert jeden Fluchtversuch!`);
-                } else {
-                    UI.addChatLog("System", `🌀 **Teleport erfolgreich!** Die Gruppe entkommt dem Kampf!`);
-                    State.activeEnemies = [];
-                    State.defeatedEnemies = [];
-                    State.combatEnded = true;
-                    if (State.party.some(p => p.isSummon)) {
-                        State.party = State.party.filter(p => !p.isSummon);
-                        UI.addChatLog("System", `💨 Beschworene Kreaturen verschwinden.`);
-                    }
-                }
+        else if (type === 'COOLDOWN') {
+            const safeCharName = evt.char.replace(/[^a-zA-Z0-9]/g, '');
+            const safeAbilityName = evt.ability.replace(/[^a-zA-Z0-9]/g, '');
+            const cdKey = `${safeCharName}_${safeAbilityName}`;
+            State.abilityCooldowns[cdKey] = (evt.rounds || 3) + 1;
+        }
+        else if (type === 'FLUCHT_ERFOLG') {
+            if (State.isBossFight) {
+                UI.addChatLog("System", `🚫 **Flucht unmöglich!** Der Boss blockiert jeden Fluchtversuch!`);
+            } else {
+                UI.addChatLog("System", `🌀 **Flucht erfolgreich!** Die Gruppe entkommt dem Kampf!`);
+                State.activeEnemies = [];
+                State.defeatedEnemies = [];
+                State.combatEnded = true;
             }
         }
-        else if (type === 'gold') {
-            const goldAmount = amount || parseInt(rawArgs.trim()) || 0;
-            if (goldAmount > 0) {
-                dispatch({ type: 'ADD_GOLD', amount: goldAmount });
-                Sound.play('loot');
-                UI.addChatLog("System", `💰 **${goldAmount} Goldmünzen** erhalten! (Gesamt: ${State.gold} 🪙)`);
-            }
-        }
-        else if (type === 'gegnerflucht') {
-            const eName = targetName || rawArgs.trim();
-            let e = Utils.findTarget(State.activeEnemies, eName);
-            if (e) {
-                Sound.play('click');
-                UI.addChatLog("System", `🏃 **${e.name}** flieht aus dem Kampf! (Erschöpft/verängstigt)`);
-                State.activeEnemies = State.activeEnemies.filter(en => en.id !== e.id);
-                if (!State.defeatedEnemies.some(d => d.id === e.id)) {
-                    State.defeatedEnemies.unshift({ ...e, hp: 0, fled: true });
-                }
-            }
-        }
-        else if (type === 'deathsave') {
-            const charName = targetName || rawArgs.trim();
-            let c = Utils.findTarget(State.party, charName);
+        else if (type === 'DEATH_SAVE') {
+            let c = Utils.findTarget(State.party, evt.name);
             if (c && c.hp <= 0) {
                 const roll = Math.floor(Math.random() * 20) + 1;
                 const dc = DEATH_SAVE_DC;
@@ -208,12 +146,59 @@ export const TagParser = {
                 if (roll >= dc) {
                     c.hp = 1;
                     Sound.play('heal');
-                    UI.addChatLog("System", `💫 **TODESRETTUNG – ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} → ✅ **Überlebt!** Stabilisiert mit 1 HP – bewusstlos aber am Leben.`);
+                    UI.addChatLog("System", `💫 **TODESRETTUNG – ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} → ✅ **Überlebt!** Stabilisiert mit 1 HP.`);
                 } else {
-                    UI.addChatLog("System", `💀 **TODESRETTUNG – ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} → ❌ **Fehlgeschlagen!** Die Gruppe hat EINEN letzten Versuch ihn/sie zu retten!`);
+                    UI.addChatLog("System", `💀 **TODESRETTUNG – ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} → ❌ **Fehlgeschlagen!** Letzter Versuch zur Rettung!`);
                 }
             }
         }
+        else if (type === 'PROBE') {
+            this.handleProbe(evt);
+        }
+    },
+
+    handleProbe: function(evt) {
+        let charName = evt.char;
+        let statName = (evt.stat || "STR").toUpperCase();
+        let desc = evt.desc || statName;
+        let dc = parseInt(evt.dc) || 10;
+        let dt = (evt.dice || "W20").toUpperCase();
+        let modifier = 0;
+
+        const c = Utils.findTarget(State.party, charName);
+        if (c && statName) {
+            const baseAttr = (c.attributes || {})[statName] || 10;
+            const eff = PartyManager.getEffectiveAttributes(c);
+            const totalAttr = eff[statName] || 10;
+            const itemBonus = totalAttr - baseAttr;
+            modifier = totalAttr;
+            State.pendingRolls._nextModBreakdown = { base: baseAttr, item: itemBonus, total: totalAttr };
+        }
+
+        const breakdown = State.pendingRolls._nextModBreakdown || null;
+        delete State.pendingRolls._nextModBreakdown;
+        const weatherDcMod = (State.weather && State.weather.dcMod) || 0;
+        const fatigueDcMod = State.fatigue >= 10 ? Math.floor((State.fatigue - 7) / 3) : 0;
+        const finalDc = dc + weatherDcMod + fatigueDcMod;
+        const dcNote = (weatherDcMod > 0 || fatigueDcMod > 0)
+            ? ` [DC ${dc}${weatherDcMod > 0 ? ` +${weatherDcMod} ${State.weather.name}` : ''}${fatigueDcMod > 0 ? ` +${fatigueDcMod} Erschöpfung` : ''}]`
+            : '';
+            
+        State.pendingRolls.push({ 
+            id: Utils.generateId(), 
+            name: charName, 
+            stat: statName, 
+            mod: modifier, 
+            desc: desc + dcNote, 
+            dc: finalDc, 
+            diceType: dt, 
+            rolled: false, 
+            result: 0, 
+            rawRoll: 0, 
+            modBreakdown: breakdown 
+        });
+        
+        UI.updateActionBox();
     }
 };
 

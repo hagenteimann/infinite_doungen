@@ -30,12 +30,68 @@ const TRUSTED = {
   ],
 };
 
+const MOJIBAKE_PATTERN = /(?:Ã.|Â.|â€|–|â€”|â„¢|â€¦|ï¸|ðŸ|Ãƒ|Ã‚|�)/;
+const MOJIBAKE_SCORE = /(?:Ã|Â|â€|–|â€”|â„¢|â€¦|ï¸|ðŸ|Ãƒ|Ã‚|�)/g;
+
+function scoreMojibake(value) {
+  return (String(value || '').match(MOJIBAKE_SCORE) || []).length;
+}
+
+function decodeLatin1Mojibake(value) {
+  const bytes = Array.from(String(value || ''))
+    .map(char => {
+      const code = char.charCodeAt(0);
+      if (code > 0xff) return encodeURIComponent(char);
+      return `%${code.toString(16).padStart(2, '0')}`;
+    })
+    .join('');
+  return decodeURIComponent(bytes);
+}
+
 export function sanitizeStrict(html) {
   return DOMPurify.sanitize(html, STRICT);
 }
 
 export function sanitize(html) {
   return DOMPurify.sanitize(html, TRUSTED);
+}
+
+export function repairDisplayText(value) {
+  if (typeof value !== 'string') return value;
+
+  let current = value.replace(/\u00a0/g, ' ').replace(/\r\n/g, '\n');
+  let currentScore = scoreMojibake(current);
+
+  for (let i = 0; i < 3 && MOJIBAKE_PATTERN.test(current); i++) {
+    try {
+      const candidate = decodeLatin1Mojibake(current);
+      const candidateScore = scoreMojibake(candidate);
+      if (candidateScore >= currentScore) break;
+      current = candidate;
+      currentScore = candidateScore;
+    } catch {
+      break;
+    }
+  }
+
+  return current;
+}
+
+export function repairHtmlText(value) {
+  if (typeof value !== 'string') return value;
+  return repairDisplayText(value).replace(/[ \t]+\n/g, '\n');
+}
+
+export function repairStoredText(value) {
+  if (typeof value === 'string') return repairDisplayText(value);
+  if (Array.isArray(value)) return value.map(item => repairStoredText(item));
+  if (!value || typeof value !== 'object') return value;
+
+  const clone = {};
+  Object.entries(value).forEach(([key, entryValue]) => {
+    clone[key] = repairStoredText(entryValue);
+  });
+  return clone;
 }
 
 export function validateSaveData(data) {
