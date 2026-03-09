@@ -3,12 +3,14 @@ export const State = {
     lastStoryPart: "", gameStarted: false, isProcessing: false,
     tempPortraitData: "", tempImagePrompt: "",
     pendingRolls: [], recentRolls: [], craftingIngredients: [], routeChoices: [],
-    chatMessages: [], systemMessages: [],
+    chatMessages: [], systemMessages: [], transientEvents: [],
     targetMapMode: false,
     imageQuotaExceeded: false,
     combatEnded: false,
     activeMerchant: null,
     journal: [],
+    gold: 0,
+    dungeonLevel: 1,
     sessionStats: { totalDamageDealt: 0, totalDamageTaken: 0, totalXPEarned: 0, totalHealed: 0, diceRolls: [], highestRoll: 0, lowestRoll: 21, combatsWon: 0, turnsPlayed: 0 },
     soundEnabled: true,
     quickplayEnabled: false,
@@ -23,6 +25,9 @@ export const State = {
     momentum: 0,
     pendingAbilityLearning: null,
     activeCrafterId: null,
+    playerControlMode: {},
+    dmControlMode: 'human',
+    afkSince: {},
 };
 
 const listeners = new Set();
@@ -90,6 +95,14 @@ export function dispatch(action) {
             }
             break;
         }
+        case 'ADD_GOLD': {
+            State.gold = (State.gold || 0) + (action.amount || 0);
+            break;
+        }
+        case 'SET_GOLD': {
+            State.gold = action.amount || 0;
+            break;
+        }
         case 'SET_MERCHANT': {
             State.activeMerchant = action.merchant;
             break;
@@ -118,6 +131,7 @@ export function dispatch(action) {
         case 'COMBAT_ENDED': {
             State.combatEnded = true;
             State.sessionStats.combatsWon++;
+            State.dungeonLevel = Math.max(1, (State.dungeonLevel || 1));
             break;
         }
         case 'SET_COOLDOWN': {
@@ -144,6 +158,8 @@ export function dispatch(action) {
                 defeatedEnemies: snap.defeatedEnemies || [],
                 lootDrops: snap.lootDrops || [],
                 routeChoices: snap.routeChoices || [],
+                gold: snap.gold || 0,
+                dungeonLevel: snap.dungeonLevel || 1,
                 fate: snap.fate || 0,
                 fatigue: snap.fatigue || 0,
                 activeMerchant: snap.activeMerchant || null,

@@ -19,11 +19,12 @@ const DEFAULT_ICE_SERVERS = [
 ];
 
 const SYNC_KEYS = [
-    'party', 'activeEnemies', 'defeatedEnemies', 'lootDrops',
+    'party', 'activeEnemies', 'defeatedEnemies', 'lootDrops', 'gold', 'dungeonLevel',
     'lastStoryPart', 'gameStarted', 'combatEnded', 'activeMerchant',
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
     'isBossFight', 'weather', 'momentum',
     'pendingRolls', 'recentRolls', 'pendingAbilityLearning', 'quickplayEnabled',
+    'chatMessages', 'systemMessages', 'transientEvents', 'playerControlMode', 'dmControlMode', 'afkSince',
 ];
 
 export const Network = {
@@ -44,6 +45,9 @@ export const Network = {
     currentVote: null,
     _mySubmittedAction: null,
     autoPlayers: {},
+    _idCounter: 0,
+    _seenMessageIds: new Set(),
+    _seenEventIds: new Set(),
     _syncDirty: false,
     _syncDebounceTimer: null,
     _heartbeatTimer: null,
@@ -68,6 +72,108 @@ export const Network = {
         return Math.random().toString(36).substring(2, 8).toUpperCase();
     },
 
+    _nextId(prefix = 'evt') {
+        this._idCounter += 1;
+        return prefix + '-' + Date.now().toString(36) + '-' + this._idCounter.toString(36);
+    },
+
+    _rememberSeenId(store, id, limit = 400) {
+        if (!id) return;
+        store.add(id);
+        if (store.size > limit) {
+            const first = store.values().next().value;
+            if (first) store.delete(first);
+        }
+        if (State.dmControlMode === 'ai') {
+            setTimeout(() => {
+                if (State.dmControlMode === 'ai' && !State.isProcessing) Engine.interactWithAI('[DM-Fallback] Fuehre die Szene knapp und hilfreich fort.');
+            }, 500);
+        }
+    },
+
+    _syncAutoPlayersFromControlModes() {
+        this.autoPlayers = {};
+        const modes = State.playerControlMode || {};
+        Object.entries(modes).forEach(([playerName, mode]) => {
+            if (mode === 'ai') this.autoPlayers[playerName] = true;
+        });
+    },
+
+    getPlayerControlMode(playerName) {
+        return State.playerControlMode?.[playerName] || (this.autoPlayers[playerName] ? 'ai' : 'human');
+    },
+
+    _recordChatEntry(entry, broadcastType = null) {
+        if (!entry || !entry.id) return null;
+        UI.addChatLog(entry, null, { persist: true });
+        this._rememberSeenId(this._seenMessageIds, entry.id);
+        if (this.isHost() && broadcastType) {
+            this.connections.forEach(conn => this._sendTo(conn, { type: broadcastType, entry }));
+            this._markDirty();
+        }
+        return entry;
+    },
+
+    _recordSystemEntry(entry, broadcast = true) {
+        if (!entry || !entry.id) return null;
+        UI.addChatLog(entry, null, { persist: true });
+        this._rememberSeenId(this._seenMessageIds, entry.id);
+        if (this.isHost() && broadcast) {
+            this.connections.forEach(conn => this._sendTo(conn, { type: 'SYSTEM_CHAT', entry }));
+            this._markDirty();
+        }
+        return entry;
+    },
+
+    _pushTransientEvent(event, options = {}) {
+        if (!event) return null;
+        const now = Date.now();
+        const normalized = {
+            id: event.id || this._nextId('te'),
+            type: event.type || 'important_notice',
+            sender: event.sender || 'System',
+            targetPlayer: event.targetPlayer || null,
+            payload: event.payload || {},
+            createdAt: event.createdAt || now,
+            expiresAt: event.expiresAt || (now + (options.durationMs || 5000)),
+        };
+        State.transientEvents = Array.isArray(State.transientEvents) ? State.transientEvents : [];
+        const idx = State.transientEvents.findIndex(item => item.id === normalized.id);
+        if (idx >= 0) State.transientEvents[idx] = { ...State.transientEvents[idx], ...normalized };
+        else State.transientEvents.push(normalized);
+        State.transientEvents = State.transientEvents.filter(item => item.expiresAt > now).slice(-12);
+        this._rememberSeenId(this._seenEventIds, normalized.id);
+        if (options.render !== false) UI.showTransientEvent(normalized);
+        if (this.isHost() && options.broadcast !== false) {
+            this.connections.forEach(conn => this._sendTo(conn, { type: 'TRANSIENT_EVENT', event: normalized }));
+            this._markDirty();
+        }
+        return normalized;
+    },
+
+    setPlayerControlMode(playerName, mode) {
+        if (!this.isHost() || !playerName) return;
+        State.playerControlMode = State.playerControlMode || {};
+        State.playerControlMode[playerName] = mode === 'ai' ? 'ai' : 'human';
+        this._syncAutoPlayersFromControlModes();
+        const entry = { id: this._nextId('sys'), sender: 'System', text: '**' + playerName + '** ist jetzt ' + (State.playerControlMode[playerName] === 'ai' ? 'KI-gesteuert' : 'manuell') + '.', tone: 'neutral', createdAt: Date.now() };
+        this._recordSystemEntry(entry);
+        this.connections.forEach(conn => this._sendTo(conn, { type: 'CONTROL_MODE_UPDATE', playerName, mode: State.playerControlMode[playerName] }));
+        this._updateTurnUI();
+    },
+
+    togglePlayerControlMode(playerName) {
+        this.setPlayerControlMode(playerName, this.getPlayerControlMode(playerName) === 'ai' ? 'human' : 'ai');
+    },
+
+    toggleDmControlMode() {
+        if (!this.isHost()) return;
+        State.dmControlMode = State.dmControlMode === 'ai' ? 'human' : 'ai';
+        const entry = { id: this._nextId('sys'), sender: 'System', text: 'DM-Fallback ist jetzt ' + (State.dmControlMode === 'ai' ? 'KI-gesteuert.' : 'wieder manuell.'), tone: 'neutral', createdAt: Date.now() };
+        this._recordSystemEntry(entry);
+        this.connections.forEach(conn => this._sendTo(conn, { type: 'DM_CONTROL_UPDATE', mode: State.dmControlMode }));
+        this._updateTurnUI();
+    },
     _getPeerConfig() {
         const opts = { config: { iceServers: [...DEFAULT_ICE_SERVERS] } };
 
@@ -138,18 +244,22 @@ export const Network = {
             this._setConnState('connected');
             this.turnOrder = [this.playerName];
             this.currentTurnIndex = 0;
+            State.playerControlMode = { [this.playerName]: 'human' };
+            State.dmControlMode = 'human';
             this._startHeartbeat();
-            UI.addChatLog('System', `Multiplayer-Raum erstellt: **${this.roomCode}**. Teile diesen Code mit deinen Spielern.`);
+            this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Multiplayer-Raum erstellt: **${this.roomCode}**. Teile diesen Code mit deinen Spielern.`, tone: 'neutral', createdAt: Date.now() }, false);
         });
 
         this.peer.on('connection', (conn) => {
             conn.on('open', () => {
                 this.connections.push(conn);
                 const joinedName = conn.metadata?.name || 'Unbekannt';
-                UI.addChatLog('System', `Spieler **${joinedName}** ist beigetreten.`);
+                this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Spieler **${joinedName}** ist beigetreten.`, tone: 'neutral', createdAt: Date.now() });
                 if (!this.turnOrder.includes(joinedName)) {
                     this.turnOrder.push(joinedName);
                 }
+                State.playerControlMode = State.playerControlMode || {};
+                if (!State.playerControlMode[joinedName]) State.playerControlMode[joinedName] = 'human';
                 this._updateUI();
                 this.assignCharacters();
                 this._sendTo(conn, this._getFullSyncPayload());
@@ -161,7 +271,8 @@ export const Network = {
             conn.on('close', () => {
                 this.connections = this.connections.filter(c => c !== conn);
                 const leftName = conn.metadata?.name || 'Unbekannt';
-                UI.addChatLog('System', `Spieler **${leftName}** hat den Raum verlassen.`);
+                this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Spieler **${leftName}** hat den Raum verlassen.`, tone: 'neutral', createdAt: Date.now() });
+                if (State.playerControlMode) delete State.playerControlMode[leftName];
                 const turnIdx = this.turnOrder.indexOf(leftName);
                 if (turnIdx > -1) {
                     this.turnOrder.splice(turnIdx, 1);
@@ -290,6 +401,12 @@ export const Network = {
         this.currentVote = null;
         this._mySubmittedAction = null;
         this.autoPlayers = {};
+        this._seenMessageIds = new Set();
+        this._seenEventIds = new Set();
+        State.playerControlMode = {};
+        State.dmControlMode = 'human';
+        State.afkSince = {};
+        State.transientEvents = [];
         State._mpRole = null;
         State._mpMyCharId = null;
         this._setConnState('idle');
@@ -343,16 +460,12 @@ export const Network = {
 
     broadcastChat(sender, text) {
         if (!this.isHost()) return;
-        this.connections.forEach(conn => {
-            this._sendTo(conn, { type: 'DM_MESSAGE', sender, text });
-        });
+        this._recordChatEntry({ id: this._nextId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: sender === 'DM' && State.dmControlMode === 'ai', createdAt: Date.now() }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
     },
 
     broadcastSystemChat(sender, text) {
         if (!this.isHost()) return;
-        this.connections.forEach(conn => {
-            this._sendTo(conn, { type: 'SYSTEM_CHAT', sender, text });
-        });
+        this._recordSystemEntry({ id: this._nextId('sys'), sender, text, tone: 'neutral', createdAt: Date.now() });
     },
 
     advanceTurn() {
@@ -361,18 +474,23 @@ export const Network = {
         this.broadcastTurnState();
         this._updateTurnUI();
         const currentPlayer = this.turnOrder[this.currentTurnIndex];
-        if (currentPlayer && this.autoPlayers[currentPlayer]) {
+        if (currentPlayer) {
+            this._pushTransientEvent({ id: 'turn-' + currentPlayer + '-' + this.currentTurnIndex, type: 'turn_notice', sender: currentPlayer, payload: { text: currentPlayer + ' ist am Zug.' }, expiresAt: Date.now() + 4500 });
+        }
+        if (currentPlayer && this.getPlayerControlMode(currentPlayer) === 'ai') {
             const char = this._getCharForPlayer(currentPlayer);
             if (char && char.hp > 0) {
                 setTimeout(() => {
                     const action = this._generateAutoAction(char);
-                    UI.addChatLog(char.name, action);
-                    this.connections.forEach(c => {
-                        this._sendTo(c, { type: 'PLAYER_CHAT', sender: char.name, text: action });
-                    });
+                    this._recordChatEntry({ id: this._nextId('msg'), sender: char.name, text: action, senderType: 'player', isAiControlled: true, createdAt: Date.now() }, 'PLAYER_CHAT');
                     Engine.interactWithAI(action);
                 }, 600);
             }
+        }
+        if (State.dmControlMode === 'ai' && !State.isProcessing) {
+            setTimeout(() => {
+                if (State.dmControlMode === 'ai' && !State.isProcessing) Engine.interactWithAI('[DM-Fallback] Fuehre die Szene knapp weiter und gib der Gruppe Orientierung.');
+            }, 900);
         }
     },
 
@@ -428,16 +546,7 @@ export const Network = {
     },
 
     toggleAutoPlayer(playerName) {
-        if (!this.isHost()) return;
-        if (this.autoPlayers[playerName]) {
-            delete this.autoPlayers[playerName];
-            UI.addChatLog('System', `**${playerName}** wird wieder manuell gesteuert.`);
-        } else {
-            this.autoPlayers[playerName] = true;
-            UI.addChatLog('System', `**${playerName}** wird jetzt automatisch (KI) gesteuert.`);
-        }
-        this.broadcastSystemChat('System', `**${playerName}** ist jetzt ${this.autoPlayers[playerName] ? 'KI-gesteuert' : 'manuell'}.`);
-        this._updateTurnUI();
+        this.togglePlayerControlMode(playerName);
     },
 
     _getCharForPlayer(playerName) {
@@ -457,7 +566,7 @@ export const Network = {
 
     _allCombatActionsSubmitted() {
         return this.turnOrder.every(playerName => {
-            if (this.autoPlayers[playerName]) return true;
+            if (this.getPlayerControlMode(playerName) === 'ai') return true;
             const char = this._getCharForPlayer(playerName);
             if (!char || char.hp <= 0) return true;
             return !!this.combatActions[playerName];
@@ -903,12 +1012,7 @@ export const Network = {
         switch (msg.type) {
             case 'PLAYER_ACTION': {
                 Sound.play('turn');
-                this.connections.forEach(c => {
-                    if (c !== conn) {
-                        this._sendTo(c, { type: 'PLAYER_CHAT', sender: msg.actingChar || name, text: msg.action });
-                    }
-                });
-                UI.addChatLog(msg.actingChar || name, msg.action);
+                this._recordChatEntry({ id: this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: Date.now() }, 'PLAYER_CHAT');
                 if (DOM.actingChar) DOM.actingChar.value = msg.actingChar || 'party';
                 Engine.interactWithAI(msg.action);
                 break;
@@ -921,10 +1025,7 @@ export const Network = {
                 Sound.play('turn');
                 this.combatActions[msg.playerName] = { action: msg.action, charName: msg.charName };
                 const combatSender = msg.charName || msg.playerName;
-                this.connections.forEach(c => {
-                    this._sendTo(c, { type: 'PLAYER_CHAT', sender: combatSender, text: msg.action });
-                });
-                UI.addChatLog(combatSender, msg.action);
+                this._recordChatEntry({ id: this._nextId('msg'), sender: combatSender, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(msg.playerName) === 'ai', createdAt: Date.now() }, 'PLAYER_CHAT');
                 this._broadcastCombatStatus();
                 this._queueCombatExecution();
                 break;
@@ -934,8 +1035,7 @@ export const Network = {
                     const char = validateHeroData(msg.charData);
                     if (!State.party.find(p => p.id === char.id)) {
                         State.party.push(char);
-                        UI.addChatLog('System', `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`);
-                        this.broadcastSystemChat('System', `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`);
+                        this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`, tone: 'neutral', createdAt: Date.now() });
                         this.registerCharacter(msg.playerName, char.id);
                         this.broadcastState();
                         UI.updateAll();
@@ -948,8 +1048,13 @@ export const Network = {
             case 'ITEM_ACTION': {
                 const result = this._applyInventoryAction(msg.action, msg.payload || {}, msg.playerName);
                 if (result.ok) {
-                    UI.addChatLog('System', result.message);
-                    this.broadcastSystemChat('System', result.message);
+                    this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: result.message, tone: 'neutral', createdAt: Date.now() });
+                    if (msg.action === 'ASSIGN_LOOT' || msg.action === 'COLLECT_ALL_LOOT') {
+                        const char = State.party.find(p => p.id === (msg.payload || {}).charId);
+                        if (char) {
+                            this._pushTransientEvent({ type: 'loot_gain', sender: char.name, targetPlayer: char.name, payload: { icon: 'fa-gem', text: msg.action === 'COLLECT_ALL_LOOT' ? char.name + ' sammelt die gesamte Beute ein.' : char.name + ' erhaelt Beute.' }, expiresAt: Date.now() + 7000 });
+                        }
+                    }
                     UI.updateAll();
                     this.broadcastState();
                 } else if (result.error) {
@@ -979,6 +1084,7 @@ export const Network = {
                         rawRoll: null,
                     };
                     UI.pushDiceFeedEntry(startPayload);
+                    this._pushTransientEvent({ id: 'roll-start-' + roll.id, type: 'dice_start', sender: roll.name, payload: startPayload, expiresAt: Date.now() + 3000 }, { render: true });
                     this.broadcastDiceRollStarted(startPayload);
                     this._markDirty();
                 }
@@ -1001,6 +1107,7 @@ export const Network = {
                         rawRoll: msg.rawRoll,
                     };
                     UI.showNetworkDiceAnimation(animationPayload);
+                    this._pushTransientEvent({ id: 'roll-' + roll.id, type: 'dice_result', sender: roll.name, payload: animationPayload, expiresAt: Date.now() + 8000 }, { render: false });
                     this.broadcastDiceAnimation(animationPayload);
                     UI.updateActionBox();
                     this._markDirty();
@@ -1029,6 +1136,8 @@ export const Network = {
                 State[k] = incoming[k];
             }
         });
+        State.transientEvents = (State.transientEvents || []).filter(event => (event.expiresAt || 0) > Date.now());
+        this._syncAutoPlayersFromControlModes();
         if (State.gameStarted && !wasStarted) UI.toggleViews(true);
     },
 
@@ -1042,6 +1151,7 @@ export const Network = {
                 this.currentTurnIndex = msg.currentTurnIndex || 0;
                 this.playerCharMap = msg.playerCharMap || {};
                 this.autoPlayers = msg.autoPlayers || {};
+                this._syncAutoPlayersFromControlModes();
                 State._mpMyCharId = this.playerCharMap[this.playerName] || null;
                 this._combatStatus = msg.combatSubmitted || {};
                 this._mySubmittedAction = this._combatStatus[this.playerName] ? { submitted: true } : null;
@@ -1049,6 +1159,7 @@ export const Network = {
                 State.isProcessing = !!msg.isProcessing;
                 UI.showLoader(!!msg.isProcessing);
                 UI.rebuildChatLog();
+                UI.renderTransientEvents();
                 UI.updateAll();
                 this._updateTurnUI();
                 break;
@@ -1056,26 +1167,36 @@ export const Network = {
             case 'STATE_SYNC': {
                 this._applyStateSync(msg.state);
                 UI.rebuildChatLog();
+                UI.renderTransientEvents();
                 UI.updateAll();
                 this._updateTurnUI();
                 break;
             }
             case 'DM_MESSAGE':
-                UI.addChatLog(msg.sender || 'DM', msg.text);
+                if (msg.entry?.id && this._seenMessageIds.has(msg.entry.id)) break;
+                UI.addChatLog(msg.entry || { id: this._nextId('msg'), sender: msg.sender || 'DM', text: msg.text, senderType: 'dm', createdAt: Date.now() }, null, { persist: true });
                 break;
             case 'DICE_ANIMATION':
                 UI.showNetworkDiceAnimation(msg.payload || {});
                 break;
+            case 'TRANSIENT_EVENT':
+                if (msg.event?.id && this._seenEventIds.has(msg.event.id)) break;
+                this._pushTransientEvent(msg.event || {}, { broadcast: false });
+                break;
             case 'PLAYER_CHAT':
                 Sound.play('turn');
-                UI.addChatLog(msg.sender || 'Spieler', msg.text);
+                if (msg.entry?.id && this._seenMessageIds.has(msg.entry.id)) break;
+                UI.addChatLog(msg.entry || { id: this._nextId('msg'), sender: msg.sender || 'Spieler', text: msg.text, senderType: 'player', createdAt: Date.now() }, null, { persist: true });
                 break;
             case 'SYSTEM_CHAT':
-                UI.addChatLog(msg.sender || 'System', msg.text);
+                if (msg.entry?.id && this._seenMessageIds.has(msg.entry.id)) break;
+                UI.addChatLog(msg.entry || { id: this._nextId('sys'), sender: msg.sender || 'System', text: msg.text, tone: 'neutral', createdAt: Date.now() }, null, { persist: true });
                 break;
             case 'TURN_UPDATE': {
                 this.turnOrder = msg.turnOrder || [];
                 this.currentTurnIndex = msg.currentTurnIndex || 0;
+                const activePlayer = this.turnOrder[this.currentTurnIndex] || '';
+                if (activePlayer) this._pushTransientEvent({ id: 'turn-' + activePlayer + '-' + this.currentTurnIndex, type: 'turn_notice', sender: activePlayer, payload: { text: activePlayer + ' ist am Zug.' }, expiresAt: Date.now() + 4500 }, { broadcast: false });
                 this._updateTurnUI();
                 break;
             }
@@ -1102,8 +1223,21 @@ export const Network = {
                 break;
             }
             case 'VOTE_RESULT': {
-                UI.addChatLog('System', `**Abstimmung beendet:** "${msg.chosen}" wurde gewaehlt.`);
+                UI.addChatLog({ id: this._nextId('sys'), sender: 'System', text: `**Abstimmung beendet:** "${msg.chosen}" wurde gewaehlt.`, tone: 'neutral', createdAt: Date.now() }, null, { persist: true });
                 this.currentVote = null;
+                this._updateTurnUI();
+                break;
+            }
+            case 'CONTROL_MODE_UPDATE': {
+                State.playerControlMode = State.playerControlMode || {};
+                State.playerControlMode[msg.playerName] = msg.mode;
+                this._syncAutoPlayersFromControlModes();
+                this._updateTurnUI();
+                UI.updateAll();
+                break;
+            }
+            case 'DM_CONTROL_UPDATE': {
+                State.dmControlMode = msg.mode || 'human';
                 this._updateTurnUI();
                 break;
             }
@@ -1187,7 +1321,11 @@ export const Network = {
             const count = this.connections.length;
             const roleLabel = this.isHost() ? 'Host' : 'Spieler';
             const playersList = this.isHost()
-                ? this.connections.map(c => `<li class="text-green-300 text-xs"><i class="fas fa-user mr-1"></i> ${c.metadata?.name || 'Unbekannt'}</li>`).join('')
+                ? this.turnOrder.map(playerName => {
+                    const mode = this.getPlayerControlMode(playerName);
+                    const canToggle = playerName !== this.playerName;
+                    return `<li class="flex items-center gap-2 rounded-xl border border-slate-700/40 bg-black/20 px-2.5 py-2 text-xs text-green-300"><i class="fas ${playerName === this.playerName ? 'fa-crown text-amber-400' : 'fa-user'}"></i><span>${playerName}</span><span class="ml-auto rounded-full border ${mode === 'ai' ? 'border-cyan-500/40 bg-cyan-950/60 text-cyan-300' : 'border-slate-600/40 bg-slate-950/60 text-slate-400'} px-1.5 py-0.5 text-[9px]">${mode === 'ai' ? 'AI' : 'Human'}</span>${canToggle ? `<button data-action="mp-toggle-control" data-player="${playerName}" class="rounded-lg border border-slate-600/40 bg-black/30 px-2 py-1 text-[10px] font-bold text-slate-200">${mode === 'ai' ? 'Human' : 'AI'}</button>` : ''}</li>`;
+                }).join('')
                 : '';
 
             content.innerHTML = `
@@ -1196,8 +1334,10 @@ export const Network = {
                         <p class="text-green-300 text-sm font-bold"><i class="fas fa-check-circle mr-1"></i> Verbunden als ${roleLabel}</p>
                         ${this.isHost() ? `<p class="text-slate-400 text-xs mt-1">Raum-Code: <span class="text-amber-400 font-mono font-bold text-sm select-all">${this.roomCode}</span></p>` : `<p class="text-slate-400 text-xs mt-1">Raum: <span class="text-amber-400 font-mono">${this.roomCode}</span></p>`}
                         <p class="text-slate-400 text-xs mt-1">${count} Spieler verbunden</p>
+                        <p class="text-slate-500 text-[11px] mt-1">DM-Modus: <span class="${State.dmControlMode === 'ai' ? 'text-cyan-300' : 'text-amber-300'} font-bold">${State.dmControlMode === 'ai' ? 'AI' : 'Manuell'}</span></p>
                         ${playersList ? `<ul class="mt-2 space-y-1">${playersList}</ul>` : ''}
                     </div>
+                    ${this.isHost() ? `<button data-action="mp-toggle-dm-control" class="w-full bg-slate-800/80 hover:bg-slate-700 text-cyan-100 py-2 rounded-lg text-xs font-bold transition-all border border-cyan-500/25"><i class="fas fa-hat-wizard mr-1"></i> DM-Fallback ${State.dmControlMode === 'ai' ? 'auf Human' : 'auf AI'}</button>` : ''}
                     <button data-action="mp-disconnect" class="w-full bg-red-700/80 hover:bg-red-600 text-white py-2 rounded-lg text-xs font-bold transition-all border border-red-500/40">
                         <i class="fas fa-sign-out-alt mr-1"></i> Trennen
                     </button>
@@ -1341,18 +1481,23 @@ export const Network = {
 
         const currentPlayer = this.turnOrder[this.currentTurnIndex] || '';
         const myTurn = this.isMyTurn();
+        const actionArea = document.getElementById('action-area');
+        if (actionArea) {
+            actionArea.classList.toggle('mp-active-turn', !!myTurn);
+            actionArea.classList.toggle('mp-inactive-turn', !myTurn);
+        }
         el.classList.remove('hidden');
         el.className = 'relative text-[11px] px-3 py-1.5 bg-black/30 border border-white/10 rounded-lg backdrop-blur-sm text-center tracking-wide';
         const voteBtn = this.isHost() ? ' <button data-action="mp-start-vote" class="ml-2 text-purple-400 hover:text-purple-300 transition-colors" title="Abstimmung starten"><i class="fas fa-poll"></i></button>' : '';
-        const isAutoTurn = this.autoPlayers[currentPlayer];
+        const isAutoTurn = this.getPlayerControlMode(currentPlayer) === 'ai';
         const turnOrderHtml = this.turnOrder.map(p => {
-            const isAuto = this.autoPlayers[p];
+            const isAuto = this.getPlayerControlMode(p) === 'ai';
             const label = isAuto ? `<span class="text-cyan-400">${p} <i class="fas fa-robot text-[8px]"></i></span>` : p;
             return p === this.playerName ? `<b>${label}</b>` : label;
         }).join(' \u2192 ');
         const autoToggleHtml = this.isHost() ? this.turnOrder.filter(p => p !== this.playerName).map(p => {
-            const isAuto = !!this.autoPlayers[p];
-            return `<button data-action="mp-toggle-auto" data-player="${p}" class="text-[9px] px-1.5 py-0.5 rounded ${isAuto ? 'bg-cyan-900/40 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800/60 text-slate-500 border border-slate-600/30'} hover:text-cyan-300 transition-all" title="${p}: KI ${isAuto ? 'aus' : 'an'}"><i class="fas fa-robot mr-0.5"></i>${p}</button>`;
+            const isAuto = this.getPlayerControlMode(p) === 'ai';
+            return `<button data-action="mp-toggle-control" data-player="${p}" class="text-[9px] px-1.5 py-0.5 rounded ${isAuto ? 'bg-cyan-900/40 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800/60 text-slate-500 border border-slate-600/30'} hover:text-cyan-300 transition-all" title="${p}: KI ${isAuto ? 'aus' : 'an'}"><i class="fas fa-robot mr-0.5"></i>${p}</button>`;
         }).join(' ') : '';
         el.innerHTML = this._syncBtnHtml + (myTurn
             ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span>${voteBtn}`
@@ -1375,7 +1520,7 @@ export const Network = {
         const playersHtml = this.turnOrder.map(p => {
             const done = !!submitted[p];
             const isMe = p === this.playerName;
-            const isAuto = !!this.autoPlayers[p];
+            const isAuto = this.getPlayerControlMode(p) === 'ai';
             const icon = isAuto
                 ? '<i class="fas fa-robot text-cyan-400"></i>'
                 : done
@@ -1385,7 +1530,7 @@ export const Network = {
             const autoLabel = isAuto ? ' <span class="text-[8px] text-cyan-500">(KI)</span>' : '';
             let actions = '';
             if (this.isHost() && !isMe) {
-                const autoBtn = `<button data-action="mp-toggle-auto" data-player="${p}" class="text-[9px] ${isAuto ? 'text-cyan-400 hover:text-cyan-300' : 'text-slate-500 hover:text-cyan-400'} ml-1" title="${isAuto ? 'KI deaktivieren' : 'KI aktivieren'}"><i class="fas fa-robot"></i></button>`;
+                const autoBtn = `<button data-action="mp-toggle-control" data-player="${p}" class="text-[9px] ${isAuto ? 'text-cyan-400 hover:text-cyan-300' : 'text-slate-500 hover:text-cyan-400'} ml-1" title="${isAuto ? 'KI deaktivieren' : 'KI aktivieren'}"><i class="fas fa-robot"></i></button>`;
                 const skipBtn = !done && !isAuto
                     ? ` <button data-action="mp-skip-player" data-player="${p}" class="text-[9px] text-red-400 hover:text-red-300 ml-1 underline">Skip</button>`
                     : '';

@@ -88,7 +88,8 @@ export const Utils = {
         return c;
     },
     findTarget: function (list, name) {
-        if (!name || !Array.isArray(list) || list.length === 0) return null;
+        if (!Array.isArray(list) || list.length === 0) return undefined;
+        if (!name) return null;
 
         const normalize = (value) => String(value || '')
             .normalize('NFD')
@@ -100,7 +101,7 @@ export const Utils = {
             .replace(/\s+/g, ' ');
 
         const target = normalize(name);
-        if (!target) return null;
+        if (!target) return undefined;
 
         const scored = list
             .filter(item => item && item.name)
@@ -120,7 +121,7 @@ export const Utils = {
             .filter(entry => entry.score > 0)
             .sort((a, b) => b.score - a.score || a.normalizedLength - b.normalizedLength);
 
-        return scored[0]?.item || null;
+        return scored[0]?.item;
     }
 };
 

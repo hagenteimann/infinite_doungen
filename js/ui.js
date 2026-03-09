@@ -126,7 +126,8 @@ export const initDOM = () => {
         'crafting-modal', 'craft-inv-list', 'craft-sel-list', 'craft-target-item',
         'journal-content', 'stats-content', 'system-content', 'quick-actions-container', 'sound-toggle',
         'topbar-thinking-status', 'topbar-thinking-text', 'tab-party', 'tab-dice', 'tab-system', 'tab-journal', 'tab-stats',
-        'tab-content-party', 'tab-content-dice', 'tab-content-system', 'tab-content-journal', 'tab-content-stats'
+        'tab-content-party', 'tab-content-dice', 'tab-content-system', 'tab-content-journal', 'tab-content-stats',
+        'enemy-lightbox', 'enemy-lightbox-image', 'enemy-lightbox-title'
     ];
     ids.forEach(id => {
         const camelCaseId = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
@@ -404,6 +405,7 @@ export const UI = {
             DOM.playerInput.focus();
         } else {
             if (type === 'hero') this.showDetails(id);
+            if (type === 'enemy') this.showEnemyDetails(id);
         }
     },
 
@@ -606,7 +608,7 @@ export const UI = {
         Array.from(DOM.storyLog.children).forEach(child => {
             if (child.id !== 'lobby-view') child.remove();
         });
-        (State.chatMessages || []).forEach(entry => this.addChatLog(entry.sender, entry.text, { persist: false }));
+        (State.chatMessages || []).forEach(entry => this.addChatLog(entry, null, { persist: false }));
     },
     buildHostInventoryOverview: function () {
         const heroes = State.party.filter(c => !c.isSummon);
@@ -757,48 +759,56 @@ export const UI = {
         return narrative + suggestions;
     },
 
-    addChatLog: function (s, t, options = {}) {
-        s = repairDisplayText(s || '');
-        t = repairDisplayText(t || '');
-        const isAI = s === 'DM' || s.includes('Orakel') || s.includes('Schicksal');
-        const isDice = s.includes('Wurf') || s.includes('Wuerfel') || s.includes('Dice');
-        const isWeather = s.includes('Wetter') || s.includes('Weather');
-        const isSys = !isAI && !isDice && !isWeather && s.includes('System');
-
-        const persist = options.persist !== false;
-        if (isSys || isWeather) {
-            const tone = isWeather ? 'weather' : (t.includes('Fehler') ? 'danger' : 'neutral');
-            this._appendSystemMessage(s, t, tone, { persist });
-            return;
-        }
-
-        if (persist) {
-            State.chatMessages = State.chatMessages || [];
-            State.chatMessages.push({ sender: s, text: t });
-            if (State.chatMessages.length > 200) State.chatMessages.shift();
-        }
-
-        if (isDice) return;
-
-        let formattedText = t;
+    _formatChatHtml: function (text, isDm = false) {
+        let formattedText = repairDisplayText(text || '');
         formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-amber-300">$1</strong>');
         formattedText = formattedText.replace(/\*(.*?)\*/g, '<em class="text-slate-300">$1</em>');
         formattedText = formattedText.replace(/\n/g, '<br>');
+        return isDm ? sanitize(this._formatDmText(formattedText)) : sanitize(formattedText);
+    },
 
-        const d = document.createElement('div');
+    addChatLog: function (s, t, options = {}) {
+        const incoming = typeof s === 'object' && s !== null ? s : null;
+        const sender = repairDisplayText(incoming ? (incoming.sender || 'Unbekannt') : (s || ''));
+        const textValue = repairDisplayText(incoming ? (incoming.text || '') : (t || ''));
+        const senderType = incoming?.senderType || (sender === 'DM' || sender.includes('Orakel') || sender.includes('Schicksal') ? 'dm' : ((sender.includes('System') || sender.includes('Wetter')) ? 'system' : 'player'));
+        const entry = {
+            id: incoming?.id || options.id || ('msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)),
+            sender,
+            text: textValue,
+            senderType,
+            isAiControlled: !!incoming?.isAiControlled,
+            tone: incoming?.tone || options.tone || 'neutral',
+            timestamp: incoming?.timestamp || new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+            createdAt: incoming?.createdAt || Date.now(),
+        };
+        const persist = options.persist !== false;
 
-        if (isAI) {
-            d.className = 'dm-message-card w-full mr-auto p-4 rounded-2xl relative fade-in mb-3 bg-black/40 backdrop-blur-md border border-white/10 border-l-4 border-l-purple-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)]';
-            const ttsBtn = '<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>';
-            const safeText = sanitize(this._formatDmText(formattedText));
-            d.innerHTML = sanitize('<div class="text-[10px] font-bold uppercase mb-2 tracking-[0.2em] text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">' + s + ttsBtn + '</div><div class="tts-text dm-copy text-sm md:text-base leading-relaxed text-slate-200">' + safeText + '</div>');
-        } else {
-            d.className = 'w-full ml-auto px-3 py-2 rounded-2xl fade-in mb-2 bg-amber-900/20 backdrop-blur-sm border border-amber-500/20 shadow-[0_4px_18px_rgba(245,158,11,0.08)]';
-            d.innerHTML = sanitize('<div class="text-[9px] font-bold uppercase mb-0.5 tracking-wider text-amber-400">' + s + '</div><div class="tts-text text-sm leading-relaxed text-slate-300">' + formattedText + '</div>');
+        if (entry.senderType === 'system') {
+            State.systemMessages = Array.isArray(State.systemMessages) ? State.systemMessages : [];
+            const exists = State.systemMessages.some(item => item.id === entry.id);
+            if (persist && !exists) State.systemMessages.push({ ...entry });
+            this.renderSystemLog();
+            return;
         }
 
-        d.classList.add('tts-msg');
-        DOM.storyLog.appendChild(d);
+        State.chatMessages = Array.isArray(State.chatMessages) ? State.chatMessages : [];
+        const exists = State.chatMessages.some(item => item.id === entry.id);
+        if (persist && !exists) State.chatMessages.push({ ...entry });
+        if (DOM.storyLog.querySelector('[data-chat-id="' + entry.id + '"]')) return;
+
+        const row = document.createElement('article');
+        row.dataset.chatId = entry.id;
+        row.className = 'tts-msg chat-message-glide chat-row ' + (entry.senderType === 'dm' ? 'chat-row-dm' : 'chat-row-player');
+        const speaker = entry.isAiControlled ? entry.sender + ' <span class="chat-ai-badge">AI</span>' : entry.sender;
+        if (entry.senderType === 'dm') {
+            const ttsBtn = '<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>';
+            row.innerHTML = sanitize('<div class="dm-message-card chat-bubble chat-bubble-dm"><div class="chat-meta-row"><span class="chat-sender chat-sender-dm">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span>' + ttsBtn + '</div><div class="tts-text dm-copy text-sm md:text-base leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, true) + '</div></div>');
+        } else {
+            const mine = window.App?.Network?.playerName && entry.sender === window.App.Network.playerName ? ' chat-bubble-self' : '';
+            row.innerHTML = sanitize('<div class="chat-bubble chat-bubble-player' + mine + '"><div class="chat-meta-row"><span class="chat-sender">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span></div><div class="tts-text text-sm leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, false) + '</div></div>');
+        }
+        DOM.storyLog.appendChild(row);
         DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
     },
 
@@ -1014,9 +1024,55 @@ export const UI = {
         DOM.exportHeroBtn.dataset.charId = c.id;
     },
 
+    openEnemyLightbox: function (enemy) {
+        if (!enemy?.portrait || !DOM.enemyLightbox || !DOM.enemyLightboxImage) return;
+        DOM.enemyLightboxImage.src = enemy.portrait;
+        DOM.enemyLightboxImage.alt = enemy.name || 'Gegner';
+        if (DOM.enemyLightboxTitle) DOM.enemyLightboxTitle.textContent = enemy.name || 'Gegner';
+        DOM.enemyLightbox.classList.remove('hidden');
+    },
+    closeEnemyLightbox: function () {
+        if (DOM.enemyLightbox) DOM.enemyLightbox.classList.add('hidden');
+    },
+
+    renderTransientEvents: function () {
+        const now = Date.now();
+        State.transientEvents = (State.transientEvents || []).filter(event => (event.expiresAt || 0) > now);
+        let layer = document.getElementById('dice-broadcast-layer');
+        if (!layer && State.transientEvents.length) {
+            layer = document.createElement('div');
+            layer.id = 'dice-broadcast-layer';
+            layer.className = 'fixed inset-x-0 top-4 pointer-events-none z-[115] px-4 grid gap-3 content-start justify-center';
+            document.body.appendChild(layer);
+        }
+        if (!layer) return;
+        layer.innerHTML = '';
+        State.transientEvents.slice(-4).forEach(event => {
+            const payload = event.payload || {};
+            const success = payload.result == null ? null : ((payload.result || 0) >= (payload.targetDC || 0));
+            const card = document.createElement('div');
+            card.className = 'notification-card ' + (event.type === 'loot_gain' ? 'notification-loot' : (event.type === 'turn_notice' ? 'notification-turn' : (success === false ? 'notification-fail' : 'notification-dice')));
+            if (event.type === 'loot_gain') {
+                card.innerHTML = sanitize('<div class="notification-kicker"><i class="fas fa-gem"></i> Beute</div><div class="notification-title">' + repairDisplayText(event.sender || 'Held') + '</div><div class="notification-copy">' + repairDisplayText(payload.text || 'Neue Beute erhalten.') + '</div>');
+            } else if (event.type === 'turn_notice') {
+                card.innerHTML = sanitize('<div class="notification-kicker"><i class="fas fa-hourglass-half"></i> Zug</div><div class="notification-title">' + repairDisplayText(event.sender || 'Spieler') + '</div><div class="notification-copy">' + repairDisplayText(payload.text || '') + '</div>');
+            } else {
+                const modifier = payload.modifier || 0;
+                card.innerHTML = sanitize('<div class="notification-kicker"><i class="fas fa-dice-d20"></i> ' + (payload.result == null ? 'Wurf laeuft' : 'Wurf') + '</div><div class="notification-title">' + repairDisplayText(payload.name || event.sender || 'Unbekannt') + '</div><div class="notification-copy">' + repairDisplayText(payload.reason || 'Probe') + '</div><div class="notification-roll"><span>' + (payload.rawRoll ?? '?') + '</span><small>' + (modifier >= 0 ? '+' : '') + modifier + '</small><strong>' + (payload.result ?? '?') + '</strong></div><div class="notification-copy">' + repairDisplayText(payload.diceType || 'W20') + ' gegen DC ' + (payload.targetDC ?? '-') + '</div>');
+            }
+            layer.appendChild(card);
+        });
+        if (!layer.children.length) layer.remove();
+    },
+    showTransientEvent: function (event) {
+        this.renderTransientEvents();
+        const timeout = Math.max(250, (event.expiresAt || (Date.now() + 5000)) - Date.now());
+        setTimeout(() => this.renderTransientEvents(), timeout + 40);
+    },
     showEnemyDetails: function (id) {
         const enemy = State.activeEnemies.find(e => e.id === id) || State.defeatedEnemies.find(e => e.id === id);
         if (!enemy) return;
+        if (enemy.portrait) this.openEnemyLightbox(enemy);
         DOM.partyList.classList.add('hidden');
         DOM.charDetails.classList.remove('hidden');
         const portrait = enemy.portrait
@@ -1058,30 +1114,18 @@ export const UI = {
 
     showNetworkDiceAnimation: function (payload) {
         this.pushDiceFeedEntry(payload);
-        let layer = document.getElementById('dice-broadcast-layer');
-        if (!layer) {
-            layer = document.createElement('div');
-            layer.id = 'dice-broadcast-layer';
-            layer.className = 'fixed inset-0 pointer-events-none z-[115] p-4 grid gap-3 content-start justify-center';
-            document.body.appendChild(layer);
-        }
-        const card = document.createElement('div');
-        const success = (payload.result || 0) >= (payload.targetDC || 0);
-        card.className = `min-w-[180px] max-w-[220px] rounded-2xl border px-4 py-3 backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.35)] bg-slate-950/80 ${success ? 'border-green-500/40' : 'border-red-500/40'}`;
-        card.innerHTML = sanitize(`
-            <div class="text-[9px] uppercase tracking-[0.2em] ${success ? 'text-green-300' : 'text-red-300'}">Wurf</div>
-            <div class="mt-1 text-sm font-bold text-amber-300">${payload.name || 'Unbekannt'}</div>
-            <div class="mt-1 text-[10px] text-slate-400">${payload.reason || 'Probe'}</div>
-            <div class="mt-2 flex items-end gap-2"><span class="text-4xl font-bold text-white">${payload.rawRoll ?? '?'}</span><span class="text-slate-400 text-sm">${payload.modifier ? `${payload.modifier >= 0 ? '+' : ''}${payload.modifier}` : ''}</span><span class="text-xl font-bold ${success ? 'text-green-300' : 'text-red-300'}">${payload.result ?? '?'}</span></div>
-            <div class="mt-1 text-[10px] text-slate-400">${payload.diceType || 'W20'} gegen DC ${payload.targetDC ?? '-'}</div>
-        `);
-        layer.appendChild(card);
-        const count = layer.children.length;
-        layer.style.gridTemplateColumns = `repeat(${Math.min(count, 3)}, minmax(180px, 220px))`;
-        setTimeout(() => {
-            card.remove();
-            if (!layer.children.length) layer.remove();
-        }, 2200);
+        const event = {
+            id: 'roll-' + (payload.id || Date.now()),
+            type: payload.result == null ? 'dice_start' : 'dice_result',
+            sender: payload.name || 'Unbekannt',
+            payload,
+            expiresAt: Date.now() + (payload.result == null ? 3000 : 8000),
+        };
+        State.transientEvents = Array.isArray(State.transientEvents) ? State.transientEvents : [];
+        const idx = State.transientEvents.findIndex(item => item.id === event.id);
+        if (idx >= 0) State.transientEvents[idx] = { ...State.transientEvents[idx], ...event };
+        else State.transientEvents.push(event);
+        this.showTransientEvent(event);
     },
     showAnimatedDiceModal: function (name, targetDC, modifier, callback, closeAfter = true, diceType = 'W20') {
         Sound.play('dice');

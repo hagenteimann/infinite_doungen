@@ -116,6 +116,9 @@ export function initEvents() {
             'mp-roll-pending': () => Network.hostRollPending(actionEl.dataset.rollId),
             'mp-skip-player': () => Network.skipPlayer(actionEl.dataset.player),
             'mp-toggle-auto': () => Network.toggleAutoPlayer(actionEl.dataset.player),
+            'mp-toggle-control': () => Network.togglePlayerControlMode(actionEl.dataset.player),
+            'mp-toggle-dm-control': () => Network.toggleDmControlMode(),
+            'close-enemy-lightbox': () => UI.closeEnemyLightbox(),
             'mp-cast-vote': () => Network.castVote(parseInt(actionEl.dataset.option)),
             'mp-resolve-vote': () => Network.resolveVote(parseInt(actionEl.dataset.option)),
             'mp-start-vote': () => {
@@ -160,3 +163,7 @@ export function initEvents() {
         });
     }
 }
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') UI.closeEnemyLightbox();
+});

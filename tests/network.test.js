@@ -9,9 +9,13 @@ vi.mock('../js/ui.js', () => ({
         updateActionBox: vi.fn(),
         showLoader: vi.fn(),
         toggleViews: vi.fn(),
+        renderTransientEvents: vi.fn(),
+        showTransientEvent: vi.fn(),
+        showNetworkDiceAnimation: vi.fn(),
+        closeEnemyLightbox: vi.fn(),
     },
     DOM: {
-        storyLog: { appendChild: vi.fn(), scrollTop: 0, scrollHeight: 0 },
+        storyLog: { appendChild: vi.fn(), scrollTop: 0, scrollHeight: 0, querySelector: vi.fn(() => null) },
         actingChar: { value: 'party' },
         playerInput: { disabled: false, placeholder: '' },
         sendBtn: { disabled: false },
@@ -52,6 +56,9 @@ function resetNetwork() {
     Network.currentVote = null;
     Network._mySubmittedAction = null;
     Network.autoPlayers = {};
+    Network._idCounter = 0;
+    Network._seenMessageIds = new Set();
+    Network._seenEventIds = new Set();
 }
 
 function resetState() {
@@ -67,6 +74,12 @@ function resetState() {
     State._mpRole = null;
     State._mpMyCharId = null;
     State.quickplayEnabled = false;
+    State.chatMessages = [];
+    State.systemMessages = [];
+    State.transientEvents = [];
+    State.playerControlMode = {};
+    State.dmControlMode = 'human';
+    State.afkSince = {};
 }
 
 function makeChar(overrides = {}) {
@@ -542,10 +555,9 @@ describe('toggleAutoPlayer', () => {
         Network.turnOrder = [];
         Network.toggleAutoPlayer('Player1');
         expect(Network.autoPlayers['Player1']).toBe(true);
-        expect(UI.addChatLog).toHaveBeenCalledWith(
-            'System',
-            expect.stringContaining('automatisch')
-        );
+        expect(UI.addChatLog).toHaveBeenCalled();
+        expect(UI.addChatLog.mock.calls[0][0]).toEqual(expect.objectContaining({ sender: 'System' }));
+        expect(UI.addChatLog.mock.calls[0][0].text).toContain('KI-gesteuert');
     });
 
     it('disables auto for a player on second toggle', () => {
@@ -556,10 +568,9 @@ describe('toggleAutoPlayer', () => {
         Network.autoPlayers = { Player1: true };
         Network.toggleAutoPlayer('Player1');
         expect(Network.autoPlayers['Player1']).toBeUndefined();
-        expect(UI.addChatLog).toHaveBeenCalledWith(
-            'System',
-            expect.stringContaining('manuell')
-        );
+        expect(UI.addChatLog).toHaveBeenCalled();
+        expect(UI.addChatLog.mock.calls[0][0]).toEqual(expect.objectContaining({ sender: 'System' }));
+        expect(UI.addChatLog.mock.calls[0][0].text).toContain('manuell');
     });
 });
 
