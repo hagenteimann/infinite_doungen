@@ -192,3 +192,4 @@ export function subscribe(fn) {
     listeners.add(fn);
     return () => listeners.delete(fn);
 }
+

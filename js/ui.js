@@ -819,6 +819,7 @@ export const UI = {
         const roomCode = repairDisplayText(State.pendingRoomCode || '');
         const provider = repairDisplayText(State.selectedApiProvider || 'gemini');
         const providerLabels = { gemini: 'Google Gemini', chatgpt: 'OpenAI ChatGPT', claude: 'Anthropic Claude', openrouter: 'OpenRouter' };
+        const pendingModelText = repairDisplayText(State.pendingApiModelText || API.getOrModelText() || 'arcee-ai/trinity-large-preview:free');
         const providerIcons = { gemini: 'fa-wand-magic-sparkles', chatgpt: 'fa-robot', claude: 'fa-brain', openrouter: 'fa-route' };
         const providerButtons = ['gemini', 'chatgpt', 'claude', 'openrouter'].map(key => {
             const active = key === provider ? ' is-active' : '';
@@ -833,6 +834,7 @@ export const UI = {
                     <div class="entry-provider-grid">${providerButtons}</div>
                     <label class="entry-label" for="start-api-key-input">API Key</label>
                     <input id="start-api-key-input" class="entry-input" type="password" placeholder="${providerLabels[provider] || 'API'} Key" value="${repairDisplayText(State.pendingApiKeyValue || '')}">
+                    ${provider === 'openrouter' ? `<label class="entry-label" for="start-api-model-input">OpenRouter Modell</label><input id="start-api-model-input" class="entry-input" type="text" placeholder="arcee-ai/trinity-large-preview:free" value="${pendingModelText}">` : ''}
                     <button type="button" data-action="entry-confirm-api" class="entry-primary-btn entry-confirm-btn"><i class="fas fa-check-square"></i> Bestaetigen & Starten</button>
                     <p class="entry-modal-hint">Dein Key wird nur lokal im Browser gespeichert.</p>
                 </div>
@@ -1415,6 +1417,9 @@ export const UI = {
         }
     }
 };
+
+
+
 
 
 

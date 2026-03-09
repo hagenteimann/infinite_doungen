@@ -152,6 +152,7 @@ export function initEvents() {
         if (el.id === 'entry-player-name') State.localPlayerName = el.value;
         else if (el.id === 'entry-room-code') State.pendingRoomCode = el.value.toUpperCase();
         else if (el.id === 'start-api-key-input') State.pendingApiKeyValue = el.value;
+        else if (el.id === 'start-api-model-input') State.pendingApiModelText = el.value;
     });
 
     document.addEventListener('change', (e) => {
@@ -184,3 +185,4 @@ export function initEvents() {
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') UI.closeEnemyLightbox();
 });
+

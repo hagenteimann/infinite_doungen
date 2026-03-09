@@ -101,6 +101,7 @@ export const Engine = {
         State.pendingApiMode = mode;
         State.selectedApiProvider = State.selectedApiProvider || API.getProvider();
         State.pendingApiKeyValue = API.getKey(State.selectedApiProvider) || State.pendingApiKeyValue || '';
+        State.pendingApiModelText = State.selectedApiProvider === 'openrouter' ? (API.getOrModelText() || State.pendingApiModelText || 'arcee-ai/trinity-large-preview:free') : ''; 
         State.sessionPhase = 'api_gate';
         UI.updateAll();
     },
@@ -109,6 +110,7 @@ export const Engine = {
         if (!provider) return;
         State.selectedApiProvider = provider;
         State.pendingApiKeyValue = API.getKey(provider) || '';
+        State.pendingApiModelText = provider === 'openrouter' ? (API.getOrModelText() || 'arcee-ai/trinity-large-preview:free') : ''; 
         UI.updateAll();
     },
 
@@ -124,10 +126,18 @@ export const Engine = {
             return;
         }
 
+        const modelText = provider === 'openrouter' ? String(document.getElementById('start-api-model-input')?.value || State.pendingApiModelText || '').trim() : '';
+        if (provider === 'openrouter' && !modelText) {
+            UI.addChatLog('System', 'Bitte gib fuer OpenRouter ein Modell an.');
+            return;
+        }
+
         State.selectedApiProvider = provider;
         State.pendingApiKeyValue = key;
+        State.pendingApiModelText = modelText;
         localStorage.setItem('api_provider', provider);
         localStorage.setItem('api_key_' + provider, key);
+        if (provider === 'openrouter') localStorage.setItem('api_model_or_text', modelText || 'arcee-ai/trinity-large-preview:free');
 
         const mode = State.pendingApiMode;
         if (mode === 'host') {
@@ -1199,7 +1209,7 @@ export const Engine = {
         localStorage.setItem('api_key_openrouter', document.getElementById('api-key-openrouter').value.trim());
         localStorage.setItem('api_key_claude', document.getElementById('api-key-claude').value.trim());
         localStorage.setItem('api_model_claude', document.getElementById('api-model-claude').value.trim() || 'claude-sonnet-4-6');
-        localStorage.setItem('api_model_or_text', document.getElementById('api-model-or-text').value.trim() || 'google/gemini-2.5-flash');
+        localStorage.setItem('api_model_or_text', document.getElementById('api-model-or-text').value.trim() || 'arcee-ai/trinity-large-preview:free');
         localStorage.setItem('api_model_or_image', document.getElementById('api-model-or-image').value.trim());
 
         document.getElementById('api-settings-modal').classList.add('hidden');
@@ -1354,6 +1364,7 @@ export const Engine = {
         e.target.value = "";
     }
 };
+
 
 
 

@@ -12,7 +12,7 @@ export const API = {
         return localStorage.getItem(`api_key_${prov}`) || "";
     },
     getOrModelText: function () {
-        return localStorage.getItem("api_model_or_text") || "google/gemini-2.5-flash";
+        return localStorage.getItem("api_model_or_text") || "arcee-ai/trinity-large-preview:free";
     },
     getOrModelImage: function () {
         return localStorage.getItem("api_model_or_image") || "";
@@ -220,3 +220,4 @@ export const API = {
         return "";
     }
 };
+
