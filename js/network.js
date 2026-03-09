@@ -1417,6 +1417,19 @@ export const Network = {
                 UI.updateAll();
                 break;
             }
+            case 'TRANSIENT_EVENT': {
+                if (!msg.event) break;
+                const evt = msg.event;
+                const now = Date.now();
+                if ((evt.expiresAt || 0) <= now) break;
+                State.transientEvents = Array.isArray(State.transientEvents) ? State.transientEvents : [];
+                const idx = State.transientEvents.findIndex(item => item.id === evt.id);
+                if (idx >= 0) State.transientEvents[idx] = { ...State.transientEvents[idx], ...evt };
+                else State.transientEvents.push(evt);
+                State.transientEvents = State.transientEvents.filter(item => (item.expiresAt || 0) > now).slice(-12);
+                UI.showTransientEvent(evt);
+                break;
+            }
             default:
                 console.warn('Unknown host message:', msg.type);
         }

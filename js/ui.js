@@ -607,6 +607,19 @@ export const UI = {
         button.classList.toggle('border-cyan-500/50', mode === 'ai');
         button.classList.toggle('text-cyan-100', mode === 'ai');
     },
+    updateTargetModeButton: function () {
+        const button = document.getElementById('target-mode-btn');
+        if (!button) return;
+        const active = !!State.targetMapMode;
+        button.classList.toggle('border-amber-500/50', active);
+        button.classList.toggle('text-white', active);
+        button.classList.toggle('bg-amber-900/30', active);
+        const icon = button.querySelector('i');
+        if (icon) {
+            icon.classList.toggle('text-amber-400', active);
+            icon.classList.toggle('text-slate-500', !active);
+        }
+    },
     buildHostInventoryOverview: function () {
         const heroes = State.party.filter(c => !c.isSummon);
         if (heroes.length === 0) {
