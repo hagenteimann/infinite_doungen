@@ -149,8 +149,7 @@ export function initEvents() {
 
     document.addEventListener('input', (e) => {
         const el = e.target;
-        if (el.id === 'entry-player-name') State.localPlayerName = el.value;
-        else if (el.id === 'entry-room-code') State.pendingRoomCode = el.value.toUpperCase();
+        if (el.id === 'entry-room-code') State.pendingRoomCode = el.value.toUpperCase();
         else if (el.id === 'start-api-key-input') State.pendingApiKeyValue = el.value;
         else if (el.id === 'start-api-model-input') State.pendingApiModelText = el.value;
     });

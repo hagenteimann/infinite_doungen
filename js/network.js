@@ -74,10 +74,20 @@ export const Network = {
 
     validatePlayerName(playerName) {
         const normalized = String(playerName || '').trim();
-        if (!normalized) return 'Bitte gib zuerst deinen Spielernamen ein.';
+        if (!normalized) return 'Bitte starte zuerst eine Sitzung.';
+        if (/^slot-[a-z0-9]{4,}$/i.test(normalized)) return '';
         if (normalized.length < 2) return 'Der Spielername sollte mindestens 2 Zeichen haben.';
         if (/^(spieler|host|player)$/i.test(normalized)) return 'Bitte waehle einen echten Namen statt eines Platzhalters.';
         return '';
+    },
+
+    getDisplayPlayerName(playerName, fallback = 'Ein Held') {
+        const normalized = String(playerName || '').trim();
+        const heroName = String(State.playerProfiles?.[normalized]?.heroName || '').trim();
+        if (heroName) return heroName;
+        if (!normalized) return fallback;
+        if (/^slot-[a-z0-9]{4,}$/i.test(normalized)) return fallback;
+        return normalized;
     },
 
     _ensurePlayerProfile(playerName, updates = {}) {
@@ -200,7 +210,8 @@ export const Network = {
         State.playerControlMode = State.playerControlMode || {};
         State.playerControlMode[playerName] = mode === 'ai' ? 'ai' : 'human';
         this._syncAutoPlayersFromControlModes();
-        const entry = { id: this._nextId('sys'), sender: 'System', text: '**' + playerName + '** ist jetzt ' + (State.playerControlMode[playerName] === 'ai' ? 'KI-gesteuert' : 'manuell') + '.', tone: 'neutral', createdAt: Date.now() };
+        const displayName = this.getDisplayPlayerName(playerName);
+        const entry = { id: this._nextId('sys'), sender: 'System', text: '**' + displayName + '** ist jetzt ' + (State.playerControlMode[playerName] === 'ai' ? 'KI-gesteuert' : 'manuell') + '.', tone: 'neutral', createdAt: Date.now() };
         this._recordSystemEntry(entry);
         this.connections.forEach(conn => this._sendTo(conn, { type: 'CONTROL_MODE_UPDATE', playerName, mode: State.playerControlMode[playerName] }));
         this._updateTurnUI();
@@ -294,7 +305,8 @@ export const Network = {
             conn.on('open', () => {
                 this.connections.push(conn);
                 const joinedName = conn.metadata?.name || 'Unbekannt';
-                this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Spieler **${joinedName}** ist beigetreten.`, tone: 'neutral', createdAt: Date.now() });
+                const joinedLabel = this.getDisplayPlayerName(joinedName, 'Ein Spieler');
+                this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `**${joinedLabel}** ist beigetreten.`, tone: 'neutral', createdAt: Date.now() });
                 if (!this.turnOrder.includes(joinedName)) {
                     this.turnOrder.push(joinedName);
                 }
@@ -312,7 +324,8 @@ export const Network = {
             conn.on('close', () => {
                 this.connections = this.connections.filter(c => c !== conn);
                 const leftName = conn.metadata?.name || 'Unbekannt';
-                this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Spieler **${leftName}** hat den Raum verlassen.`, tone: 'neutral', createdAt: Date.now() });
+                const leftLabel = this.getDisplayPlayerName(leftName, 'Ein Spieler');
+                this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `**${leftLabel}** hat den Raum verlassen.`, tone: 'neutral', createdAt: Date.now() });
                 if (State.playerControlMode) delete State.playerControlMode[leftName];
                 if (State.playerProfiles) delete State.playerProfiles[leftName];
                 const turnIdx = this.turnOrder.indexOf(leftName);
@@ -383,7 +396,7 @@ export const Network = {
                 this.connections = [conn];
                 this._setConnState('connected');
                 this._ensurePlayerProfile(this.playerName, { isReady: false, controlMode: this.getPlayerControlMode(this.playerName) });
-                UI.addChatLog('System', `Verbunden mit Raum **${this.roomCode}** als **${this.playerName}**.`);
+                UI.addChatLog('System', `Verbunden mit Raum **${this.roomCode}**.`);
             });
 
             conn.on('data', (msg) => this._handleHostMessage(msg));
@@ -554,7 +567,7 @@ export const Network = {
         this._updateTurnUI();
         const currentPlayer = this.turnOrder[this.currentTurnIndex];
         if (currentPlayer) {
-            this._pushTransientEvent({ id: 'turn-' + currentPlayer + '-' + this.currentTurnIndex, type: 'turn_notice', sender: currentPlayer, payload: { text: currentPlayer + ' ist am Zug.' }, expiresAt: Date.now() + 4500 });
+            this._pushTransientEvent({ id: 'turn-' + currentPlayer + '-' + this.currentTurnIndex, type: 'turn_notice', sender: currentPlayer, payload: { text: this.getDisplayPlayerName(currentPlayer) + ' ist am Zug.' }, expiresAt: Date.now() + 4500 });
         }
         if (currentPlayer && this.getPlayerControlMode(currentPlayer) === 'ai') {
             const char = this._getCharForPlayer(currentPlayer);
@@ -607,8 +620,9 @@ export const Network = {
     skipPlayer(playerName) {
         if (!this.isHost() || this.combatActions[playerName]) return;
         this.combatActions[playerName] = { action: 'wartet ab (uebersprungen)', charName: playerName };
-        UI.addChatLog('System', `**${playerName}** wurde uebersprungen.`);
-        this.broadcastSystemChat('System', `**${playerName}** wurde uebersprungen.`);
+        const skippedLabel = this.getDisplayPlayerName(playerName);
+        UI.addChatLog('System', `**${skippedLabel}** wurde uebersprungen.`);
+        this.broadcastSystemChat('System', `**${skippedLabel}** wurde uebersprungen.`);
         this._broadcastCombatStatus();
     },
 
@@ -1317,7 +1331,7 @@ export const Network = {
                 this.turnOrder = msg.turnOrder || [];
                 this.currentTurnIndex = msg.currentTurnIndex || 0;
                 const activePlayer = this.turnOrder[this.currentTurnIndex] || '';
-                if (activePlayer) this._pushTransientEvent({ id: 'turn-' + activePlayer + '-' + this.currentTurnIndex, type: 'turn_notice', sender: activePlayer, payload: { text: activePlayer + ' ist am Zug.' }, expiresAt: Date.now() + 4500 }, { broadcast: false });
+                if (activePlayer) this._pushTransientEvent({ id: 'turn-' + activePlayer + '-' + this.currentTurnIndex, type: 'turn_notice', sender: activePlayer, payload: { text: this.getDisplayPlayerName(activePlayer) + ' ist am Zug.' }, expiresAt: Date.now() + 4500 }, { broadcast: false });
                 this._updateTurnUI();
                 break;
             }
@@ -1595,6 +1609,7 @@ export const Network = {
         }
 
         const currentPlayer = this.turnOrder[this.currentTurnIndex] || '';
+        const currentPlayerLabel = this.getDisplayPlayerName(currentPlayer);
         const myTurn = this.isMyTurn();
         const actionArea = document.getElementById('action-area');
         if (actionArea) {
@@ -1607,21 +1622,23 @@ export const Network = {
         const isAutoTurn = this.getPlayerControlMode(currentPlayer) === 'ai';
         const turnOrderHtml = this.turnOrder.map(p => {
             const isAuto = this.getPlayerControlMode(p) === 'ai';
-            const label = isAuto ? `<span class="text-cyan-400">${p} <i class="fas fa-robot text-[8px]"></i></span>` : p;
+            const displayName = this.getDisplayPlayerName(p);
+            const label = isAuto ? `<span class="text-cyan-400">${displayName} <i class="fas fa-robot text-[8px]"></i></span>` : displayName;
             return p === this.playerName ? `<b>${label}</b>` : label;
         }).join(' \u2192 ');
         const autoToggleHtml = this.isHost() ? this.turnOrder.filter(p => p !== this.playerName).map(p => {
             const isAuto = this.getPlayerControlMode(p) === 'ai';
-            return `<button data-action="mp-toggle-control" data-player="${p}" class="text-[9px] px-1.5 py-0.5 rounded ${isAuto ? 'bg-cyan-900/40 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800/60 text-slate-500 border border-slate-600/30'} hover:text-cyan-300 transition-all" title="${p}: KI ${isAuto ? 'aus' : 'an'}"><i class="fas fa-robot mr-0.5"></i>${p}</button>`;
+            const displayName = this.getDisplayPlayerName(p);
+            return `<button data-action="mp-toggle-control" data-player="${p}" class="text-[9px] px-1.5 py-0.5 rounded ${isAuto ? 'bg-cyan-900/40 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800/60 text-slate-500 border border-slate-600/30'} hover:text-cyan-300 transition-all" title="${displayName}: KI ${isAuto ? 'aus' : 'an'}"><i class="fas fa-robot mr-0.5"></i>${displayName}</button>`;
         }).join(' ') : '';
         el.innerHTML = this._syncBtnHtml + (myTurn
             ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span>${voteBtn}`
-            : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayer}</b>${isAutoTurn ? ' <i class="fas fa-robot text-[9px]"></i>' : ''} ist am Zug...</span>`)
+            : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayerLabel}</b>${isAutoTurn ? ' <i class="fas fa-robot text-[9px]"></i>' : ''} ist am Zug...</span>`)
             + `<div class="text-slate-500 text-[9px] mt-1">${turnOrderHtml}</div>`
             + (autoToggleHtml ? `<div class="flex flex-wrap gap-1 mt-1.5 justify-center">${autoToggleHtml}</div>` : '');
         playerInput.disabled = !myTurn;
         sendBtn.disabled = !myTurn;
-        playerInput.placeholder = myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayer}...`;
+        playerInput.placeholder = myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayerLabel}...`;
         this._setQuickActionsEnabled(myTurn);
     },
 
@@ -1641,6 +1658,7 @@ export const Network = {
                 : done
                     ? '<i class="fas fa-check-circle text-green-400"></i>'
                     : '<i class="fas fa-hourglass-half text-amber-400 animate-pulse"></i>';
+            const displayName = this.getDisplayPlayerName(p);
             const nameClass = isMe ? 'text-cyan-300 font-bold' : (isAuto ? 'text-cyan-400' : 'text-slate-300');
             const autoLabel = isAuto ? ' <span class="text-[8px] text-cyan-500">(KI)</span>' : '';
             let actions = '';
@@ -1651,7 +1669,7 @@ export const Network = {
                     : '';
                 actions = autoBtn + skipBtn;
             }
-            return `<div class="flex items-center gap-1.5 text-[10px]">${icon} <span class="${nameClass}">${isMe ? 'Du' : p}</span>${autoLabel}${actions}</div>`;
+            return `<div class="flex items-center gap-1.5 text-[10px]">${icon} <span class="${nameClass}">${isMe ? 'Du' : displayName}</span>${autoLabel}${actions}</div>`;
         }).join('');
 
         const canExecute = submittedCount > 0 && !State.isProcessing;

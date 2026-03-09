@@ -34,13 +34,21 @@ export const Engine = {
         return String(Network.playerName || State.localPlayerName || '').trim();
     },
 
+    _ensureSessionIdentity() {
+        const existing = this._getResolvedLocalPlayerName();
+        if (existing) return existing;
+        const generated = 'slot-' + Math.random().toString(36).slice(2, 10);
+        State.localPlayerName = generated;
+        return generated;
+    },
+
     _getActiveDmContext() {
         const activePlayer = Network.isConnected() ? (Network.turnOrder?.[Network.currentTurnIndex] || '') : '';
         const actingValue = String(DOM.actingChar?.value || '').trim();
         const actingName = actingValue && actingValue !== 'party' ? actingValue : '';
         const fallbackPlayer = this._getResolvedLocalPlayerName();
         return {
-            relatedPlayer: activePlayer || fallbackPlayer || actingName || '',
+            relatedPlayer: Network.getDisplayPlayerName(activePlayer || fallbackPlayer || actingName || '', ''),
             relatedCharacter: actingName || ''
         };
     },
@@ -73,7 +81,7 @@ export const Engine = {
     },
 
     beginSessionFlow(mode) {
-        const name = String(document.getElementById('entry-player-name')?.value || State.localPlayerName || '').trim();
+        const name = this._ensureSessionIdentity();
         const error = Network.validatePlayerName(name);
         if (error) {
             UI.addChatLog('System', error);
@@ -152,7 +160,7 @@ export const Engine = {
     togglePregameReady() {
         const name = this._getResolvedLocalPlayerName();
         if (!name) {
-            UI.addChatLog('System', 'Bitte lege zuerst deinen Spielernamen fest.');
+            UI.addChatLog('System', 'Bitte starte zuerst eine Sitzung.');
             return;
         }
         const current = !!State.playerProfiles?.[name]?.isReady;
@@ -170,7 +178,7 @@ export const Engine = {
     toggleSelfControlMode() {
         const playerName = this._getResolvedLocalPlayerName();
         if (!playerName) {
-            UI.addChatLog('System', 'Bitte gib zuerst deinen Spielernamen ein.');
+            UI.addChatLog('System', 'Bitte starte zuerst eine Sitzung.');
             return;
         }
         const nextMode = Network.getPlayerControlMode(playerName) === 'ai' ? 'human' : 'ai';
@@ -200,11 +208,12 @@ export const Engine = {
 
         for (const playerName of players) {
             const profile = State.playerProfiles?.[playerName];
+            const displayName = Network.getDisplayPlayerName(playerName, 'Ein Held');
             if (!profile?.heroId) {
-                return { ok: false, message: playerName + ' muss zuerst einen Helden laden oder erstellen.' };
+                return { ok: false, message: displayName + ' muss zuerst einen Helden laden oder erstellen.' };
             }
             if (!profile?.isReady) {
-                return { ok: false, message: playerName + ' ist noch nicht bereit.' };
+                return { ok: false, message: displayName + ' ist noch nicht bereit.' };
             }
         }
 
@@ -500,7 +509,6 @@ export const Engine = {
             }
         } catch (e) { UI.addChatLog("System", `Fehler: ${e.message}`); }
         finally {
-            State.isProcessing = false; UI.showLoader(false);
             CombatManager.cleanupDead();
             if (Network.isHost() && Network.isConnected() && State.lootDrops.length > 0) {
                 Network.autoDistributeLoot();
@@ -510,16 +518,21 @@ export const Engine = {
                 saveData._autoSaveTime = new Date().toISOString();
                 localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(saveData));
             } catch (e) { console.warn('Auto-save failed:', e); }
-            UI.updateAll();
             if (Network.isHost() && Network.isConnected()) {
                 Network.broadcastState();
                 Network.autoRollPending();
-                if (Network.isInCombat()) {
-                    Network.startNewCombatRound();
-                } else {
-                    Network.advanceTurn();
+                const hasPendingRolls = State.pendingRolls.some(r => !r.rolled);
+                if (!hasPendingRolls) {
+                    if (Network.isInCombat()) {
+                        Network.startNewCombatRound();
+                    } else {
+                        Network.advanceTurn();
+                    }
                 }
             }
+            State.isProcessing = false;
+            UI.showLoader(false);
+            UI.updateAll();
         }
     },
 

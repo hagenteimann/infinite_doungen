@@ -824,7 +824,6 @@ export const UI = {
     },
 
     _buildEntryScreenHtml: function () {
-        const name = repairDisplayText(State.localPlayerName || '');
         const roomCode = repairDisplayText(State.pendingRoomCode || '');
         const provider = repairDisplayText(State.selectedApiProvider || 'gemini');
         const providerLabels = { gemini: 'Google Gemini', chatgpt: 'OpenAI ChatGPT', claude: 'Anthropic Claude', openrouter: 'OpenRouter' };
@@ -854,10 +853,7 @@ export const UI = {
                     <div class="entry-logo"><i class="fas fa-swords"></i></div>
                     <h2 class="entry-title cinzel">Infinite Dungeons</h2>
                     <p class="entry-subtitle">Ein KI-gesteuertes Pen & Paper Abenteuer direkt im Browser.</p>
-                    <div class="entry-form">
-                        <label class="entry-label" for="entry-player-name">Dein Name</label>
-                        <input id="entry-player-name" class="entry-input" type="text" maxlength="24" placeholder="Wie sollen dich die anderen sehen?" value="${name}">
-                    </div>
+                    <div class="entry-copy-chip"><i class="fas fa-user-shield"></i> Dein Spielername richtet sich automatisch nach deinem Helden.</div>
                     <div class="entry-cta-stack">
                         <button type="button" data-action="entry-start-solo" class="entry-primary-btn"><i class="fas fa-gamepad"></i> Solo spielen</button>
                         <button type="button" data-action="entry-start-host" class="entry-secondary-btn"><i class="fas fa-house"></i> Raum erstellen (Host)</button>
@@ -877,15 +873,16 @@ export const UI = {
 
     _buildPregameLobbyHtml: function () {
         const players = window.App?.Engine?.getPregameStatus?.().players || (window.App?.Network?.isConnected?.() ? (window.App.Network.turnOrder.length ? window.App.Network.turnOrder : [window.App.Network.playerName]).filter(Boolean) : [State.localPlayerName].filter(Boolean));
-        const localName = repairDisplayText(State.localPlayerName || window.App?.Network?.playerName || '');
-        const localProfile = State.playerProfiles?.[localName] || null;
+        const localPlayerKey = String(State.localPlayerName || window.App?.Network?.playerName || '').trim();
+        const localProfile = State.playerProfiles?.[localPlayerKey] || null;
         const localHero = localProfile?.heroId ? State.party.find(p => p.id === localProfile.heroId) : null;
         const rows = players.map(playerName => {
             const profile = State.playerProfiles?.[playerName] || {};
             const controlMode = profile.controlMode || State.playerControlMode?.[playerName] || 'human';
+            const displayName = repairDisplayText(window.App?.Network?.getDisplayPlayerName?.(playerName, 'Ein Held') || playerName);
             return `<div class="pregame-player-row">
                 <div>
-                    <div class="pregame-player-name">${repairDisplayText(playerName)} ${playerName === localName ? '<span class="pregame-me-badge">Du</span>' : ''}</div>
+                    <div class="pregame-player-name">${displayName} ${playerName === localPlayerKey ? '<span class="pregame-me-badge">Du</span>' : ''}</div>
                     <div class="pregame-player-meta">${repairDisplayText(profile.heroName || 'Noch kein Held gewaehlt')}</div>
                 </div>
                 <div class="pregame-player-flags">
@@ -912,7 +909,7 @@ export const UI = {
                             <div class="pregame-player-list">${rows || '<div class="pregame-empty">Noch keine Spieler verbunden.</div>'}</div>
                         </section>
                         <section class="pregame-panel">
-                            <div class="pregame-panel-title">Dein Slot</div>
+                            <div class="pregame-panel-title">Dein Held</div>
                             <div class="pregame-hero-box">
                                 <div class="pregame-hero-name">${localHero ? repairDisplayText(localHero.name) : 'Kein Held gewaehlt'}</div>
                                 <div class="pregame-hero-meta">${localHero ? repairDisplayText(localHero.class || 'Held') : 'Lade einen Save oder erstelle einen neuen Helden, bevor du bereit drueckst.'}</div>
@@ -928,7 +925,6 @@ export const UI = {
                 </div>
             </div>`;
     },
-
     showCreator: function () { DOM.creatorModal.classList.remove('hidden'); },
     showAbilityReplaceModal: function (charId, newAbility) {
         const c = State.party.find(p => p.id === charId);
