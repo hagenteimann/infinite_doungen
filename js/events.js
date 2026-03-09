@@ -139,7 +139,7 @@ export function initEvents() {
         if (el.id === 'import-save') Engine.importSave(e);
         else if (el.id === 'import-hero') Engine.importHero(e);
         else if (el.id === 'api-provider-select') UI.updateApiSettingsView();
-        else if (el.id === 'loot-assign-all') {
+        else if (el.id === 'collect-all-select') {
             if (el.value) { Engine.collectAllLoot(el.value); el.value = ''; }
         }
         else if (el.dataset.action === 'assign-loot' && el.value) {
