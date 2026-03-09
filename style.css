@@ -1562,6 +1562,14 @@ body.session-startscreen .thinking-status-chip {
     font-size: 1.5rem;
 }
 
+.entry-logo-image {
+    display: block;
+    width: min(100%, 22rem);
+    margin: 0 auto 1.5rem;
+    object-fit: contain;
+    filter: drop-shadow(0 0 24px rgba(250, 204, 21, 0.25));
+}
+
 .entry-title,
 .pregame-title {
     color: #fcd34d;
@@ -1701,6 +1709,12 @@ body.session-startscreen .thinking-status-chip {
     gap: 0.9rem;
 }
 
+.pregame-grid-solo {
+    grid-template-columns: 1fr !important;
+    max-width: 28rem;
+    margin: 0 auto;
+}
+
 .entry-join-row,
 .pregame-action-row {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1720,8 +1734,7 @@ body.session-startscreen .thinking-status-chip {
 .entry-modal-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(2, 6, 23, 0.74);
-    backdrop-filter: blur(6px);
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1904,6 +1917,10 @@ body.session-startscreen .thinking-status-chip {
     .pregame-card {
         padding: 1.4rem;
     }
+}
+
+body.session-startscreen header {
+    display: none;
 }
 
 body.session-startscreen #header-controls {

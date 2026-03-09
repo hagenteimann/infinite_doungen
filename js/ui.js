@@ -863,10 +863,7 @@ export const UI = {
         return `
             <div class="entry-shell">
                 <div class="entry-card">
-                    <div class="entry-logo"><i class="fas fa-swords"></i></div>
-                    <h2 class="entry-title cinzel">Infinite Dungeons</h2>
-                    <p class="entry-subtitle">Ein KI-gesteuertes Pen & Paper Abenteuer direkt im Browser.</p>
-                    <div class="entry-copy-chip"><i class="fas fa-user-shield"></i> Dein Spielername richtet sich automatisch nach deinem Helden.</div>
+                    <img src="infinite%20dungeons.png" alt="Infinite Dungeons" class="entry-logo-image">
                     <div class="entry-cta-stack">
                         <button type="button" data-action="entry-start-solo" class="entry-primary-btn"><i class="fas fa-gamepad"></i> Solo spielen</button>
                         <button type="button" data-action="entry-start-host" class="entry-secondary-btn"><i class="fas fa-house"></i> Raum erstellen (Host)</button>
@@ -906,33 +903,34 @@ export const UI = {
         }).join('');
         const roomLine = window.App?.Network?.isConnected?.() ? (window.App.Network.isHost() ? `Raumcode: <span class="pregame-emphasis">${repairDisplayText(window.App.Network.roomCode || '')}</span>` : `Verbunden mit Raum <span class="pregame-emphasis">${repairDisplayText(window.App.Network.roomCode || '')}</span>`) : 'Solo-Sitzung';
         const canStart = window.App?.Engine?.getPregameStatus?.().ok;
+        const isSolo = !window.App?.Network?.isConnected?.();
         return `
             <div class="entry-shell">
                 <div class="pregame-card">
                     <div class="pregame-header">
                         <div>
                             <p class="pregame-kicker">Reisevorbereitung</p>
-                            <h2 class="pregame-title cinzel">Die Heldengruppe sammelt sich</h2>
+                            <h2 class="pregame-title cinzel">${isSolo ? 'Dein Held' : 'Die Heldengruppe sammelt sich'}</h2>
                             <p class="pregame-subtitle">${roomLine}</p>
                         </div>
                     </div>
-                    <div class="pregame-grid">
-                        <section class="pregame-panel">
+                    <div class="${isSolo ? 'pregame-grid pregame-grid-solo' : 'pregame-grid'}">
+                        ${!isSolo ? `<section class="pregame-panel">
                             <div class="pregame-panel-title">Spielerstatus</div>
                             <div class="pregame-player-list">${rows || '<div class="pregame-empty">Noch keine Spieler verbunden.</div>'}</div>
-                        </section>
+                        </section>` : ''}
                         <section class="pregame-panel">
-                            <div class="pregame-panel-title">Dein Held</div>
+                            <div class="pregame-panel-title">Held auswählen</div>
                             <div class="pregame-hero-box">
-                                <div class="pregame-hero-name">${localHero ? repairDisplayText(localHero.name) : 'Kein Held gewaehlt'}</div>
-                                <div class="pregame-hero-meta">${localHero ? repairDisplayText(localHero.class || 'Held') : 'Lade einen Save oder erstelle einen neuen Helden, bevor du bereit drueckst.'}</div>
+                                <div class="pregame-hero-name">${localHero ? repairDisplayText(localHero.name) : 'Kein Held gewählt'}</div>
+                                <div class="pregame-hero-meta">${localHero ? repairDisplayText(localHero.class || 'Held') : 'Lade einen Save oder erstelle einen neuen Helden.'}</div>
                             </div>
                             <div class="pregame-action-row">
                                 <button type="button" data-action="pregame-load-hero" class="pregame-ghost-btn"><i class="fas fa-file-import"></i> Held laden</button>
                                 <button type="button" data-action="pregame-create-hero" class="pregame-ghost-btn"><i class="fas fa-plus"></i> Held erstellen</button>
                             </div>
-                            <button type="button" data-action="pregame-toggle-ready" class="${localProfile?.isReady ? 'pregame-ready-btn is-ready' : 'pregame-ready-btn'}">${localProfile?.isReady ? '<i class="fas fa-check-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>
-                            ${window.App?.Network?.isHost?.() || !window.App?.Network?.isConnected?.() ? `<button type="button" data-action="start-game" class="pregame-start-btn ${canStart ? '' : 'is-disabled'}" ${canStart ? '' : 'disabled'}><i class="fas fa-dungeon"></i> Abenteuer starten</button>` : '<div class="pregame-wait-note">Der Host startet das Abenteuer, sobald alle bereit sind.</div>'}
+                            ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="${localProfile?.isReady ? 'pregame-ready-btn is-ready' : 'pregame-ready-btn'}">${localProfile?.isReady ? '<i class="fas fa-check-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>` : ''}
+                            ${window.App?.Network?.isHost?.() || isSolo ? `<button type="button" data-action="start-game" class="pregame-start-btn ${canStart ? '' : 'is-disabled'}" ${canStart ? '' : 'disabled'}><i class="fas fa-dungeon"></i> Abenteuer starten</button>` : '<div class="pregame-wait-note">Der Host startet das Abenteuer, sobald alle bereit sind.</div>'}
                         </section>
                     </div>
                 </div>
