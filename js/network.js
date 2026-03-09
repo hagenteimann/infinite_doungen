@@ -24,7 +24,7 @@ const SYNC_KEYS = [
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
     'isBossFight', 'weather', 'momentum',
     'pendingRolls', 'recentRolls', 'pendingAbilityLearning', 'quickplayEnabled',
-    'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'dmControlMode', 'afkSince',
+    'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'afkSince',
 ];
 
 export const Network = {
@@ -115,11 +115,24 @@ export const Network = {
             const first = store.values().next().value;
             if (first) store.delete(first);
         }
-        if (State.dmControlMode === 'ai') {
-            setTimeout(() => {
-                if (State.dmControlMode === 'ai' && !State.isProcessing) Engine.interactWithAI('[DM-Fallback] Fuehre die Szene knapp und hilfreich fort.');
-            }, 500);
-        }
+    },
+
+    _mergeCollectionById(current, incoming) {
+        const map = new Map();
+        (Array.isArray(current) ? current : []).forEach(item => {
+            if (item?.id) map.set(item.id, item);
+        });
+        (Array.isArray(incoming) ? incoming : []).forEach(item => {
+            if (!item?.id) return;
+            map.set(item.id, { ...(map.get(item.id) || {}), ...item });
+        });
+        return [...map.values()].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    },
+
+    _rememberStateIds() {
+        (State.chatMessages || []).forEach(entry => this._rememberSeenId(this._seenMessageIds, entry.id));
+        (State.systemMessages || []).forEach(entry => this._rememberSeenId(this._seenMessageIds, entry.id));
+        (State.transientEvents || []).forEach(event => this._rememberSeenId(this._seenEventIds, event.id));
     },
 
     _syncAutoPlayersFromControlModes() {
@@ -195,15 +208,6 @@ export const Network = {
 
     togglePlayerControlMode(playerName) {
         this.setPlayerControlMode(playerName, this.getPlayerControlMode(playerName) === 'ai' ? 'human' : 'ai');
-    },
-
-    toggleDmControlMode() {
-        if (!this.isHost()) return;
-        State.dmControlMode = State.dmControlMode === 'ai' ? 'human' : 'ai';
-        const entry = { id: this._nextId('sys'), sender: 'System', text: 'DM-Fallback ist jetzt ' + (State.dmControlMode === 'ai' ? 'KI-gesteuert.' : 'wieder manuell.'), tone: 'neutral', createdAt: Date.now() };
-        this._recordSystemEntry(entry);
-        this.connections.forEach(conn => this._sendTo(conn, { type: 'DM_CONTROL_UPDATE', mode: State.dmControlMode }));
-        this._updateTurnUI();
     },
     _getPeerConfig() {
         const opts = { config: { iceServers: [...DEFAULT_ICE_SERVERS] } };
@@ -281,7 +285,6 @@ export const Network = {
             this.turnOrder = [this.playerName];
             this.currentTurnIndex = 0;
             State.playerControlMode = { [this.playerName]: 'human' };
-            State.dmControlMode = 'human';
             this._ensurePlayerProfile(this.playerName, { isReady: false, controlMode: 'human' });
             this._startHeartbeat();
             this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Multiplayer-Raum erstellt: **${this.roomCode}**. Teile diesen Code mit deinen Spielern.`, tone: 'neutral', createdAt: Date.now() }, false);
@@ -450,7 +453,6 @@ export const Network = {
         this._seenEventIds = new Set();
         State.playerControlMode = {};
         State.playerProfiles = {};
-        State.dmControlMode = 'human';
         State.afkSince = {};
         State.transientEvents = [];
         State.sessionPhase = State.gameStarted ? 'in_game' : 'start';
@@ -510,6 +512,15 @@ export const Network = {
         });
     },
 
+    requestSelfControlMode(mode) {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], {
+            type: 'SELF_CONTROL_REQUEST',
+            playerName: this.playerName,
+            mode,
+        });
+    },
+
     broadcastState() {
         if (!this.isHost()) return;
         this._markDirty();
@@ -517,7 +528,7 @@ export const Network = {
 
     broadcastChat(sender, text) {
         if (!this.isHost()) return;
-        this._recordChatEntry({ id: this._nextId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: sender === 'DM' && State.dmControlMode === 'ai', createdAt: Date.now() }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
+        this._recordChatEntry({ id: this._nextId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: false, createdAt: Date.now() }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
     },
 
     broadcastSystemChat(sender, text) {
@@ -543,11 +554,7 @@ export const Network = {
                     Engine.interactWithAI(action);
                 }, 600);
             }
-        }
-        if (State.dmControlMode === 'ai' && !State.isProcessing) {
-            setTimeout(() => {
-                if (State.dmControlMode === 'ai' && !State.isProcessing) Engine.interactWithAI('[DM-Fallback] Fuehre die Szene knapp weiter und gib der Gruppe Orientierung.');
-            }, 900);
+
         }
     },
 
@@ -1110,6 +1117,11 @@ export const Network = {
                 UI.updateAll();
                 break;
             }
+            case 'SELF_CONTROL_REQUEST': {
+                this.setPlayerControlMode(msg.playerName || name, msg.mode === 'ai' ? 'ai' : 'human');
+                UI.updateAll();
+                break;
+            }
             case 'ITEM_ACTION': {
                 const result = this._applyInventoryAction(msg.action, msg.payload || {}, msg.playerName);
                 if (result.ok) {
@@ -1190,19 +1202,49 @@ export const Network = {
     },
     _applyStateSync(incoming) {
         const wasStarted = State.gameStarted;
-        SYNC_KEYS.forEach(k => {
-            if (incoming[k] === undefined) return;
-            if (k === 'pendingRolls' && Array.isArray(incoming[k])) {
-                State[k] = incoming[k].map(r => {
-                    const local = State.pendingRolls.find(lr => lr.id === r.id);
-                    return (local && local.rolled && !r.rolled) ? local : r;
-                });
-            } else {
-                State[k] = incoming[k];
-            }
-        });
-        State.transientEvents = (State.transientEvents || []).filter(event => (event.expiresAt || 0) > Date.now());
+        if (incoming.party !== undefined) State.party = incoming.party;
+        if (incoming.activeEnemies !== undefined) State.activeEnemies = incoming.activeEnemies;
+        if (incoming.defeatedEnemies !== undefined) State.defeatedEnemies = incoming.defeatedEnemies;
+        if (incoming.lootDrops !== undefined) State.lootDrops = incoming.lootDrops;
+        if (incoming.gold !== undefined) State.gold = incoming.gold;
+        if (incoming.dungeonLevel !== undefined) State.dungeonLevel = incoming.dungeonLevel;
+        if (incoming.lastStoryPart !== undefined) State.lastStoryPart = incoming.lastStoryPart;
+        if (incoming.gameStarted !== undefined) State.gameStarted = incoming.gameStarted;
+        if (incoming.combatEnded !== undefined) State.combatEnded = incoming.combatEnded;
+        if (incoming.activeMerchant !== undefined) State.activeMerchant = incoming.activeMerchant;
+        if (incoming.journal !== undefined) State.journal = incoming.journal;
+        if (incoming.sessionStats !== undefined) State.sessionStats = incoming.sessionStats;
+        if (incoming.fate !== undefined) State.fate = incoming.fate;
+        if (incoming.fatigue !== undefined) State.fatigue = incoming.fatigue;
+        if (incoming.abilityCooldowns !== undefined) State.abilityCooldowns = incoming.abilityCooldowns;
+        if (incoming.isBossFight !== undefined) State.isBossFight = incoming.isBossFight;
+        if (incoming.weather !== undefined) State.weather = incoming.weather;
+        if (incoming.momentum !== undefined) State.momentum = incoming.momentum;
+        if (incoming.pendingRolls !== undefined) {
+            const incomingRolls = Array.isArray(incoming.pendingRolls) ? incoming.pendingRolls : [];
+            State.pendingRolls = incomingRolls.map(r => {
+                const local = (State.pendingRolls || []).find(lr => lr.id === r.id);
+                return (local && local.rolled && !r.rolled) ? local : r;
+            });
+        }
+        if (incoming.recentRolls !== undefined) State.recentRolls = incoming.recentRolls;
+        if (incoming.pendingAbilityLearning !== undefined) State.pendingAbilityLearning = incoming.pendingAbilityLearning;
+        if (incoming.quickplayEnabled !== undefined) State.quickplayEnabled = incoming.quickplayEnabled;
+        if (incoming.sessionPhase !== undefined) State.sessionPhase = incoming.sessionPhase;
+        if (incoming.afkSince !== undefined) State.afkSince = incoming.afkSince || {};
+        if (incoming.playerProfiles !== undefined) State.playerProfiles = { ...(State.playerProfiles || {}), ...(incoming.playerProfiles || {}) };
+        if (incoming.playerControlMode !== undefined) State.playerControlMode = { ...(State.playerControlMode || {}), ...(incoming.playerControlMode || {}) };
+        if (incoming.chatMessages !== undefined) State.chatMessages = this._mergeCollectionById(State.chatMessages, incoming.chatMessages);
+        if (incoming.systemMessages !== undefined) State.systemMessages = this._mergeCollectionById(State.systemMessages, incoming.systemMessages);
+        if (incoming.transientEvents !== undefined) {
+            State.transientEvents = this._mergeCollectionById(State.transientEvents, incoming.transientEvents)
+                .filter(event => (event.expiresAt || 0) > Date.now())
+                .slice(-12);
+        } else {
+            State.transientEvents = (State.transientEvents || []).filter(event => (event.expiresAt || 0) > Date.now());
+        }
         this._syncAutoPlayersFromControlModes();
+        this._rememberStateIds();
         if (State.gameStarted && !wasStarted) UI.toggleViews(true);
         if (!State.gameStarted) UI.toggleViews(false);
     },
@@ -1224,7 +1266,7 @@ export const Network = {
                 this.currentVote = msg.vote || null;
                 State.isProcessing = !!msg.isProcessing;
                 UI.showLoader(!!msg.isProcessing);
-                UI.rebuildChatLog();
+                UI.syncChatLogFromState();
                 UI.renderTransientEvents();
                 UI.updateAll();
                 this._updateTurnUI();
@@ -1232,7 +1274,7 @@ export const Network = {
             }
             case 'STATE_SYNC': {
                 this._applyStateSync(msg.state);
-                UI.rebuildChatLog();
+                UI.syncChatLogFromState();
                 UI.renderTransientEvents();
                 UI.updateAll();
                 this._updateTurnUI();
@@ -1300,11 +1342,6 @@ export const Network = {
                 this._syncAutoPlayersFromControlModes();
                 this._updateTurnUI();
                 UI.updateAll();
-                break;
-            }
-            case 'DM_CONTROL_UPDATE': {
-                State.dmControlMode = msg.mode || 'human';
-                this._updateTurnUI();
                 break;
             }
             default:
@@ -1400,10 +1437,9 @@ export const Network = {
                         <p class="text-green-300 text-sm font-bold"><i class="fas fa-check-circle mr-1"></i> Verbunden als ${roleLabel}</p>
                         ${this.isHost() ? `<p class="text-slate-400 text-xs mt-1">Raum-Code: <span class="text-amber-400 font-mono font-bold text-sm select-all">${this.roomCode}</span></p>` : `<p class="text-slate-400 text-xs mt-1">Raum: <span class="text-amber-400 font-mono">${this.roomCode}</span></p>`}
                         <p class="text-slate-400 text-xs mt-1">${count} Spieler verbunden</p>
-                        <p class="text-slate-500 text-[11px] mt-1">DM-Modus: <span class="${State.dmControlMode === 'ai' ? 'text-cyan-300' : 'text-amber-300'} font-bold">${State.dmControlMode === 'ai' ? 'AI' : 'Manuell'}</span></p>
                         ${playersList ? `<ul class="mt-2 space-y-1">${playersList}</ul>` : ''}
                     </div>
-                    ${this.isHost() ? `<button data-action="mp-toggle-dm-control" class="w-full bg-slate-800/80 hover:bg-slate-700 text-cyan-100 py-2 rounded-lg text-xs font-bold transition-all border border-cyan-500/25"><i class="fas fa-hat-wizard mr-1"></i> DM-Fallback ${State.dmControlMode === 'ai' ? 'auf Human' : 'auf AI'}</button>` : ''}
+                    
                     <button data-action="mp-disconnect" class="w-full bg-red-700/80 hover:bg-red-600 text-white py-2 rounded-lg text-xs font-bold transition-all border border-red-500/40">
                         <i class="fas fa-sign-out-alt mr-1"></i> Trennen
                     </button>

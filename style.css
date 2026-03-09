@@ -1869,3 +1869,23 @@
         padding: 1.4rem;
     }
 }
+
+body.session-startscreen #header-controls {
+    display: none;
+}
+
+body.session-startscreen main > aside {
+    display: none;
+}
+
+body.session-startscreen main > section {
+    padding-inline: 0.75rem;
+}
+
+body.session-startscreen #story-log {
+    min-height: auto;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}

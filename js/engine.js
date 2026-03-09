@@ -146,6 +146,25 @@ export const Engine = {
         UI.updateAll();
     },
 
+    toggleSelfControlMode() {
+        const playerName = this._getResolvedLocalPlayerName();
+        if (!playerName) {
+            UI.addChatLog('System', 'Bitte gib zuerst deinen Spielernamen ein.');
+            return;
+        }
+        const nextMode = Network.getPlayerControlMode(playerName) === 'ai' ? 'human' : 'ai';
+        if (Network.isClient() && Network.isConnected()) {
+            Network.requestSelfControlMode(nextMode);
+        } else if (Network.isHost() && Network.isConnected()) {
+            Network.setPlayerControlMode(playerName, nextMode);
+        } else {
+            State.playerControlMode = State.playerControlMode || {};
+            State.playerControlMode[playerName] = nextMode;
+            this._syncLocalProfile({ controlMode: nextMode });
+        }
+        UI.updateAll();
+    },
+
     openHeroImport() {
         document.getElementById('import-hero')?.click();
     },

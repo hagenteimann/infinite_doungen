@@ -127,7 +127,7 @@ export function initEvents() {
             'mp-skip-player': () => Network.skipPlayer(actionEl.dataset.player),
             'mp-toggle-auto': () => Network.toggleAutoPlayer(actionEl.dataset.player),
             'mp-toggle-control': () => Network.togglePlayerControlMode(actionEl.dataset.player),
-            'mp-toggle-dm-control': () => Network.toggleDmControlMode(),
+            'toggle-self-control': () => Engine.toggleSelfControlMode(),
             'close-enemy-lightbox': () => UI.closeEnemyLightbox(),
             'mp-cast-vote': () => Network.castVote(parseInt(actionEl.dataset.option)),
             'mp-resolve-vote': () => Network.resolveVote(parseInt(actionEl.dataset.option)),

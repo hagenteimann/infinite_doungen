@@ -383,33 +383,6 @@ export const UI = {
             </div>
         `));
     },
-    toggleTargetMode: function () {
-        State.targetMapMode = !State.targetMapMode;
-        this.updateTargetModeButton();
-    },
-    updateTargetModeButton: function () {
-        const btn = document.getElementById('target-mode-btn');
-        if (!btn) return;
-        if (State.targetMapMode) {
-            btn.className = "group bg-amber-900/40 hover:bg-amber-800/60 border border-amber-500/80 text-amber-100 px-3.5 py-2 rounded-lg transition-all duration-300 flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.5)] backdrop-blur-md tracking-wide animate-pulse";
-            btn.innerHTML = `<i class="fas fa-crosshairs text-amber-400"></i> Zielmodus Aktiv`;
-        } else {
-            btn.className = "group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-amber-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg transition-all duration-300 flex items-center gap-1.5 shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(245,158,11,0.3)] backdrop-blur-md tracking-wide";
-            btn.innerHTML = `<i class="fas fa-crosshairs text-slate-500 group-hover:text-amber-400 transition-colors"></i> Schnellauswahl`;
-        }
-    },
-    handleEntityClick: function (name, type, id) {
-        if (State.targetMapMode) {
-            const val = DOM.playerInput.value;
-            DOM.playerInput.value = val + (val && !val.endsWith(' ') ? " " : "") + name + " ";
-            DOM.playerInput.focus();
-        } else {
-            if (type === 'hero') this.showDetails(id);
-            if (type === 'enemy') this.showEnemyDetails(id);
-        }
-    },
-
-    _updateAllTimeout: null,
     updateAll: function () {
         if (this._updateAllTimeout) {
             cancelAnimationFrame(this._updateAllTimeout);
@@ -433,15 +406,15 @@ export const UI = {
         if (isMp) {
             const myChar = State.party.find(p => p.id === myCharId);
             if (myChar && myChar.hp > 0) {
-                DOM.actingChar.innerHTML = `<option value="${myChar.name}">${myChar.name}</option>`;
+                DOM.actingChar.innerHTML = '<option value="' + myChar.name + '">' + myChar.name + '</option>';
                 DOM.actingChar.value = myChar.name;
             } else {
                 DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>';
             }
         } else {
             const prevActing = DOM.actingChar.value;
-            DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>' + State.party.filter(p => !p.isSummon && p.hp > 0).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-            if (prevActing && DOM.actingChar.querySelector(`option[value="${CSS.escape(prevActing)}"]`)) DOM.actingChar.value = prevActing;
+            DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>' + State.party.filter(p => !p.isSummon && p.hp > 0).map(c => '<option value="' + c.name + '">' + c.name + '</option>').join('');
+            if (prevActing && DOM.actingChar.querySelector('option[value="' + CSS.escape(prevActing) + '"]')) DOM.actingChar.value = prevActing;
         }
         DOM.enemySection.classList.toggle('hidden', !State.activeEnemies.length && !State.defeatedEnemies.length);
         DOM.enemyHistoryContainer.innerHTML = sanitize(State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join(''));
@@ -452,20 +425,20 @@ export const UI = {
             DOM.lootDropSection.classList.toggle('hidden', !State.lootDrops.length);
             DOM.lootList.innerHTML = sanitize(State.lootDrops.map((it, idx) => {
                 const formatted = UI.formatItemDisplay(it);
-                const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
-                const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-                return `<div class="text-[10px] bg-amber-950/60 p-1.5 rounded border border-amber-800/50 flex justify-between items-center mt-1.5 shadow-sm loot-item-entrance" ${titleAttr}><span class="text-amber-300 font-mono truncate mr-2 flex-1">+ ${formatted.displayName} ${effectIcon}</span><select data-action="assign-loot" data-idx="${idx}" class="bg-slate-800 text-slate-300 border border-slate-600 rounded outline-none p-1 max-w-[85px] cursor-pointer"><option value="">Geben...</option>${State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>`;
+                const titleAttr = formatted.hasEffects ? 'title="' + formatted.tooltip.replace(/"/g, '&quot;') + '"' : '';
+                const effectIcon = formatted.hasEffects ? '<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ' + titleAttr + '></i>' : '';
+                return '<div class="text-[10px] bg-amber-950/60 p-1.5 rounded border border-amber-800/50 flex justify-between items-center mt-1.5 shadow-sm loot-item-entrance" ' + titleAttr + '><span class="text-amber-300 font-mono truncate mr-2 flex-1">+ ' + formatted.displayName + ' ' + effectIcon + '</span><select data-action="assign-loot" data-idx="' + idx + '" class="bg-slate-800 text-slate-300 border border-slate-600 rounded outline-none p-1 max-w-[85px] cursor-pointer"><option value="">Geben...</option>' + State.party.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('') + '</select></div>';
             }).join(''));
             if (!hadLoot && State.lootDrops.length > 0) this.showLootAnimation();
         }
 
         const collectAllSelect = document.getElementById('collect-all-select');
-        if (collectAllSelect) collectAllSelect.innerHTML = '<option value="">Alle nehmen...</option>' + State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        if (collectAllSelect) collectAllSelect.innerHTML = '<option value="">Alle nehmen...</option>' + State.party.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('');
 
         if (State.activeMerchant) {
             DOM.merchantSection.classList.remove('hidden');
             DOM.merchantName.innerText = State.activeMerchant.name;
-            DOM.merchantItems.innerHTML = sanitize(State.activeMerchant.items.map(it => `<div class="bg-blue-950/60 p-1.5 rounded border border-blue-800/50 flex justify-between items-center mt-1.5 shadow-sm"><span class="text-blue-200">${it}</span></div>`).join(''));
+            DOM.merchantItems.innerHTML = sanitize(State.activeMerchant.items.map(it => '<div class="bg-blue-950/60 p-1.5 rounded border border-blue-800/50 flex justify-between items-center mt-1.5 shadow-sm"><span class="text-blue-200">' + it + '</span></div>').join(''));
         } else {
             DOM.merchantSection.classList.add('hidden');
         }
@@ -476,13 +449,16 @@ export const UI = {
             const fateEl = document.getElementById('hud-fate');
             if (fateEl) {
                 const f = State.fate || 0;
-                fateEl.innerText = `${f}/100`;
+                fateEl.innerText = f + '/100';
                 fateEl.className = 'text-xs font-bold ' + (f <= 25 ? 'text-green-400' : f <= 50 ? 'text-blue-400' : f <= 75 ? 'text-yellow-400' : 'text-red-500 animate-pulse');
             }
             const fatigueEl = document.getElementById('hud-fatigue');
             if (fatigueEl) fatigueEl.innerText = State.fatigue;
         }
 
+        document.body.classList.toggle('session-startscreen', ['start', 'api_gate'].includes(State.sessionPhase || 'start'));
+        document.body.classList.toggle('session-pregame', State.sessionPhase === 'pregame');
+        this.updateSelfControlButton();
         this.updateTargetModeButton();
         this.updateActionBox();
         this.renderDiceFeed();
@@ -492,6 +468,10 @@ export const UI = {
         if (network?.isHost?.() && network?.isConnected?.()) network.broadcastState();
     },
 
+    toggleTargetMode: function () {
+        State.targetMapMode = !State.targetMapMode;
+        this.updateTargetModeButton();
+    },
     _updateActionBoxTimeout: null,
     updateActionBox: function () {
         if (this._updateActionBoxTimeout) {
@@ -587,6 +567,30 @@ export const UI = {
         });
         (State.chatMessages || []).forEach(entry => this.addChatLog(entry, null, { persist: false, deferScroll: true }));
         this.scrollChatToBottom();
+    },
+    syncChatLogFromState: function () {
+        const entries = [...(State.chatMessages || [])].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        let added = false;
+        entries.forEach(entry => {
+            if (!DOM.storyLog.querySelector('[data-chat-id="' + entry.id + '"]')) {
+                this.addChatLog(entry, null, { persist: false, deferScroll: true });
+                added = true;
+            }
+        });
+        if (added) this.scrollChatToBottom();
+    },
+    updateSelfControlButton: function () {
+        const button = document.getElementById('self-control-toggle');
+        if (!button) return;
+        const network = window.App?.Network;
+        const playerName = String(network?.playerName || State.localPlayerName || '').trim();
+        const shouldShow = !!playerName && (State.sessionPhase === 'pregame' || State.sessionPhase === 'in_game' || !!State._mpRole);
+        button.classList.toggle('hidden', !shouldShow);
+        if (!shouldShow) return;
+        const mode = network?.getPlayerControlMode ? network.getPlayerControlMode(playerName) : (State.playerControlMode?.[playerName] || 'human');
+        button.innerHTML = '<i class="fas fa-user-astronaut ' + (mode === 'ai' ? 'text-cyan-300' : 'text-emerald-400') + '"></i> Ich: ' + (mode === 'ai' ? 'KI' : 'Human');
+        button.classList.toggle('border-cyan-500/50', mode === 'ai');
+        button.classList.toggle('text-cyan-100', mode === 'ai');
     },
     buildHostInventoryOverview: function () {
         const heroes = State.party.filter(c => !c.isSummon);
@@ -1134,22 +1138,33 @@ export const UI = {
             document.body.appendChild(layer);
         }
         if (!layer) return;
-        layer.innerHTML = '';
-        State.transientEvents.slice(-4).forEach(event => {
+
+        const visibleEvents = State.transientEvents.slice(-4);
+        const wantedIds = new Set(visibleEvents.map(event => event.id));
+        Array.from(layer.children).forEach(node => {
+            if (!wantedIds.has(node.dataset.eventId)) node.remove();
+        });
+
+        visibleEvents.forEach(event => {
             const payload = event.payload || {};
             const success = payload.result == null ? null : ((payload.result || 0) >= (payload.targetDC || 0));
-            const card = document.createElement('div');
-            card.className = 'notification-card ' + (event.type === 'loot_gain' ? 'notification-loot' : (event.type === 'turn_notice' ? 'notification-turn' : (success === false ? 'notification-fail' : 'notification-dice')));
-            if (event.type === 'loot_gain') {
-                card.innerHTML = sanitize('<div class="notification-kicker"><i class="fas fa-gem"></i> Beute</div><div class="notification-title">' + repairDisplayText(event.sender || 'Held') + '</div><div class="notification-copy">' + repairDisplayText(payload.text || 'Neue Beute erhalten.') + '</div>');
-            } else if (event.type === 'turn_notice') {
-                card.innerHTML = sanitize('<div class="notification-kicker"><i class="fas fa-hourglass-half"></i> Zug</div><div class="notification-title">' + repairDisplayText(event.sender || 'Spieler') + '</div><div class="notification-copy">' + repairDisplayText(payload.text || '') + '</div>');
-            } else {
-                const modifier = payload.modifier || 0;
-                card.innerHTML = sanitize('<div class="notification-kicker"><i class="fas fa-dice-d20"></i> ' + (payload.result == null ? 'Wurf laeuft' : 'Wurf') + '</div><div class="notification-title">' + repairDisplayText(payload.name || event.sender || 'Unbekannt') + '</div><div class="notification-copy">' + repairDisplayText(payload.reason || 'Probe') + '</div><div class="notification-roll"><span>' + (payload.rawRoll ?? '?') + '</span><small>' + (modifier >= 0 ? '+' : '') + modifier + '</small><strong>' + (payload.result ?? '?') + '</strong></div><div class="notification-copy">' + repairDisplayText(payload.diceType || 'W20') + ' gegen DC ' + (payload.targetDC ?? '-') + '</div>');
+            const toneClass = event.type === 'loot_gain' ? 'notification-loot' : (event.type === 'turn_notice' ? 'notification-turn' : (success === false ? 'notification-fail' : 'notification-dice'));
+            const html = event.type === 'loot_gain'
+                ? '<div class="notification-kicker"><i class="fas fa-gem"></i> Beute</div><div class="notification-title">' + repairDisplayText(event.sender || 'Held') + '</div><div class="notification-copy">' + repairDisplayText(payload.text || 'Neue Beute erhalten.') + '</div>'
+                : event.type === 'turn_notice'
+                    ? '<div class="notification-kicker"><i class="fas fa-hourglass-half"></i> Zug</div><div class="notification-title">' + repairDisplayText(event.sender || 'Spieler') + '</div><div class="notification-copy">' + repairDisplayText(payload.text || '') + '</div>'
+                    : '<div class="notification-kicker"><i class="fas fa-dice-d20"></i> ' + (payload.result == null ? 'Wurf laeuft' : 'Wurf') + '</div><div class="notification-title">' + repairDisplayText(payload.name || event.sender || 'Unbekannt') + '</div><div class="notification-copy">' + repairDisplayText(payload.reason || 'Probe') + '</div><div class="notification-roll"><span>' + (payload.rawRoll ?? '?') + '</span><small>' + ((payload.modifier || 0) >= 0 ? '+' : '') + (payload.modifier || 0) + '</small><strong>' + (payload.result ?? '?') + '</strong></div><div class="notification-copy">' + repairDisplayText(payload.diceType || 'W20') + ' gegen DC ' + (payload.targetDC ?? '-') + '</div>';
+            let card = layer.querySelector('[data-event-id="' + event.id + '"]');
+            if (!card) {
+                card = document.createElement('div');
+                card.dataset.eventId = event.id;
+                layer.appendChild(card);
             }
-            layer.appendChild(card);
+            card.className = 'notification-card ' + toneClass;
+            const sanitized = sanitize(html);
+            if (card.innerHTML !== sanitized) card.innerHTML = sanitized;
         });
+
         if (!layer.children.length) layer.remove();
     },
     showTransientEvent: function (event) {

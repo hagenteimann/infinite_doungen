@@ -34,7 +34,6 @@ export const State = {
     pendingApiKeyValue: '',
     playerProfiles: {},
     playerControlMode: {},
-    dmControlMode: 'human',
     afkSince: {},
 };
 
