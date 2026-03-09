@@ -24,6 +24,7 @@ const SYNC_KEYS = [
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
     'isBossFight', 'weather', 'momentum',
     'pendingRolls', 'recentRolls', 'pendingAbilityLearning', 'quickplayEnabled',
+    'routeChoices', 'craftingIngredients', 'activeCrafterId',
     'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'afkSince',
 ];
 
