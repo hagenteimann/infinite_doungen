@@ -33,6 +33,7 @@ export const State = {
     pendingApiMode: null,
     pendingApiModelText: '',
     selectedApiProvider: 'gemini',
+    actingChar: 'party',
     _mpRole: null,
     _mpMyCharId: null,
     pendingApiKeyValue: '',

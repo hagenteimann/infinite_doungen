@@ -1117,7 +1117,7 @@ export const Network = {
             case 'PLAYER_ACTION': {
                 Sound.play('turn');
                 this._recordChatEntry({ id: msg.messageId || this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: msg.createdAt || Date.now(), relatedPlayer: msg.playerName || name, relatedCharacter: msg.actingChar || '' }, 'PLAYER_CHAT');
-                if (DOM.actingChar) DOM.actingChar.value = msg.actingChar || 'party';
+                State.actingChar = msg.actingChar || 'party';
                 Engine.interactWithAI(msg.action);
                 break;
             }

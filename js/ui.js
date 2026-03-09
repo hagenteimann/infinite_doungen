@@ -110,7 +110,7 @@ export const DOM = {};
 export const initDOM = () => {
     const ids = [
         'story-log', 'lobby-view', 'start-adventure-container', 'action-area',
-        'action-box-container', 'acting-char', 'player-input', 'send-btn',
+        'action-box-container', 'player-input', 'send-btn',
         'dynamic-roll-container', 'game-difficulty', 'enemy-rate', 'loading-spinner',
         'loading-text', 'party-list', 'char-details', 'export-hero-btn',
         'details-content', 'enemy-section', 'enemy-history-container',
@@ -412,16 +412,7 @@ export const UI = {
         const isMp = State._mpRole && myCharId;
         if (isMp) {
             const myChar = State.party.find(p => p.id === myCharId);
-            if (myChar && myChar.hp > 0) {
-                DOM.actingChar.innerHTML = '<option value="' + myChar.name + '">' + myChar.name + '</option>';
-                DOM.actingChar.value = myChar.name;
-            } else {
-                DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>';
-            }
-        } else {
-            const prevActing = DOM.actingChar.value;
-            DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>' + State.party.filter(p => !p.isSummon && p.hp > 0).map(c => '<option value="' + c.name + '">' + c.name + '</option>').join('');
-            if (prevActing && DOM.actingChar.querySelector('option[value="' + CSS.escape(prevActing) + '"]')) DOM.actingChar.value = prevActing;
+            State.actingChar = (myChar && myChar.hp > 0) ? myChar.name : 'party';
         }
         DOM.enemySection.classList.toggle('hidden', !State.activeEnemies.length && !State.defeatedEnemies.length);
         this._setHtmlIfChanged(DOM.enemyHistoryContainer, sanitize(State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join('')));
@@ -1366,7 +1357,7 @@ export const UI = {
         DOM.diceTargetDc.classList.add('hidden');
         DOM.diceAcceptBtn.classList.remove('hidden');
 
-        let activeName = DOM.actingChar.value;
+        let activeName = State.actingChar;
         if (isGroup || activeName === 'party') activeName = "Die Gruppe";
         else if (typeof target === 'string' && target !== 'null') activeName = target;
 

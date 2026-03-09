@@ -44,7 +44,7 @@ export const Engine = {
 
     _getActiveDmContext() {
         const activePlayer = Network.isConnected() ? (Network.turnOrder?.[Network.currentTurnIndex] || '') : '';
-        const actingValue = String(DOM.actingChar?.value || '').trim();
+        const actingValue = String(State.actingChar || '').trim();
         const actingName = actingValue && actingValue !== 'party' ? actingValue : '';
         const fallbackPlayer = this._getResolvedLocalPlayerName();
         return {
@@ -401,7 +401,7 @@ State.isProcessing = true; UI.showLoader(true);
 
         State.isBossFight = (State.fate || 0) >= FATE_BOSS_THRESHOLD && State.activeEnemies.length > 0;
 
-        const acting = DOM.actingChar.value;
+        const acting = State.actingChar;
         const enemyCtx = State.activeEnemies.length > 0 ? State.activeEnemies.map(e => `${e.name} (HP ${e.hp}/${e.maxHp})`).join(', ') : 'Keine Feinde';
 
         const partyCtx = State.party.map(p => {
@@ -578,11 +578,11 @@ State.isProcessing = true; UI.showLoader(true);
         let actingName;
         if (Network.isConnected() && Network.turnOrder.length > 1) {
             const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
-            actingName = myChar ? myChar.name : DOM.actingChar.value;
-        } else if (DOM.actingChar.value === 'party') {
+            actingName = myChar ? myChar.name : State.actingChar;
+        } else if (State.actingChar === 'party') {
             actingName = 'Die Gruppe';
         } else {
-            actingName = DOM.actingChar.value;
+            actingName = State.actingChar;
         }
 
         if (action.startsWith('/vote ') && Network.isHost() && Network.isConnected()) {
@@ -640,7 +640,7 @@ State.isProcessing = true; UI.showLoader(true);
         const char = State.party.find(p => p.id === charId);
         if (!char) return;
 
-        DOM.actingChar.value = char.name;
+        State.actingChar = char.name;
         const msg = `Ich zeige ${merchantName} mein "${offeredItem}" und frage: "Wie viel ist das wert? Reicht das fuer: ${wantedItem}?"`;
         DOM.playerInput.value = msg;
         this.submitPlayerAction();
@@ -1069,7 +1069,7 @@ State.isProcessing = true; UI.showLoader(true);
         const c = State.party.find(p => p.id === cid);
         DOM.itemActionModal.classList.add('hidden');
         DOM.playerInput.value = `Nutzt ${amt > 1 ? amt + 'x ' : ''}${itemName} `;
-        DOM.actingChar.value = c.name;
+        State.actingChar = c.name;
         UI.hideDetails();
         DOM.playerInput.focus();
     },
@@ -1087,7 +1087,7 @@ State.isProcessing = true; UI.showLoader(true);
         const c = State.party.find(p => p.id === cid);
         DOM.itemActionModal.classList.add('hidden');
         if (c && State.activeMerchant) {
-            DOM.actingChar.value = c.name;
+            State.actingChar = c.name;
             DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? Können wir tauschen?"`;
             UI.hideDetails();
             DOM.playerInput.focus();
@@ -1193,7 +1193,7 @@ State.isProcessing = true; UI.showLoader(true);
         if (elCon) elCon.value = "";
         State.craftingIngredients = [];
 
-        DOM.actingChar.value = crafter ? crafter.name : 'party';
+        State.actingChar = crafter ? crafter.name : 'party';
         DOM.playerInput.value = msg;
         this.submitPlayerAction();
     },
@@ -1280,7 +1280,7 @@ State.isProcessing = true; UI.showLoader(true);
                     return;
                 }
             }
-            DOM.actingChar.value = c.name;
+            State.actingChar = c.name;
             const currentInput = DOM.playerInput.value.trim();
             const src = isItemAbility ? 'Item-Fähigkeit' : 'Fähigkeit';
             DOM.playerInput.value = currentInput + ` Ich setze meine ${src}: "${ab}" ein. `;
