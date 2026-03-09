@@ -1,6 +1,7 @@
 import { TTS, DOM, UI } from './ui.js';
 import { Engine } from './engine.js';
 import { Network } from './network.js';
+import { State } from './state.js';
 
 export function initEvents() {
     document.addEventListener('click', (e) => {
@@ -17,6 +18,15 @@ export function initEvents() {
 
         const ACTIONS = {
             'show-api-settings': () => UI.showApiSettings(),
+            'entry-start-solo': () => Engine.beginSessionFlow('solo'),
+            'entry-start-host': () => Engine.beginSessionFlow('host'),
+            'entry-join-room': () => Engine.beginSessionFlow('join'),
+            'entry-select-provider': () => Engine.selectStartApiProvider(actionEl.dataset.provider),
+            'entry-confirm-api': () => Engine.confirmApiGate(),
+            'entry-back': () => { State.sessionPhase = 'start'; State.pendingApiMode = null; UI.updateAll(); },
+            'pregame-toggle-ready': () => Engine.togglePregameReady(),
+            'pregame-load-hero': () => Engine.openHeroImport(),
+            'pregame-create-hero': () => UI.showCreator(),
             'toggle-sound': () => Engine.toggleSound(),
             'tts-open-picker': () => TTS.openPicker(),
             'download-save': () => Engine.downloadSave(),
@@ -91,12 +101,12 @@ export function initEvents() {
             'show-details': () => UI.showDetails(actionEl.dataset.charId),
             'show-multiplayer': () => Network.showModal(),
             'mp-host': () => {
-                const name = document.getElementById('mp-player-name')?.value.trim() || 'Host';
+                const name = document.getElementById('mp-player-name')?.value.trim();
                 Network.host(name);
             },
             'mp-join': () => {
                 const code = document.getElementById('mp-room-code')?.value.trim();
-                const name = document.getElementById('mp-player-name')?.value.trim() || 'Spieler';
+                const name = document.getElementById('mp-player-name')?.value.trim();
                 if (!code) return;
                 Network.join(code, name);
             },
@@ -135,6 +145,13 @@ export function initEvents() {
         };
 
         ACTIONS[action]?.();
+    });
+
+    document.addEventListener('input', (e) => {
+        const el = e.target;
+        if (el.id === 'entry-player-name') State.localPlayerName = el.value;
+        else if (el.id === 'entry-room-code') State.pendingRoomCode = el.value.toUpperCase();
+        else if (el.id === 'start-api-key-input') State.pendingApiKeyValue = el.value;
     });
 
     document.addEventListener('change', (e) => {

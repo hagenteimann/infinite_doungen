@@ -24,7 +24,7 @@ const SYNC_KEYS = [
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
     'isBossFight', 'weather', 'momentum',
     'pendingRolls', 'recentRolls', 'pendingAbilityLearning', 'quickplayEnabled',
-    'chatMessages', 'systemMessages', 'transientEvents', 'playerControlMode', 'dmControlMode', 'afkSince',
+    'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'dmControlMode', 'afkSince',
 ];
 
 export const Network = {
@@ -70,6 +70,37 @@ export const Network = {
 
     generateRoomCode() {
         return Math.random().toString(36).substring(2, 8).toUpperCase();
+    },
+
+    validatePlayerName(playerName) {
+        const normalized = String(playerName || '').trim();
+        if (!normalized) return 'Bitte gib zuerst deinen Spielernamen ein.';
+        if (normalized.length < 2) return 'Der Spielername sollte mindestens 2 Zeichen haben.';
+        if (/^(spieler|host|player)$/i.test(normalized)) return 'Bitte waehle einen echten Namen statt eines Platzhalters.';
+        return '';
+    },
+
+    _ensurePlayerProfile(playerName, updates = {}) {
+        if (!playerName) return null;
+        State.playerProfiles = State.playerProfiles || {};
+        const existing = State.playerProfiles[playerName] || {};
+        const next = {
+            name: playerName,
+            heroId: existing.heroId || null,
+            heroName: existing.heroName || '',
+            isReady: !!existing.isReady,
+            controlMode: this.getPlayerControlMode(playerName),
+            ...existing,
+            ...updates,
+        };
+        State.playerProfiles[playerName] = next;
+        return next;
+    },
+
+    setPregameReady(playerName, isReady, options = {}) {
+        if (!playerName) return;
+        this._ensurePlayerProfile(playerName, { isReady: !!isReady, controlMode: this.getPlayerControlMode(playerName) });
+        if (this.isHost() && options.broadcast !== false) this._markDirty();
     },
 
     _nextId(prefix = 'evt') {
@@ -227,8 +258,13 @@ export const Network = {
     },
 
     host(playerName) {
+        const error = this.validatePlayerName(playerName);
+        if (error) {
+            UI.addChatLog('System', error);
+            return false;
+        }
         if (this.peer) this.disconnect();
-        this.playerName = playerName || 'Host';
+        this.playerName = String(playerName || '').trim();
         this.roomCode = this.generateRoomCode();
         this.role = 'host';
         State._mpRole = 'host';
@@ -246,6 +282,7 @@ export const Network = {
             this.currentTurnIndex = 0;
             State.playerControlMode = { [this.playerName]: 'human' };
             State.dmControlMode = 'human';
+            this._ensurePlayerProfile(this.playerName, { isReady: false, controlMode: 'human' });
             this._startHeartbeat();
             this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Multiplayer-Raum erstellt: **${this.roomCode}**. Teile diesen Code mit deinen Spielern.`, tone: 'neutral', createdAt: Date.now() }, false);
         });
@@ -260,6 +297,7 @@ export const Network = {
                 }
                 State.playerControlMode = State.playerControlMode || {};
                 if (!State.playerControlMode[joinedName]) State.playerControlMode[joinedName] = 'human';
+                this._ensurePlayerProfile(joinedName, { isReady: false, controlMode: 'human' });
                 this._updateUI();
                 this.assignCharacters();
                 this._sendTo(conn, this._getFullSyncPayload());
@@ -273,6 +311,7 @@ export const Network = {
                 const leftName = conn.metadata?.name || 'Unbekannt';
                 this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Spieler **${leftName}** hat den Raum verlassen.`, tone: 'neutral', createdAt: Date.now() });
                 if (State.playerControlMode) delete State.playerControlMode[leftName];
+                if (State.playerProfiles) delete State.playerProfiles[leftName];
                 const turnIdx = this.turnOrder.indexOf(leftName);
                 if (turnIdx > -1) {
                     this.turnOrder.splice(turnIdx, 1);
@@ -314,9 +353,14 @@ export const Network = {
     },
 
     join(roomCode, playerName) {
+        const error = this.validatePlayerName(playerName);
+        if (error) {
+            UI.addChatLog('System', error);
+            return false;
+        }
         if (this.peer) this.disconnect();
-        this.playerName = playerName || 'Spieler';
-        this.roomCode = roomCode.toUpperCase();
+        this.playerName = String(playerName || '').trim();
+        this.roomCode = String(roomCode || '').trim().toUpperCase();
         this.role = 'client';
         State._mpRole = 'client';
         this._setConnState('connecting');
@@ -335,6 +379,7 @@ export const Network = {
                 this._clearConnectTimeout();
                 this.connections = [conn];
                 this._setConnState('connected');
+                this._ensurePlayerProfile(this.playerName, { isReady: false, controlMode: this.getPlayerControlMode(this.playerName) });
                 UI.addChatLog('System', `Verbunden mit Raum **${this.roomCode}** als **${this.playerName}**.`);
             });
 
@@ -404,9 +449,12 @@ export const Network = {
         this._seenMessageIds = new Set();
         this._seenEventIds = new Set();
         State.playerControlMode = {};
+        State.playerProfiles = {};
         State.dmControlMode = 'human';
         State.afkSince = {};
         State.transientEvents = [];
+        State.sessionPhase = State.gameStarted ? 'in_game' : 'start';
+        State.pendingApiMode = null;
         State._mpRole = null;
         State._mpMyCharId = null;
         this._setConnState('idle');
@@ -450,6 +498,15 @@ export const Network = {
             type: 'CHARACTER_CREATE',
             charData,
             playerName: this.playerName,
+        });
+    },
+
+    sendPregameReady(isReady) {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], {
+            type: 'PLAYER_READY_UPDATE',
+            playerName: this.playerName,
+            isReady: !!isReady,
         });
     },
 
@@ -782,6 +839,8 @@ export const Network = {
     registerCharacter(playerName, charId) {
         if (!this.isHost()) return;
         this.playerCharMap[playerName] = charId;
+        const char = State.party.find(p => p.id === charId);
+        this._ensurePlayerProfile(playerName, { heroId: charId, heroName: char?.name || '', isReady: false, controlMode: this.getPlayerControlMode(playerName) });
         if (playerName === this.playerName) {
             State._mpMyCharId = charId;
         }
@@ -1037,12 +1096,18 @@ export const Network = {
                         State.party.push(char);
                         this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`, tone: 'neutral', createdAt: Date.now() });
                         this.registerCharacter(msg.playerName, char.id);
+                        this._ensurePlayerProfile(msg.playerName, { heroId: char.id, heroName: char.name, isReady: false, controlMode: this.getPlayerControlMode(msg.playerName) });
                         this.broadcastState();
                         UI.updateAll();
                     }
                 } catch (e) {
                     console.warn('Invalid character data from client:', e);
                 }
+                break;
+            }
+            case 'PLAYER_READY_UPDATE': {
+                this.setPregameReady(msg.playerName || name, !!msg.isReady);
+                UI.updateAll();
                 break;
             }
             case 'ITEM_ACTION': {
@@ -1139,6 +1204,7 @@ export const Network = {
         State.transientEvents = (State.transientEvents || []).filter(event => (event.expiresAt || 0) > Date.now());
         this._syncAutoPlayersFromControlModes();
         if (State.gameStarted && !wasStarted) UI.toggleViews(true);
+        if (!State.gameStarted) UI.toggleViews(false);
     },
 
     _handleHostMessage(msg) {

@@ -28,6 +28,7 @@ const init = () => {
                         State.party = State.party.filter(c => typeof c === 'object' && c.name).map(c => Utils.sanitizeCharacter(c));
                         if (legacyGold > 0) Utils.distributeGold(State.party.filter(c => !c.isSummon), legacyGold);
                     }
+                    State.sessionPhase = 'in_game';
                     DOM.storyLog.querySelector('#lobby-view')?.classList.add('hidden');
                     DOM.actionArea?.classList.remove('hidden');
                 }

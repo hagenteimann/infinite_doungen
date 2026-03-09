@@ -420,6 +420,8 @@ export const UI = {
     },
 
     _updateAllInternal: function () {
+        this.renderLobbyView();
+        this.toggleViews(!!State.gameStarted || State.sessionPhase === 'in_game');
         const myCharId = State._mpMyCharId || null;
         const sorted = [...State.party].sort((a, b) => {
             if (a.id === myCharId) return -1;
@@ -439,41 +441,26 @@ export const UI = {
         } else {
             const prevActing = DOM.actingChar.value;
             DOM.actingChar.innerHTML = '<option value="party">Gruppe</option>' + State.party.filter(p => !p.isSummon && p.hp > 0).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-            if (DOM.actingChar.querySelector(`option[value="${CSS.escape(prevActing)}"]`)) {
-                DOM.actingChar.value = prevActing;
-            }
+            if (prevActing && DOM.actingChar.querySelector(`option[value="${CSS.escape(prevActing)}"]`)) DOM.actingChar.value = prevActing;
         }
         DOM.enemySection.classList.toggle('hidden', !State.activeEnemies.length && !State.defeatedEnemies.length);
         DOM.enemyHistoryContainer.innerHTML = sanitize(State.defeatedEnemies.map(e => UIBuilders.buildEnemyCard(e, true)).join(''));
         DOM.currentEnemyContainer.innerHTML = sanitize(State.activeEnemies.map(e => UIBuilders.buildEnemyCard(e, false)).join(''));
 
-        // Loot section with null checks
         if (DOM.lootDropSection && DOM.lootList) {
             const hadLoot = !DOM.lootDropSection.classList.contains('hidden');
             DOM.lootDropSection.classList.toggle('hidden', !State.lootDrops.length);
             DOM.lootList.innerHTML = sanitize(State.lootDrops.map((it, idx) => {
-            const formatted = UI.formatItemDisplay(it);
-            const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
-            const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-            return `<div class="text-[10px] bg-amber-950/60 p-1.5 rounded border border-amber-800/50 flex justify-between items-center mt-1.5 shadow-sm loot-item-entrance" ${titleAttr}><span class="text-amber-300 font-mono truncate mr-2 flex-1">+ ${formatted.displayName} ${effectIcon}</span><select data-action="assign-loot" data-idx="${idx}" class="bg-slate-800 text-slate-300 border border-slate-600 rounded outline-none p-1 max-w-[85px] cursor-pointer"><option value="">Geben...</option>${State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>`;
-        }).join(''));
-
-        // If loot just appeared, trigger animations
-        if (!hadLoot && State.lootDrops.length > 0) {
-            UI.showLootAnimation();
-        } else if (State.lootDrops.length > 0) {
-            // Animate new items with staggered delays
-            const items = DOM.lootList.querySelectorAll('.loot-item-entrance');
-            items.forEach((item, idx) => {
-                item.style.animationDelay = `${idx * 0.15}s`;
-            });
-        }
+                const formatted = UI.formatItemDisplay(it);
+                const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
+                const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
+                return `<div class="text-[10px] bg-amber-950/60 p-1.5 rounded border border-amber-800/50 flex justify-between items-center mt-1.5 shadow-sm loot-item-entrance" ${titleAttr}><span class="text-amber-300 font-mono truncate mr-2 flex-1">+ ${formatted.displayName} ${effectIcon}</span><select data-action="assign-loot" data-idx="${idx}" class="bg-slate-800 text-slate-300 border border-slate-600 rounded outline-none p-1 max-w-[85px] cursor-pointer"><option value="">Geben...</option>${State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>`;
+            }).join(''));
+            if (!hadLoot && State.lootDrops.length > 0) this.showLootAnimation();
         }
 
         const collectAllSelect = document.getElementById('collect-all-select');
-        if (collectAllSelect) {
-            collectAllSelect.innerHTML = '<option value="">Alle nehmen...</option>' + State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        }
+        if (collectAllSelect) collectAllSelect.innerHTML = '<option value="">Alle nehmen...</option>' + State.party.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
         if (State.activeMerchant) {
             DOM.merchantSection.classList.remove('hidden');
@@ -483,45 +470,26 @@ export const UI = {
             DOM.merchantSection.classList.add('hidden');
         }
 
-        DOM.startAdventureContainer.classList.toggle('hidden', !State.party.length);
+        const hud = document.getElementById('dungeon-hud');
+        if (hud) hud.classList.toggle('hidden', !State.gameStarted);
+        if (State.gameStarted && hud) {
+            const fateEl = document.getElementById('hud-fate');
+            if (fateEl) {
+                const f = State.fate || 0;
+                fateEl.innerText = `${f}/100`;
+                fateEl.className = 'text-xs font-bold ' + (f <= 25 ? 'text-green-400' : f <= 50 ? 'text-blue-400' : f <= 75 ? 'text-yellow-400' : 'text-red-500 animate-pulse');
+            }
+            const fatigueEl = document.getElementById('hud-fatigue');
+            if (fatigueEl) fatigueEl.innerText = State.fatigue;
+        }
 
-        if (State.gameStarted) {
-            const hud = document.getElementById('dungeon-hud');
-            if (hud) {
-                hud.classList.remove('hidden');
-                const fateEl = document.getElementById('hud-fate');
-                if (fateEl) {
-                    const f = State.fate || 0;
-                    fateEl.innerText = `${f}/100`;
-                    fateEl.className = 'text-xs font-bold ' +
-                        (f <= 25 ? 'text-green-400' : f <= 50 ? 'text-blue-400' : f <= 75 ? 'text-yellow-400' : 'text-red-500 animate-pulse');
-                }
-
-                const fatigueEl = document.getElementById('hud-fatigue');
-                fatigueEl.innerText = State.fatigue;
-                if (State.fatigue >= 15) {
-                    fatigueEl.classList.add('text-red-500', 'animate-pulse');
-                    fatigueEl.classList.remove('text-amber-500', 'text-white');
-                } else if (State.fatigue >= 8) {
-                    fatigueEl.classList.add('text-amber-500');
-                    fatigueEl.classList.remove('text-red-500', 'animate-pulse', 'text-white');
         this.updateTargetModeButton();
         this.updateActionBox();
         this.renderDiceFeed();
         this.renderSystemLog();
-                }
-            }
-        }
-
-        this.updateTargetModeButton();
-        this.updateActionBox();
-        this.renderDiceFeed();
 
         const network = window.App?.Network;
-        if (network?.isHost?.() && network?.isConnected?.()) {
-            network.broadcastState();
-        }
-
+        if (network?.isHost?.() && network?.isConnected?.()) network.broadcastState();
     },
 
     _updateActionBoxTimeout: null,
@@ -821,7 +789,117 @@ export const UI = {
         DOM.storyLog.appendChild(row);
         if (!options.deferScroll) this.scrollChatToBottom();
     },
+    renderLobbyView: function () {
+        if (!DOM.lobbyView) return;
+        if (State.gameStarted || State.sessionPhase === 'in_game') return;
+        const phase = State.sessionPhase || 'start';
+        const html = phase === 'pregame' ? this._buildPregameLobbyHtml() : this._buildEntryScreenHtml();
+        DOM.lobbyView.innerHTML = sanitize(html);
+    },
 
+    _buildEntryScreenHtml: function () {
+        const name = repairDisplayText(State.localPlayerName || '');
+        const roomCode = repairDisplayText(State.pendingRoomCode || '');
+        const provider = repairDisplayText(State.selectedApiProvider || 'gemini');
+        const providerLabels = { gemini: 'Google Gemini', chatgpt: 'OpenAI ChatGPT', claude: 'Anthropic Claude', openrouter: 'OpenRouter' };
+        const providerIcons = { gemini: 'fa-wand-magic-sparkles', chatgpt: 'fa-robot', claude: 'fa-brain', openrouter: 'fa-route' };
+        const providerButtons = ['gemini', 'chatgpt', 'claude', 'openrouter'].map(key => {
+            const active = key === provider ? ' is-active' : '';
+            return `<button type="button" data-action="entry-select-provider" data-provider="${key}" class="entry-provider-card${active}"><i class="fas ${providerIcons[key]}"></i><span>${providerLabels[key]}</span></button>`;
+        }).join('');
+        const apiOverlay = State.sessionPhase === 'api_gate' ? `
+            <div class="entry-modal-backdrop">
+                <div class="entry-modal">
+                    <button type="button" data-action="entry-back" class="entry-modal-close"><i class="fas fa-times"></i></button>
+                    <div class="entry-modal-title"><i class="fas fa-key"></i> API Key</div>
+                    <p class="entry-modal-copy">Waehle deinen KI-Anbieter und gib den API-Key ein, um loszuspielen.</p>
+                    <div class="entry-provider-grid">${providerButtons}</div>
+                    <label class="entry-label" for="start-api-key-input">API Key</label>
+                    <input id="start-api-key-input" class="entry-input" type="password" placeholder="${providerLabels[provider] || 'API'} Key" value="${repairDisplayText(State.pendingApiKeyValue || '')}">
+                    <button type="button" data-action="entry-confirm-api" class="entry-primary-btn entry-confirm-btn"><i class="fas fa-check-square"></i> Bestaetigen & Starten</button>
+                    <p class="entry-modal-hint">Dein Key wird nur lokal im Browser gespeichert.</p>
+                </div>
+            </div>` : '';
+        return `
+            <div class="entry-shell">
+                <div class="entry-card">
+                    <div class="entry-logo"><i class="fas fa-swords"></i></div>
+                    <h2 class="entry-title cinzel">Infinite Dungeons</h2>
+                    <p class="entry-subtitle">Ein KI-gesteuertes Pen & Paper Abenteuer direkt im Browser.</p>
+                    <div class="entry-form">
+                        <label class="entry-label" for="entry-player-name">Dein Name</label>
+                        <input id="entry-player-name" class="entry-input" type="text" maxlength="24" placeholder="Wie sollen dich die anderen sehen?" value="${name}">
+                    </div>
+                    <div class="entry-cta-stack">
+                        <button type="button" data-action="entry-start-solo" class="entry-primary-btn"><i class="fas fa-gamepad"></i> Solo spielen</button>
+                        <button type="button" data-action="entry-start-host" class="entry-secondary-btn"><i class="fas fa-house"></i> Raum erstellen (Host)</button>
+                    </div>
+                    <div class="entry-join-card">
+                        <div class="entry-join-copy">oder einem Raum beitreten:</div>
+                        <div class="entry-join-row">
+                            <input id="entry-room-code" class="entry-input entry-room-input" type="text" maxlength="6" placeholder="RAUMCODE" value="${roomCode}">
+                            <button type="button" data-action="entry-join-room" class="entry-join-btn"><i class="fas fa-globe"></i> Beitreten</button>
+                        </div>
+                    </div>
+                    <p class="entry-footnote">Als Client brauchst du keinen API-Key - Anfragen laufen ueber den Host.</p>
+                </div>
+                ${apiOverlay}
+            </div>`;
+    },
+
+    _buildPregameLobbyHtml: function () {
+        const players = window.App?.Engine?.getPregameStatus?.().players || (window.App?.Network?.isConnected?.() ? (window.App.Network.turnOrder.length ? window.App.Network.turnOrder : [window.App.Network.playerName]).filter(Boolean) : [State.localPlayerName].filter(Boolean));
+        const localName = repairDisplayText(State.localPlayerName || window.App?.Network?.playerName || '');
+        const localProfile = State.playerProfiles?.[localName] || null;
+        const localHero = localProfile?.heroId ? State.party.find(p => p.id === localProfile.heroId) : null;
+        const rows = players.map(playerName => {
+            const profile = State.playerProfiles?.[playerName] || {};
+            const controlMode = profile.controlMode || State.playerControlMode?.[playerName] || 'human';
+            return `<div class="pregame-player-row">
+                <div>
+                    <div class="pregame-player-name">${repairDisplayText(playerName)} ${playerName === localName ? '<span class="pregame-me-badge">Du</span>' : ''}</div>
+                    <div class="pregame-player-meta">${repairDisplayText(profile.heroName || 'Noch kein Held gewaehlt')}</div>
+                </div>
+                <div class="pregame-player-flags">
+                    <span class="pregame-flag ${profile.isReady ? 'is-ready' : 'is-waiting'}">${profile.isReady ? 'Bereit' : 'Wartet'}</span>
+                    <span class="pregame-flag is-control">${controlMode === 'ai' ? 'AI' : 'Human'}</span>
+                </div>
+            </div>`;
+        }).join('');
+        const roomLine = window.App?.Network?.isConnected?.() ? (window.App.Network.isHost() ? `Raumcode: <span class="pregame-emphasis">${repairDisplayText(window.App.Network.roomCode || '')}</span>` : `Verbunden mit Raum <span class="pregame-emphasis">${repairDisplayText(window.App.Network.roomCode || '')}</span>`) : 'Solo-Sitzung';
+        const canStart = window.App?.Engine?.getPregameStatus?.().ok;
+        return `
+            <div class="entry-shell">
+                <div class="pregame-card">
+                    <div class="pregame-header">
+                        <div>
+                            <p class="pregame-kicker">Reisevorbereitung</p>
+                            <h2 class="pregame-title cinzel">Die Heldengruppe sammelt sich</h2>
+                            <p class="pregame-subtitle">${roomLine}</p>
+                        </div>
+                    </div>
+                    <div class="pregame-grid">
+                        <section class="pregame-panel">
+                            <div class="pregame-panel-title">Spielerstatus</div>
+                            <div class="pregame-player-list">${rows || '<div class="pregame-empty">Noch keine Spieler verbunden.</div>'}</div>
+                        </section>
+                        <section class="pregame-panel">
+                            <div class="pregame-panel-title">Dein Slot</div>
+                            <div class="pregame-hero-box">
+                                <div class="pregame-hero-name">${localHero ? repairDisplayText(localHero.name) : 'Kein Held gewaehlt'}</div>
+                                <div class="pregame-hero-meta">${localHero ? repairDisplayText(localHero.class || 'Held') : 'Lade einen Save oder erstelle einen neuen Helden, bevor du bereit drueckst.'}</div>
+                            </div>
+                            <div class="pregame-action-row">
+                                <button type="button" data-action="pregame-load-hero" class="pregame-ghost-btn"><i class="fas fa-file-import"></i> Held laden</button>
+                                <button type="button" data-action="pregame-create-hero" class="pregame-ghost-btn"><i class="fas fa-plus"></i> Held erstellen</button>
+                            </div>
+                            <button type="button" data-action="pregame-toggle-ready" class="${localProfile?.isReady ? 'pregame-ready-btn is-ready' : 'pregame-ready-btn'}">${localProfile?.isReady ? '<i class="fas fa-check-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>
+                            ${window.App?.Network?.isHost?.() || !window.App?.Network?.isConnected?.() ? `<button type="button" data-action="start-game" class="pregame-start-btn ${canStart ? '' : 'is-disabled'}" ${canStart ? '' : 'disabled'}><i class="fas fa-dungeon"></i> Abenteuer starten</button>` : '<div class="pregame-wait-note">Der Host startet das Abenteuer, sobald alle bereit sind.</div>'}
+                        </section>
+                    </div>
+                </div>
+            </div>`;
+    },
 
     showCreator: function () { DOM.creatorModal.classList.remove('hidden'); },
     showAbilityReplaceModal: function (charId, newAbility) {

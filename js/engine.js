@@ -24,10 +24,151 @@ export const Engine = {
 
     _requireHost(actionName) {
         if (Network.isClient() && Network.isConnected()) {
-            UI.addChatLog('System', `**${actionName}** ist nur für den Host verfügbar.`);
+            UI.addChatLog('System', `**${actionName}** ist nur f??r den Host verf??gbar.`);
             return true;
         }
         return false;
+    },
+
+    _getResolvedLocalPlayerName() {
+        return String(Network.playerName || State.localPlayerName || '').trim();
+    },
+
+    _syncLocalProfile(updates = {}) {
+        const name = updates.name || this._getResolvedLocalPlayerName();
+        if (!name) return null;
+        State.playerProfiles = State.playerProfiles || {};
+        const existing = State.playerProfiles[name] || {};
+        const next = {
+            name,
+            heroId: existing.heroId || null,
+            heroName: existing.heroName || '',
+            isReady: !!existing.isReady,
+            controlMode: Network.getPlayerControlMode ? Network.getPlayerControlMode(name) : (existing.controlMode || 'human'),
+            ...existing,
+            ...updates,
+        };
+        State.playerProfiles[name] = next;
+        return next;
+    },
+
+    _enterPregame(mode) {
+        State.entryMode = mode;
+        State.sessionPhase = 'pregame';
+        State.pendingApiMode = null;
+        this._syncLocalProfile({ isReady: false });
+        UI.toggleViews(false);
+        UI.updateAll();
+    },
+
+    beginSessionFlow(mode) {
+        const name = String(document.getElementById('entry-player-name')?.value || State.localPlayerName || '').trim();
+        const error = Network.validatePlayerName(name);
+        if (error) {
+            UI.addChatLog('System', error);
+            return;
+        }
+
+        State.localPlayerName = name;
+        this._syncLocalProfile({ name, isReady: false });
+
+        if (mode === 'join') {
+            const roomCode = String(document.getElementById('entry-room-code')?.value || State.pendingRoomCode || '').trim().toUpperCase();
+            if (!roomCode) {
+                UI.addChatLog('System', 'Bitte gib einen Raumcode ein.');
+                return;
+            }
+            State.pendingRoomCode = roomCode;
+            State.entryMode = 'join';
+            State.sessionPhase = 'pregame';
+            Network.join(roomCode, name);
+            UI.toggleViews(false);
+            UI.updateAll();
+            return;
+        }
+
+        State.pendingApiMode = mode;
+        State.selectedApiProvider = State.selectedApiProvider || API.getProvider();
+        State.pendingApiKeyValue = API.getKey(State.selectedApiProvider) || State.pendingApiKeyValue || '';
+        State.sessionPhase = 'api_gate';
+        UI.updateAll();
+    },
+
+    selectStartApiProvider(provider) {
+        if (!provider) return;
+        State.selectedApiProvider = provider;
+        State.pendingApiKeyValue = API.getKey(provider) || '';
+        UI.updateAll();
+    },
+
+    confirmApiGate() {
+        const provider = State.selectedApiProvider || API.getProvider();
+        const key = String(document.getElementById('start-api-key-input')?.value || State.pendingApiKeyValue || '').trim();
+        if (!provider) {
+            UI.addChatLog('System', 'Bitte waehle zuerst einen KI-Anbieter.');
+            return;
+        }
+        if (!key) {
+            UI.addChatLog('System', 'Bitte gib zuerst einen API-Key ein.');
+            return;
+        }
+
+        State.selectedApiProvider = provider;
+        State.pendingApiKeyValue = key;
+        localStorage.setItem('api_provider', provider);
+        localStorage.setItem('api_key_' + provider, key);
+
+        const mode = State.pendingApiMode;
+        if (mode === 'host') {
+            const started = Network.host(State.localPlayerName);
+            if (started === false) return;
+        }
+
+        this._enterPregame(mode || 'solo');
+        UI.addChatLog('System', mode === 'host' ? 'Raumvorbereitung gestartet. Waehlt jetzt eure Helden.' : 'Solo-Vorbereitung gestartet. Waehle jetzt deinen Helden.');
+    },
+
+    togglePregameReady() {
+        const name = this._getResolvedLocalPlayerName();
+        if (!name) {
+            UI.addChatLog('System', 'Bitte lege zuerst deinen Spielernamen fest.');
+            return;
+        }
+        const current = !!State.playerProfiles?.[name]?.isReady;
+        const next = !current;
+        this._syncLocalProfile({ isReady: next });
+        if (Network.isClient() && Network.isConnected()) {
+            Network.sendPregameReady(next);
+        } else if (Network.isHost() && Network.isConnected()) {
+            Network.setPregameReady(name, next);
+            Network.broadcastState();
+        }
+        UI.updateAll();
+    },
+
+    openHeroImport() {
+        document.getElementById('import-hero')?.click();
+    },
+
+    getPregameStatus() {
+        const players = Network.isConnected()
+            ? (Network.turnOrder.length ? Network.turnOrder : [Network.playerName]).filter(Boolean)
+            : [State.localPlayerName].filter(Boolean);
+        if (!players.length) {
+            return { ok: false, message: 'Bitte beginne zuerst eine Solo- oder Raum-Sitzung.' };
+        }
+
+        for (const playerName of players) {
+            const profile = State.playerProfiles?.[playerName];
+            if (!profile?.heroId) {
+                return { ok: false, message: playerName + ' muss zuerst einen Helden laden oder erstellen.' };
+            }
+            if (!profile?.isReady) {
+                return { ok: false, message: playerName + ' ist noch nicht bereit.' };
+            }
+        }
+
+        return { ok: true, players };
     },
 
     _submitInventoryAction(action, payload, options = {}) {
@@ -122,7 +263,20 @@ export const Engine = {
     },
     setCustomApiKey: function () { DOM.customKeyInput.value = localStorage.getItem("custom_gemini_key") || ""; DOM.apiKeyModal.classList.remove('hidden'); setTimeout(() => DOM.customKeyInput.focus(), 100); },
     saveApiKey: function () { localStorage.setItem("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "API-Key wurde gespeichert."); },
-    startGame: function () { if (this._requireHost('Abenteuer starten')) return; if (State.party.length === 0) { UI.addChatLog("System", "Erstelle zuerst einen Helden!"); return; } State.gameStarted = true; UI.toggleViews(true); this.interactWithAI("Die Reise beginnt."); },
+    startGame: function () {
+        if (this._requireHost('Abenteuer starten')) return;
+        const status = this.getPregameStatus();
+        if (!status.ok) {
+            UI.addChatLog('System', status.message);
+            return;
+        }
+        State.gameStarted = true;
+        State.sessionPhase = 'in_game';
+        UI.toggleViews(true);
+        UI.updateAll();
+        if (Network.isHost() && Network.isConnected()) Network.broadcastState();
+        this.interactWithAI('Die Reise beginnt.');
+    },
 
     toggleSound: function () {
         State.soundEnabled = !State.soundEnabled;
@@ -702,12 +856,15 @@ export const Engine = {
         const startHp = PartyManager.getEffectiveMaxHp(tempChar);
         const charData = Utils.sanitizeCharacter({ ...tempChar, hp: startHp, maxHp: startHp, portrait: State.tempPortraitData, imagePrompt: State.tempImagePrompt, inventory: [DOM.startItem.value], isNPC: false });
         if (Network.isClient() && Network.isConnected()) {
+            this._syncLocalProfile({ heroId: charData.id, heroName: charData.name, isReady: false });
             Network.sendCharacterCreate(charData);
         } else {
             State.party.push(charData);
             if (Network.isHost() && Network.isConnected()) {
                 Network.registerCharacter(Network.playerName, charData.id);
                 Network.broadcastState();
+            } else {
+                this._syncLocalProfile({ heroId: charData.id, heroName: charData.name, isReady: false });
             }
         }
         State.tempPortraitData = ""; State.tempImagePrompt = ""; UI.closeCreator(); UI.updateAll();
@@ -1141,12 +1298,15 @@ export const Engine = {
                 h.id = Utils.generateId();
                 const hero = Utils.sanitizeCharacter(h);
                 if (Network.isClient() && Network.isConnected()) {
+                    this._syncLocalProfile({ heroId: hero.id, heroName: hero.name, isReady: false });
                     Network.sendCharacterCreate(hero);
                 } else {
                     State.party.push(hero);
                     if (Network.isHost() && Network.isConnected()) {
                         Network.registerCharacter(Network.playerName, hero.id);
                         Network.broadcastState();
+                    } else {
+                        this._syncLocalProfile({ heroId: hero.id, heroName: hero.name, isReady: false });
                     }
                     UI.updateAll();
                 }
