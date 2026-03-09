@@ -300,8 +300,8 @@ export const Engine = {
             }
 
             if (cleanText.length > 0) {
-                UI.addChatLog("DM", cleanText);
-                if (Network.isHost()) Network.broadcastChat("DM", cleanText);
+                if (Network.isHost() && Network.isConnected()) Network.broadcastChat("DM", cleanText);
+                else UI.addChatLog("DM", cleanText);
             }
         } catch (e) { UI.addChatLog("System", `Fehler: ${e.message}`); }
         finally {
@@ -405,12 +405,12 @@ export const Engine = {
         }
 
         if (Network.isInCombat()) {
-            UI.addChatLog(actingName, action);
+            if (!(Network.isClient() && Network.isConnected())) UI.addChatLog(actingName, action);
             Network.submitCombatAction(action, actingName);
             return;
         }
 
-        UI.addChatLog(actingName, action);
+        if (!(Network.isClient() && Network.isConnected())) UI.addChatLog(actingName, action);
 
         if (Network.isClient() && Network.isConnected()) {
             Network.sendPlayerAction(action, actingName);
