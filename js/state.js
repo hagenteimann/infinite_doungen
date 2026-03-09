@@ -28,6 +28,7 @@ export const State = {
     sessionPhase: 'start',
     entryMode: null,
     localPlayerName: '',
+    pendingPortraitRequestId: '',
     pendingRoomCode: '',
     pendingApiMode: null,
     selectedApiProvider: 'gemini',

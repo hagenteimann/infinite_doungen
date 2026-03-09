@@ -299,6 +299,7 @@ export const Network = {
             this._ensurePlayerProfile(this.playerName, { isReady: false, controlMode: 'human' });
             this._startHeartbeat();
             this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Multiplayer-Raum erstellt: **${this.roomCode}**. Teile diesen Code mit deinen Spielern.`, tone: 'neutral', createdAt: Date.now() }, false);
+            UI.updateAll();
         });
 
         this.peer.on('connection', (conn) => {
@@ -477,7 +478,7 @@ export const Network = {
         if (turnEl) turnEl.classList.add('hidden');
     },
 
-    sendPlayerAction(action, actingChar, messageId = null) {
+    sendPlayerAction(action, actingChar, messageId = null, createdAt = Date.now()) {
         if (!this.isClient() || this.connections.length === 0) return;
         this._sendTo(this.connections[0], {
             type: 'PLAYER_ACTION',
@@ -485,6 +486,17 @@ export const Network = {
             actingChar,
             playerName: this.playerName,
             messageId,
+            createdAt,
+        });
+    },
+
+    requestPortraitGeneration(requestId, prompts) {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], {
+            type: 'PORTRAIT_REQUEST',
+            playerName: this.playerName,
+            requestId,
+            prompts: Array.isArray(prompts) ? prompts : [],
         });
     },
 
@@ -1103,7 +1115,7 @@ export const Network = {
         switch (msg.type) {
             case 'PLAYER_ACTION': {
                 Sound.play('turn');
-                this._recordChatEntry({ id: msg.messageId || this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: Date.now(), relatedPlayer: msg.playerName || name, relatedCharacter: msg.actingChar || '' }, 'PLAYER_CHAT');
+                this._recordChatEntry({ id: msg.messageId || this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: msg.createdAt || Date.now(), relatedPlayer: msg.playerName || name, relatedCharacter: msg.actingChar || '' }, 'PLAYER_CHAT');
                 if (DOM.actingChar) DOM.actingChar.value = msg.actingChar || 'party';
                 Engine.interactWithAI(msg.action);
                 break;
@@ -1119,6 +1131,24 @@ export const Network = {
                 this._recordChatEntry({ id: this._nextId('msg'), sender: combatSender, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(msg.playerName) === 'ai', createdAt: Date.now(), relatedPlayer: msg.playerName || combatSender, relatedCharacter: msg.charName || combatSender }, 'PLAYER_CHAT');
                 this._broadcastCombatStatus();
                 this._queueCombatExecution();
+                break;
+            }
+            case 'PORTRAIT_REQUEST': {
+                if (!Array.isArray(msg.prompts) || msg.prompts.length === 0) break;
+                (async () => {
+                    let portrait = '';
+                    try {
+                        portrait = await Engine.generatePortraitForPrompts(msg.prompts);
+                    } catch (e) {
+                        console.warn('Portrait generation failed for client:', e);
+                    }
+                    this._sendTo(conn, {
+                        type: 'PORTRAIT_RESULT',
+                        requestId: msg.requestId || '',
+                        portrait,
+                        imagePrompt: Array.isArray(msg.prompts) ? String(msg.prompts[0] || '') : '',
+                    });
+                })();
                 break;
             }
             case 'CHARACTER_CREATE': {
@@ -1339,6 +1369,22 @@ export const Network = {
                 this._combatStatus = msg.submitted || {};
                 this._mySubmittedAction = this._combatStatus[this.playerName] ? { submitted: true } : null;
                 this._updateTurnUI();
+                break;
+            }
+            case 'PORTRAIT_RESULT': {
+                if (msg.requestId && msg.requestId !== State.pendingPortraitRequestId) break;
+                State.pendingPortraitRequestId = '';
+                State.tempPortraitData = msg.portrait || '';
+                State.tempImagePrompt = msg.imagePrompt || State.tempImagePrompt || '';
+                if (State.tempPortraitData) {
+                    if (DOM.generatedPortrait) DOM.generatedPortrait.src = State.tempPortraitData;
+                    DOM.portraitPreview?.classList.remove('hidden');
+                } else {
+                    DOM.portraitPreview?.classList.add('hidden');
+                    UI.addChatLog('System', 'Portraet konnte ueber den Host nicht generiert werden.');
+                }
+                UI.showLoader(false);
+                if (DOM.genImgBtn) DOM.genImgBtn.innerText = State.imageQuotaExceeded ? 'Ohne Portraet' : 'Portraet';
                 break;
             }
             case 'CHAR_MAP': {

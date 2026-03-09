@@ -619,9 +619,10 @@ export const Engine = {
         }
 
         if (Network.isClient() && Network.isConnected()) {
-            const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
-            UI.addChatLog({ id: messageId, sender: actingName, text: action, senderType: 'player', relatedPlayer: Network.playerName || State.localPlayerName || '', relatedCharacter: actingName }, null, { persist: true });
-            Network.sendPlayerAction(action, actingName, messageId);
+            const createdAt = Date.now();
+            const messageId = 'msg-' + createdAt + '-' + Math.random().toString(36).slice(2, 7);
+            UI.addChatLog({ id: messageId, sender: actingName, text: action, senderType: 'player', createdAt, relatedPlayer: Network.playerName || State.localPlayerName || '', relatedCharacter: actingName }, null, { persist: true });
+            Network.sendPlayerAction(action, actingName, messageId, createdAt);
             State.isProcessing = true;
             UI.showLoader(true, 'DM antwortet...');
             return;
@@ -885,18 +886,31 @@ export const Engine = {
         } catch (e) { UI.addChatLog('System', `⚠️ Plot-Twist Fehler: ${e.message}`); } finally { UI.showLoader(false); }
     },
 
+    generatePortraitForPrompts: async function (prompts) {
+        return API.generateImageWithFallbacks(prompts);
+    },
+
     generatePortrait: async function () {
         const a = DOM.newAppearance.value, c = DOM.newClass.value;
-        DOM.genImgBtn.innerText = "ÃƒÂ¢Ã‚ÂÃ‚Â³";
-        const prompt = `Fantasy portrait, face only, highly detailed, ${c}${a ? ', ' + a : ''}`.replace(/\n/g, ' ').trim();
-        State.tempImagePrompt = prompt;
-
-        let pData = await API.generateImageWithFallbacks([
-            prompt,
+        DOM.genImgBtn.innerText = 'Laedt...';
+        const primaryPrompt = `Fantasy portrait, face only, highly detailed, ${c}${a ? ', ' + a : ''}`.split('\n').join(' ').trim();
+        const prompts = [
+            primaryPrompt,
             `Fantasy portrait, ${c}${a ? ', ' + a : ''}`,
             `Fantasy portrait, ${c}`
-        ]);
+        ];
+        State.tempImagePrompt = primaryPrompt;
 
+        if (Network.isClient() && Network.isConnected()) {
+            State.pendingPortraitRequestId = 'portrait-' + Date.now().toString(36);
+            UI.showLoader(true, 'Host generiert Portraet...');
+            Network.requestPortraitGeneration(State.pendingPortraitRequestId, prompts);
+            DOM.saveCharBtn.disabled = false;
+            DOM.saveCharBtn.classList.remove('opacity-50');
+            return;
+        }
+
+        const pData = await this.generatePortraitForPrompts(prompts);
         State.tempPortraitData = pData;
 
         if (State.tempPortraitData) {
@@ -906,8 +920,9 @@ export const Engine = {
             DOM.portraitPreview.classList.add('hidden');
         }
 
-        DOM.saveCharBtn.disabled = false; DOM.saveCharBtn.classList.remove('opacity-50');
-        DOM.genImgBtn.innerText = State.imageQuotaExceeded ? "Ohne Porträt ✨" : "Porträt ✨";
+        DOM.saveCharBtn.disabled = false;
+        DOM.saveCharBtn.classList.remove('opacity-50');
+        DOM.genImgBtn.innerText = State.imageQuotaExceeded ? 'Ohne Portraet' : 'Portraet';
     },
 
     finalizeCharacter: function () {
