@@ -19,7 +19,7 @@ export const State = {
     abilityCooldowns: {},
     isBossFight: false,
     chatHistory: [],
-    undoSnapshot: null,
+
     savedPrompts: [],
     weather: { current: 'sunny', name: 'Sonnig', icon: '\u2600\uFE0F', dcMod: 0 },
     momentum: 0,
@@ -159,24 +159,6 @@ export function dispatch(action) {
         }
         case 'SET_FATE': {
             State.fate = action.value;
-            break;
-        }
-        case 'RESTORE_SNAPSHOT': {
-            const snap = action.snapshot;
-            Object.assign(State, {
-                party: snap.party,
-                activeEnemies: snap.activeEnemies || [],
-                defeatedEnemies: snap.defeatedEnemies || [],
-                lootDrops: snap.lootDrops || [],
-                routeChoices: snap.routeChoices || [],
-                gold: snap.gold || 0,
-                dungeonLevel: snap.dungeonLevel || 1,
-                fate: snap.fate || 0,
-                fatigue: snap.fatigue || 0,
-                activeMerchant: snap.activeMerchant || null,
-                abilityCooldowns: snap.abilityCooldowns || {},
-            });
-            State.undoSnapshot = null;
             break;
         }
         case 'BULK_UPDATE': {

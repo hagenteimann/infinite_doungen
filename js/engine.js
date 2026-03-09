@@ -378,21 +378,7 @@ export const Engine = {
             State.combatEnded = false;
         }
 
-        try {
-            State.undoSnapshot = JSON.parse(JSON.stringify({
-                party: State.party,
-                activeEnemies: State.activeEnemies,
-                defeatedEnemies: State.defeatedEnemies,
-                lootDrops: State.lootDrops,
-                fate: State.fate,
-                fatigue: State.fatigue,
-
-                activeMerchant: State.activeMerchant,
-                abilityCooldowns: State.abilityCooldowns
-            }));
-        } catch (e) { console.warn('Undo snapshot failed:', e); }
-
-        State.isProcessing = true; UI.showLoader(true);
+State.isProcessing = true; UI.showLoader(true);
         State.sessionStats.turnsPlayed++;
         State.fate = (State.fate || 0) + 1;
 
@@ -1305,17 +1291,6 @@ export const Engine = {
             DOM.playerInput.focus();
             UI.hideDetails();
         }
-    },
-    undoLastAction: function () {
-        if (!State.undoSnapshot) {
-            UI.addChatLog("System", "ÃƒÂ¢Ã¢â‚¬Â Ã‚Â©ÃƒÂ¯Ã‚Â¸Ã‚Â Kein Rückgängig-Snapshot vorhanden (nur die letzte Aktion kann rückgängig gemacht werden).");
-            return;
-        }
-        const snap = { ...State.undoSnapshot };
-        snap.party = (snap.party || []).map(c => Utils.sanitizeCharacter(c));
-        dispatch({ type: 'RESTORE_SNAPSHOT', snapshot: snap });
-        UI.updateAll();
-        UI.addChatLog("System", "ÃƒÂ¢Ã¢â‚¬Â Ã‚Â©ÃƒÂ¯Ã‚Â¸Ã‚Â **Letzte Aktion rückgängig gemacht.** (Spielzustand wiederhergestellt)");
     },
     upgradeStat: function (cid, key) { const c = State.party.find(p => p.id === cid); if (c && c.statPoints > 0) { c.attributes[key]++; c.statPoints--; UI.showDetails(cid); UI.updateAll(); } },
     removeCharacter: function (id) { const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); } },

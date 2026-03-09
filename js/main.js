@@ -43,10 +43,7 @@ const init = () => {
         if (e.key === 'Escape') {
             document.querySelectorAll('.fixed:not(.hidden)').forEach(m => m.classList.add('hidden'));
         }
-        if (e.key === 'z' && e.ctrlKey) {
-            e.preventDefault();
-            Engine.undoLastAction();
-        }
+
     });
     document.addEventListener('click', (e) => {
         if (State.soundEnabled) {
