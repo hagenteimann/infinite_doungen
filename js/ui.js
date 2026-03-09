@@ -604,11 +604,21 @@ export const UI = {
             DOM.playerInput.placeholder = 'Was tut ihr?';
         }
     },
+    scrollChatToBottom: function () {
+        if (!DOM.storyLog) return;
+        const scroll = () => {
+            DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
+        };
+        scroll();
+        requestAnimationFrame(scroll);
+    },
+
     rebuildChatLog: function () {
         Array.from(DOM.storyLog.children).forEach(child => {
             if (child.id !== 'lobby-view') child.remove();
         });
-        (State.chatMessages || []).forEach(entry => this.addChatLog(entry, null, { persist: false }));
+        (State.chatMessages || []).forEach(entry => this.addChatLog(entry, null, { persist: false, deferScroll: true }));
+        this.scrollChatToBottom();
     },
     buildHostInventoryOverview: function () {
         const heroes = State.party.filter(c => !c.isSummon);
@@ -809,7 +819,7 @@ export const UI = {
             row.innerHTML = sanitize('<div class="chat-bubble chat-bubble-player' + mine + '"><div class="chat-meta-row"><span class="chat-sender">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span></div><div class="tts-text text-sm leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, false) + '</div></div>');
         }
         DOM.storyLog.appendChild(row);
-        DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
+        if (!options.deferScroll) this.scrollChatToBottom();
     },
 
 

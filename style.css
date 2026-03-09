@@ -189,6 +189,22 @@
             text-shadow: 0 0 8px rgba(251, 191, 36, 0.65);
         }
 
+        .tabs-row {
+            gap: 0;
+            scrollbar-width: none;
+        }
+
+        .tabs-row::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn {
+            min-width: 0;
+            white-space: nowrap;
+            text-align: center;
+            flex: 1 1 0;
+        }
+
         .stat-bar {
             height: 4px;
             border-radius: 2px;
