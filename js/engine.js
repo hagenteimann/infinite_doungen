@@ -206,13 +206,14 @@ export const Engine = {
             return { ok: false, message: 'Bitte beginne zuerst eine Solo- oder Raum-Sitzung.' };
         }
 
+        const isSolo = !Network.isConnected();
         for (const playerName of players) {
             const profile = State.playerProfiles?.[playerName];
             const displayName = Network.getDisplayPlayerName(playerName, 'Ein Held');
             if (!profile?.heroId) {
                 return { ok: false, message: displayName + ' muss zuerst einen Helden laden oder erstellen.' };
             }
-            if (!profile?.isReady) {
+            if (!isSolo && !profile?.isReady) {
                 return { ok: false, message: displayName + ' ist noch nicht bereit.' };
             }
         }
