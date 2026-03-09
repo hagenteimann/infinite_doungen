@@ -200,6 +200,136 @@
                 opacity: 0;
                 transform: translateX(-10px);
             }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* --- NEUE SMOOTH CHAT ANIMATIONEN --- */
+        .chat-container {
+            scroll-behavior: smooth; /* Sanftes Scrollen */
+        }
+
+        .chat-message-glide {
+            animation: messageGlideIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes messageGlideIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Hover-Effekte fÃ¼r Buttons und Optionen (Smoother) */
+        .suggestion-option {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .suggestion-option:hover {
+            transform: translateX(4px);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: -4px 0 10px rgba(168, 85, 247, 0.2);
+        }
+
+        /* Modal Smooth Transitions */
+        .modal-fade {
+            animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Smooth Transition for action box and dynamic elements */
+        #action-box-container {
+            transition: max-height 0.4s ease-out, opacity 0.3s ease-out;
+            overflow: hidden; /* Wichtig, damit max-height korrekt funktioniert */
+        }
+
+        .dynamic-item-fade {
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInSlideUp 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeInSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* --- NEUE SMOOTH CHAT ANIMATIONEN --- */
+        .chat-container {
+            scroll-behavior: smooth; /* Sanftes Scrollen */
+        }
+
+        .chat-message-glide {
+            animation: messageGlideIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes messageGlideIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Hover-Effekte fÃ¼r Buttons und Optionen (Smoother) */
+        .suggestion-option {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .suggestion-option:hover {
+            transform: translateX(4px);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: -4px 0 10px rgba(168, 85, 247, 0.2);
+        }
+
+        /* Modal Smooth Transitions */
+        .modal-fade {
+            animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+                transform: translateX(-10px);
+            }
 
             to {
                 opacity: 1;
