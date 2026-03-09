@@ -605,14 +605,16 @@ export const Engine = {
             return;
         }
 
-        if (!(Network.isClient() && Network.isConnected())) UI.addChatLog(actingName, action);
-
         if (Network.isClient() && Network.isConnected()) {
-            Network.sendPlayerAction(action, actingName);
+            const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+            UI.addChatLog({ id: messageId, sender: actingName, text: action, senderType: 'player', relatedPlayer: Network.playerName || State.localPlayerName || '', relatedCharacter: actingName }, null, { persist: true });
+            Network.sendPlayerAction(action, actingName, messageId);
             State.isProcessing = true;
             UI.showLoader(true, 'DM antwortet...');
             return;
         }
+
+        UI.addChatLog(actingName, action);
 
         State.fatigue = Math.min(FATIGUE_MAX, State.fatigue + 1);
         UI.updateAll();
@@ -1364,6 +1366,7 @@ export const Engine = {
         e.target.value = "";
     }
 };
+
 
 
 

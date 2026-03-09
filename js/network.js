@@ -464,13 +464,14 @@ export const Network = {
         if (turnEl) turnEl.classList.add('hidden');
     },
 
-    sendPlayerAction(action, actingChar) {
+    sendPlayerAction(action, actingChar, messageId = null) {
         if (!this.isClient() || this.connections.length === 0) return;
         this._sendTo(this.connections[0], {
             type: 'PLAYER_ACTION',
             action,
             actingChar,
             playerName: this.playerName,
+            messageId,
         });
     },
 
@@ -1088,7 +1089,7 @@ export const Network = {
         switch (msg.type) {
             case 'PLAYER_ACTION': {
                 Sound.play('turn');
-                this._recordChatEntry({ id: this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: Date.now(), relatedPlayer: msg.playerName || name, relatedCharacter: msg.actingChar || '' }, 'PLAYER_CHAT');
+                this._recordChatEntry({ id: msg.messageId || this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: Date.now(), relatedPlayer: msg.playerName || name, relatedCharacter: msg.actingChar || '' }, 'PLAYER_CHAT');
                 if (DOM.actingChar) DOM.actingChar.value = msg.actingChar || 'party';
                 Engine.interactWithAI(msg.action);
                 break;
@@ -1742,6 +1743,7 @@ export const Network = {
         });
     },
 };
+
 
 
 

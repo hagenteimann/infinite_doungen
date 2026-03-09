@@ -1187,6 +1187,15 @@ export const UI = {
         const timeout = Math.max(250, (event.expiresAt || (Date.now() + 5000)) - Date.now());
         setTimeout(() => this.renderTransientEvents(), timeout + 40);
     },
+    handleEntityClick: function (name, entityType, entityId) {
+        if (entityType === 'hero') {
+            this.showDetails(entityId);
+            return;
+        }
+        if (entityType === 'enemy') {
+            this.showEnemyDetails(entityId);
+        }
+    },
     showEnemyDetails: function (id) {
         const enemy = State.activeEnemies.find(e => e.id === id) || State.defeatedEnemies.find(e => e.id === id);
         if (!enemy) return;
@@ -1417,6 +1426,7 @@ export const UI = {
         }
     }
 };
+
 
 
 
