@@ -7,3 +7,4 @@ dist/
 # SSH keys -- never commit
 dnd_git
 dnd_git.pub
+.cursor/
