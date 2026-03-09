@@ -291,14 +291,6 @@
             }
         }
 
-                transform: translateX(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
         /* --- NEUE SMOOTH CHAT ANIMATIONEN --- */
         .chat-container {
             scroll-behavior: smooth; /* Sanftes Scrollen */
@@ -343,14 +335,6 @@
         @keyframes modalFadeIn {
             from { opacity: 0; transform: scale(0.95) translateY(10px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-                transform: translateX(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
         }
 
         #sound-toggle {
