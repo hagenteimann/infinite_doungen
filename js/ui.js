@@ -170,17 +170,17 @@ export const UIBuilders = {
         const hpPercent = (c.hp / effMaxHp) * 100;
         const hpGlowClass = isDead ? 'hp-glow-dead' : (hpPercent > 75 ? 'hp-glow-high' : (hpPercent > 25 ? 'hp-glow-mid' : 'hp-glow-low'));
 
-        const portraitHtml = c.portrait ? `<img src="${c.portrait}" class="w-10 h-10 rounded-lg object-cover bg-black/50 border ${hpGlowClass} shadow-sm">` : `<div class="w-10 h-10 rounded-lg bg-black/50 flex items-center justify-center border border-white/10 text-[10px] shadow-sm">${badge}</div>`;
+        const portraitHtml = c.portrait ? `<img src="${c.portrait}" class="w-10 h-10 rounded-lg object-cover bg-black/50 border ${hpGlowClass} shadow-sm btn-premium">` : `<div class="w-10 h-10 rounded-lg bg-black/50 flex items-center justify-center border border-white/10 text-[10px] shadow-sm btn-premium">${badge}</div>`;
 
-        return `<div class="bg-black/30 backdrop-blur-md p-2 rounded-xl border ${borderClass} flex gap-2.5 items-center cursor-pointer group transition-all" data-action="entity-click" data-name="${c.name.replace(/"/g, '&quot;')}" data-entity-type="hero" data-entity-id="${c.id}">
+        return `<div class="bg-black/30 backdrop-blur-md p-2 rounded-xl border ${borderClass} flex gap-2.5 items-center cursor-pointer group transition-all btn-premium" data-action="entity-click" data-name="${c.name.replace(/"/g, '&quot;')}" data-entity-type="hero" data-entity-id="${c.id}">
             ${portraitHtml}
             <div class="flex-1">
                 <div class="flex justify-between text-[11px] font-bold tracking-wide"><span class="${nameColor}">${c.name} <span class="text-slate-500 text-[9px] font-normal ml-0.5">Lvl ${c.level}</span></span><span class="${isDead ? 'text-red-500' : 'text-slate-300 font-mono'}">${c.hp}/${effMaxHp}</span></div>
                 <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 border border-white/5 overflow-hidden"><div class="${c.isNPC ? (c.isSummon ? 'bg-gradient-to-r from-purple-700 to-purple-400' : 'bg-gradient-to-r from-blue-700 to-blue-400') : 'bg-gradient-to-r from-red-700 to-red-400'} h-full rounded-full transition-all duration-500" style="width: ${(c.hp / effMaxHp) * 100}%"></div></div>
             </div>
-            ${c._levelUpPortraitReady ? `<button data-action="refresh-levelup-portrait" data-char-id="${c.id}" class="p-1.5 text-purple-400 hover:text-purple-300 transition-colors bg-purple-900/30 rounded-lg hover:bg-purple-900/50 border border-purple-500/30" title="Neues Level-Porträt generieren"><i class="fas fa-image text-[10px]"></i></button>` : ''}
+            ${c._levelUpPortraitReady ? `<button data-action="refresh-levelup-portrait" data-char-id="${c.id}" class="p-1.5 text-purple-400 hover:text-purple-300 transition-colors bg-purple-900/30 rounded-lg hover:bg-purple-900/50 border border-purple-500/30 btn-premium" title="Neues Level-Porträt generieren"><i class="fas fa-image text-[10px]"></i></button>` : ''}
             ${c._portraitRegenPending ? `<span class="p-1.5 text-purple-400/60"><i class="fas fa-spinner fa-spin text-[10px]"></i></span>` : ''}
-            <button data-action="remove-char" data-char-id="${c.id}" class="opacity-0 group-hover:opacity-100 p-1.5 text-red-500/70 hover:text-red-400 transition-colors bg-white/5 rounded-lg hover:bg-white/10"><i class="fas fa-trash text-[10px]"></i></button>
+            <button data-action="remove-char" data-char-id="${c.id}" class="opacity-0 group-hover:opacity-100 p-1.5 text-red-500/70 hover:text-red-400 transition-colors bg-white/5 rounded-lg hover:bg-white/10 btn-premium"><i class="fas fa-trash text-[10px]"></i></button>
         </div>`;
     },
     buildEnemyCard: function (e, isDeadFlag) {
@@ -189,8 +189,8 @@ export const UIBuilders = {
         const hpDisplay = isDead ? 0 : e.hp;
         const hpBarWidth = isDead ? 0 : (e.hp / e.maxHp) * 100;
         const hoverClass = isDead ? '' : 'cursor-pointer hover:border-red-400/80 transition-all hover:shadow-[0_0_15px_rgba(248,113,113,0.3)] hover:bg-red-950/20';
-        return `<div class="bg-black/30 backdrop-blur-sm p-2 rounded-xl border ${isDead ? 'border-slate-800' : 'border-red-900/50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]'} flex gap-2.5 items-center fade-in ${isDead ? 'defeated-enemy' : ''} ${hoverClass}" ${!isDead ? `data-action="entity-click" data-name="${e.name.replace(/"/g, '&quot;')}" data-entity-type="enemy" data-entity-id="${e.id}"` : ''}>
-            ${e.portrait ? `<img src="${e.portrait}" class="w-10 h-10 rounded-lg object-cover ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'}">` : `<div class="w-10 h-10 rounded-lg bg-black/60 ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'} flex items-center justify-center text-red-500/50"><i class="fas fa-skull"></i></div>`}
+        return `<div class="bg-black/30 backdrop-blur-sm p-2 rounded-xl border ${isDead ? 'border-slate-800' : 'border-red-900/50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]'} flex gap-2.5 items-center fade-in btn-premium ${isDead ? 'defeated-enemy' : ''} ${hoverClass}" ${!isDead ? `data-action="entity-click" data-name="${e.name.replace(/"/g, '&quot;')}" data-entity-type="enemy" data-entity-id="${e.id}"` : ''}>
+            ${e.portrait ? `<img src="${e.portrait}" class="w-10 h-10 rounded-lg object-cover btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'}">` : `<div class="w-10 h-10 rounded-lg bg-black/60 btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'} flex items-center justify-center text-red-500/50"><i class="fas fa-skull"></i></div>`}
             <div class="flex-1 min-w-0">
                 <div class="flex justify-between text-[10px] truncate tracking-wide"><span class="${isDead ? 'line-through text-slate-600' : 'text-slate-200'}">${e.name}</span><span class="${isDead ? 'text-slate-600' : 'text-red-400 font-mono font-bold drop-shadow-[0_0_2px_rgba(248,113,113,0.8)]'}">${hpDisplay}/${e.maxHp}</span></div>
                 <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 overflow-hidden border border-white/5"><div class="${isDead ? 'bg-slate-700' : 'bg-gradient-to-r from-red-800 to-red-500'} h-full transition-all duration-500" style="width: ${hpBarWidth}%"></div></div>
@@ -255,6 +255,19 @@ export const UI = {
         `);
         DOM.storyLog.appendChild(row);
         this.scrollChatToBottom();
+    },
+    showToast: function (message, duration = 3000) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        toast.style.setProperty('--delay', `${duration}ms`);
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = `toastOut 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards`;
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
     },
     selectOption: function (t) {
         this.clearSuggestions();

@@ -191,7 +191,7 @@ export const Engine = {
         State.pendingApiMode = mode;
         State.selectedApiProvider = State.selectedApiProvider || API.getProvider();
         State.pendingApiKeyValue = API.getKey(State.selectedApiProvider) || State.pendingApiKeyValue || '';
-        State.pendingApiModelText = State.selectedApiProvider === 'openrouter' ? (API.getOrModelText() || State.pendingApiModelText || 'arcee-ai/trinity-large-preview:free') : ''; 
+        State.pendingApiModelText = State.selectedApiProvider === 'openrouter' ? (API.getOrModelText() || State.pendingApiModelText || 'arcee-ai/trinity-large-preview:free') : '';
         State.sessionPhase = 'api_gate';
         UI.updateAll();
     },
@@ -200,7 +200,7 @@ export const Engine = {
         if (!provider) return;
         State.selectedApiProvider = provider;
         State.pendingApiKeyValue = API.getKey(provider) || '';
-        State.pendingApiModelText = provider === 'openrouter' ? (API.getOrModelText() || 'arcee-ai/trinity-large-preview:free') : ''; 
+        State.pendingApiModelText = provider === 'openrouter' ? (API.getOrModelText() || 'arcee-ai/trinity-large-preview:free') : '';
         UI.updateAll();
     },
 
@@ -471,7 +471,7 @@ export const Engine = {
             State.combatEnded = false;
         }
 
-State.isProcessing = true; UI.showLoader(true);
+        State.isProcessing = true; UI.showLoader(true);
         State.sessionStats.turnsPlayed++;
         State.fate = (State.fate || 0) + 1;
 
@@ -536,7 +536,7 @@ State.isProcessing = true; UI.showLoader(true);
 
         try {
             const aiResponseJSON = await API.generateText(context);
-            
+
             // JSON parsen
             let parsedData;
             try {
@@ -545,7 +545,7 @@ State.isProcessing = true; UI.showLoader(true);
                 console.error("Fehler beim Parsen der KI-Antwort:", err);
                 throw new Error("Konnte die Antwort der KI nicht verarbeiten.");
             }
-            
+
             let cleanStory = parsedData.narrative || "Die Geschichte geht weiter...";
             State.lastStoryPart = cleanStory.substring(0, 1500);
             Weather.randomChange();
@@ -1045,6 +1045,7 @@ State.isProcessing = true; UI.showLoader(true);
             }
         }
         State.tempPortraitData = ""; State.tempImagePrompt = ""; UI.closeCreator(); UI.updateAll();
+        UI.showToast(`Held ${charData.name} wurde erfolgreich erstellt!`);
     },
 
     generateNPC: async function () {
@@ -1233,7 +1234,6 @@ State.isProcessing = true; UI.showLoader(true);
         UI.renderCraftingModal();
     },
     suggestCrafting: async function () {
-        if (this._requireHost('KI-Vorschlag')) return;
         if (State.craftingIngredients.length === 0) {
             UI.addChatLog('System', `${SYSTEM_NOTICE.warning} Bitte w\u00E4hle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.`);
             return;
@@ -1243,6 +1243,11 @@ State.isProcessing = true; UI.showLoader(true);
 
         const materials = State.craftingIngredients.map(ing => ing.itemName).join(', ');
 
+        if (Network.isClient() && Network.isConnected()) {
+            Network.sendCraftingSuggestionRequest(materials);
+            return;
+        }
+
         try {
             let aiText = await API.generateText(`Erfinde einen passenden, gut ausbalancierten Gegenstand, der logisch aus diesen Zutaten hergestellt werden kann: [${materials}]. WICHTIG: Wenn die Zutaten bereits starke Werte oder Fähigkeiten haben, soll dein vorgeschlagener Gegenstand diese Werte logischerweise übernehmen oder ganz leicht verbessern. \n\nDu bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown oder Codeblock-Tags. Nutze ZWINGEND diese exakten Keys: {"name": "Gegenstandsname", "str": Zahl, "dex": Zahl, "int": Zahl, "con": Zahl}. Wähle 1-2 passende weise Attribute aus (Wert 1-3 oder höher falls die Zutaten es rechtfertigen), die anderen 0.`);
 
@@ -1250,22 +1255,29 @@ State.isProcessing = true; UI.showLoader(true);
             if (!match) throw new Error("Konnte kein JSON aus Antwort extrahieren.");
             const data = JSON.parse(match[0]);
 
-            DOM.craftTargetItem.value = data.name || "Mysterium";
-            const elStr = document.getElementById('craft-stat-str');
-            const elDex = document.getElementById('craft-stat-dex');
-            const elInt = document.getElementById('craft-stat-int');
-            const elCon = document.getElementById('craft-stat-con');
-
-            if (elStr) elStr.value = data.str > 0 ? data.str : "";
-            if (elDex) elDex.value = data.dex > 0 ? data.dex : "";
-            if (elInt) elInt.value = data.int > 0 ? data.int : "";
-            if (elCon) elCon.value = data.con > 0 ? data.con : "";
-
+            this.applyCraftingSuggestion(data);
         } catch (e) {
             UI.addChatLog('System', `${SYSTEM_NOTICE.warning} KI konnte keinen Vorschlag generieren: ${e.message}`);
-        } finally {
+            const btn = document.getElementById('btn-craft-suggest');
             if (btn) { btn.innerHTML = '<i class="fas fa-magic mr-1"></i>Vorschlag'; btn.disabled = false; }
         }
+    },
+
+    applyCraftingSuggestion: function (data) {
+        if (!data) return;
+        DOM.craftTargetItem.value = data.name || "Mysterium";
+        const elStr = document.getElementById('craft-stat-str');
+        const elDex = document.getElementById('craft-stat-dex');
+        const elInt = document.getElementById('craft-stat-int');
+        const elCon = document.getElementById('craft-stat-con');
+
+        if (elStr) elStr.value = (data.str && data.str > 0) ? data.str : "";
+        if (elDex) elDex.value = (data.dex && data.dex > 0) ? data.dex : "";
+        if (elInt) elInt.value = (data.int && data.int > 0) ? data.int : "";
+        if (elCon) elCon.value = (data.con && data.con > 0) ? data.con : "";
+
+        const btn = document.getElementById('btn-craft-suggest');
+        if (btn) { btn.innerHTML = '<i class="fas fa-magic mr-1"></i>Vorschlag'; btn.disabled = false; }
     },
     submitCrafting: function () {
         let target = DOM.craftTargetItem.value.trim();
@@ -1345,6 +1357,7 @@ State.isProcessing = true; UI.showLoader(true);
 
         document.getElementById('api-settings-modal').classList.add('hidden');
         UI.addChatLog('System', SYSTEM_NOTICE.settingsSaved);
+        UI.showToast("API-Einstellungen erfolgreich gespeichert!");
     },
     savePrompt: function () {
         const inputEl = document.getElementById('new-prompt-input');
@@ -1437,6 +1450,7 @@ State.isProcessing = true; UI.showLoader(true);
             await new Promise(r => setTimeout(r, 250));
         }
         UI.addChatLog('System', `${SYSTEM_NOTICE.exportDone} **${heroes.length} Helden** wurden erfolgreich exportiert (Sammel-Download).`);
+        UI.showToast(`${heroes.length} Helden exportiert`);
     },
     downloadSave: function () { const now = new Date(); const pad = n => n.toString().padStart(2, '0'); const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(State)], { type: 'application/json' })); a.download = `InfiniteDungeon_${ts}.json`; document.body.appendChild(a); a.click(); },
     importSave: function (e) {

@@ -5,6 +5,7 @@ import { Engine } from './engine.js';
 import { Sound } from './sound.js';
 import { PartyManager } from './party.js';
 import { validateHeroData } from './sanitize.js';
+import { API } from './api.js';
 
 const ROOM_PREFIX = 'infdung-';
 const CONNECT_TIMEOUT_MS = 10000;
@@ -449,10 +450,10 @@ export const Network = {
             this._unsubscribe();
             this._unsubscribe = null;
         }
-        this.connections.forEach(c => { try { c.close(); } catch (_) {} });
+        this.connections.forEach(c => { try { c.close(); } catch (_) { } });
         this.connections = [];
         if (this.peer) {
-            try { this.peer.destroy(); } catch (_) {}
+            try { this.peer.destroy(); } catch (_) { }
             this.peer = null;
         }
         this.role = null;
@@ -560,6 +561,15 @@ export const Network = {
             type: 'ITEM_ACTION',
             action,
             payload,
+            playerName: this.playerName,
+        });
+    },
+
+    sendCraftingSuggestionRequest(materials) {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], {
+            type: 'CRAFTING_SUGGESTION_REQUEST',
+            materials,
             playerName: this.playerName,
         });
     },
@@ -1267,6 +1277,33 @@ export const Network = {
                 this._sendTo(conn, this._getFullSyncPayload());
                 break;
             }
+            case 'CRAFTING_SUGGESTION_REQUEST': {
+                const materials = msg.materials;
+                (async () => {
+                    try {
+                        let aiText = await API.generateText(`Erfinde einen passenden, gut ausbalancierten Gegenstand, der logisch aus diesen Zutaten hergestellt werden kann: [${materials}]. WICHTIG: Wenn die Zutaten bereits starke Werte oder Fähigkeiten haben, soll dein vorgeschlagener Gegenstand diese Werte logischerweise übernehmen oder ganz leicht verbessern. \n\nDu bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown oder Codeblock-Tags. Nutze ZWINGEND diese exakten Keys: {"name": "Gegenstandsname", "str": Zahl, "dex": Zahl, "int": Zahl, "con": Zahl}. Wähle 1-2 passende weise Attribute aus (Wert 1-3 oder höher falls die Zutaten es rechtfertigen), die anderen 0.`);
+                        const match = aiText.match(/\{[\s\S]*\}/);
+                        if (!match) throw new Error("Konnte kein JSON extrahieren.");
+                        const data = JSON.parse(match[0]);
+                        this._sendTo(conn, {
+                            type: 'CRAFTING_SUGGESTION_RESPONSE',
+                            data
+                        });
+                    } catch (e) {
+                        this._sendTo(conn, {
+                            type: 'SYSTEM_CHAT',
+                            sender: 'System',
+                            text: 'KI-Vorschlag fehlgeschlagen: ' + e.message
+                        });
+                        // Also tell client to reset button
+                        this._sendTo(conn, {
+                            type: 'CRAFTING_SUGGESTION_RESPONSE',
+                            data: null
+                        });
+                    }
+                })();
+                break;
+            }
             default:
                 console.warn('Unknown client message:', msg.type);
         }
@@ -1444,6 +1481,10 @@ export const Network = {
                 else State.transientEvents.push(evt);
                 State.transientEvents = State.transientEvents.filter(item => (item.expiresAt || 0) > now).slice(-12);
                 UI.showTransientEvent(evt);
+                break;
+            }
+            case 'CRAFTING_SUGGESTION_RESPONSE': {
+                Engine.applyCraftingSuggestion(msg.data);
                 break;
             }
             default:
