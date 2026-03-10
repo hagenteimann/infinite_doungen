@@ -564,8 +564,7 @@ export const Engine = {
 
             // Events an den TagParser/EventProcessor übergeben
             if (Array.isArray(parsedData.events)) {
-                // Wir übergeben das Array als String, damit die bestehende Catch-Logik in block 3 umgebaut werden kann
-                TagParser.process(JSON.stringify(parsedData.events));
+                TagParser.process(parsedData.events);
             }
 
             const hasSuggestions = cleanText.includes('suggestion-option');

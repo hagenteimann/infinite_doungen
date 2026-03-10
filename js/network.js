@@ -4,6 +4,7 @@ import { UI, DOM } from './ui.js';
 import { Engine } from './engine.js';
 import { Sound } from './sound.js';
 import { PartyManager } from './party.js';
+import { Utils } from './utils.js';
 import { validateHeroData } from './sanitize.js';
 import { API } from './api.js';
 
@@ -23,7 +24,7 @@ const SYNC_KEYS = [
     'party', 'activeEnemies', 'defeatedEnemies', 'lootDrops', 'gold', 'dungeonLevel',
     'lastStoryPart', 'gameStarted', 'combatEnded', 'activeMerchant',
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
-    'isBossFight', 'weather', 'momentum',
+    'isBossFight', 'weather', 'momentum', 'chatHistory',
     'pendingRolls', 'recentRolls', 'pendingAbilityLearning', 'quickplayEnabled',
     'routeChoices', 'craftingIngredients', 'activeCrafterId',
     'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'afkSince',
@@ -48,7 +49,6 @@ export const Network = {
     currentVote: null,
     _mySubmittedAction: null,
     autoPlayers: {},
-    _idCounter: 0,
     _seenMessageIds: new Set(),
     _seenEventIds: new Set(),
     _syncDirty: false,
@@ -116,11 +116,6 @@ export const Network = {
         if (this.isHost() && options.broadcast !== false) this._markDirty();
     },
 
-    _nextId(prefix = 'evt') {
-        this._idCounter += 1;
-        return prefix + '-' + Date.now().toString(36) + '-' + this._idCounter.toString(36);
-    },
-
     _rememberSeenId(store, id, limit = 400) {
         if (!id) return;
         store.add(id);
@@ -162,7 +157,7 @@ export const Network = {
 
     _recordChatEntry(entry, broadcastType = null) {
         if (!entry || !entry.id) return null;
-        UI.addChatLog(entry, null, { persist: true });
+        dispatch({ type: 'ADD_CHAT_MSG', entry });
         this._rememberSeenId(this._seenMessageIds, entry.id);
         if (this.isHost() && broadcastType) {
             this.connections.forEach(conn => this._sendTo(conn, { type: broadcastType, entry }));
@@ -173,7 +168,7 @@ export const Network = {
 
     _recordSystemEntry(entry, broadcast = true) {
         if (!entry || !entry.id) return null;
-        UI.addChatLog(entry, null, { persist: true });
+        dispatch({ type: 'ADD_SYSTEM_MSG', entry });
         this._rememberSeenId(this._seenMessageIds, entry.id);
         if (this.isHost() && broadcast) {
             this.connections.forEach(conn => this._sendTo(conn, { type: 'SYSTEM_CHAT', entry }));
@@ -186,7 +181,7 @@ export const Network = {
         if (!event) return null;
         const now = Date.now();
         const normalized = {
-            id: event.id || this._nextId('te'),
+            id: event.id || Utils.generateId('te'),
             type: event.type || 'important_notice',
             sender: event.sender || 'System',
             targetPlayer: event.targetPlayer || null,
@@ -214,7 +209,7 @@ export const Network = {
         State.playerControlMode[playerName] = mode === 'ai' ? 'ai' : 'human';
         this._syncAutoPlayersFromControlModes();
         const displayName = this.getDisplayPlayerName(playerName);
-        const entry = { id: this._nextId('sys'), sender: 'System', text: '**' + displayName + '** ist jetzt ' + (State.playerControlMode[playerName] === 'ai' ? 'KI-gesteuert' : 'manuell') + '.', tone: 'neutral', createdAt: Date.now() };
+        const entry = { id: Utils.generateId('sys'), sender: 'System', text: '**' + displayName + '** ist jetzt ' + (State.playerControlMode[playerName] === 'ai' ? 'KI-gesteuert' : 'manuell') + '.', tone: 'neutral', createdAt: Date.now() };
         this._recordSystemEntry(entry);
         this.connections.forEach(conn => this._sendTo(conn, { type: 'CONTROL_MODE_UPDATE', playerName, mode: State.playerControlMode[playerName] }));
         this._updateTurnUI();
@@ -301,7 +296,7 @@ export const Network = {
             State.playerControlMode = { [this.playerName]: 'human' };
             this._ensurePlayerProfile(this.playerName, { isReady: false, controlMode: 'human' });
             this._startHeartbeat();
-            this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `Multiplayer-Raum erstellt: **${this.roomCode}**. Teile diesen Code mit deinen Spielern.`, tone: 'neutral', createdAt: Date.now() }, false);
+            this._recordSystemEntry({ id: Utils.generateId('sys'), sender: 'System', text: `Multiplayer-Raum erstellt: **${this.roomCode}**. Teile diesen Code mit deinen Spielern.`, tone: 'neutral', createdAt: Date.now() }, false);
             UI.updateAll();
         });
 
@@ -310,7 +305,7 @@ export const Network = {
                 this.connections.push(conn);
                 const joinedName = conn.metadata?.name || 'Unbekannt';
                 const joinedLabel = this.getDisplayPlayerName(joinedName, 'Ein Spieler');
-                this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `**${joinedLabel}** ist beigetreten.`, tone: 'neutral', createdAt: Date.now() });
+                this._recordSystemEntry({ id: Utils.generateId('sys'), sender: 'System', text: `**${joinedLabel}** ist beigetreten.`, tone: 'neutral', createdAt: Date.now() });
                 if (!this.turnOrder.includes(joinedName)) {
                     this.turnOrder.push(joinedName);
                 }
@@ -329,7 +324,7 @@ export const Network = {
                 this.connections = this.connections.filter(c => c !== conn);
                 const leftName = conn.metadata?.name || 'Unbekannt';
                 const leftLabel = this.getDisplayPlayerName(leftName, 'Ein Spieler');
-                this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `**${leftLabel}** hat den Raum verlassen.`, tone: 'neutral', createdAt: Date.now() });
+                this._recordSystemEntry({ id: Utils.generateId('sys'), sender: 'System', text: `**${leftLabel}** hat den Raum verlassen.`, tone: 'neutral', createdAt: Date.now() });
                 if (State.playerControlMode) delete State.playerControlMode[leftName];
                 if (State.playerProfiles) delete State.playerProfiles[leftName];
                 const turnIdx = this.turnOrder.indexOf(leftName);
@@ -584,12 +579,12 @@ export const Network = {
         const msgs = State.chatMessages;
         const lastCreatedAt = msgs && msgs.length > 0 ? (msgs[msgs.length - 1].createdAt || 0) : 0;
         const createdAt = Math.max(Date.now(), lastCreatedAt + 1);
-        this._recordChatEntry({ id: this._nextId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: false, createdAt, relatedPlayer: meta.relatedPlayer || '', relatedCharacter: meta.relatedCharacter || '' }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
+        this._recordChatEntry({ id: Utils.generateId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: false, createdAt, relatedPlayer: meta.relatedPlayer || '', relatedCharacter: meta.relatedCharacter || '' }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
     },
 
     broadcastSystemChat(sender, text) {
         if (!this.isHost()) return;
-        this._recordSystemEntry({ id: this._nextId('sys'), sender, text, tone: 'neutral', createdAt: Date.now() });
+        this._recordSystemEntry({ id: Utils.generateId('sys'), sender, text, tone: 'neutral', createdAt: Date.now() });
     },
 
     advanceTurn() {
@@ -607,7 +602,7 @@ export const Network = {
                 setTimeout(() => {
                     this._currentActionPlayerName = currentPlayer;
                     const action = this._generateAutoAction(char);
-                    this._recordChatEntry({ id: this._nextId('msg'), sender: char.name, text: action, senderType: 'player', isAiControlled: true, createdAt: Date.now(), relatedPlayer: currentPlayer, relatedCharacter: char.name }, 'PLAYER_CHAT');
+                    this._recordChatEntry({ id: Utils.generateId('msg'), sender: char.name, text: action, senderType: 'player', isAiControlled: true, createdAt: Date.now(), relatedPlayer: currentPlayer, relatedCharacter: char.name }, 'PLAYER_CHAT');
                     Engine.interactWithAI(action);
                 }, 600);
             }
@@ -1135,7 +1130,7 @@ export const Network = {
         switch (msg.type) {
             case 'PLAYER_ACTION': {
                 Sound.play('turn');
-                this._recordChatEntry({ id: msg.messageId || this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: msg.createdAt || Date.now(), relatedPlayer: msg.playerName || name, relatedCharacter: msg.actingChar || '' }, 'PLAYER_CHAT');
+                this._recordChatEntry({ id: msg.messageId || Utils.generateId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: msg.createdAt || Date.now(), relatedPlayer: msg.playerName || name, relatedCharacter: msg.actingChar || '' }, 'PLAYER_CHAT');
                 State.actingChar = msg.actingChar || 'party';
                 this._currentActionPlayerName = msg.playerName || name;
                 Engine.interactWithAI(msg.action);
@@ -1154,7 +1149,7 @@ export const Network = {
                 Sound.play('turn');
                 this.combatActions[msg.playerName] = { action: msg.action, charName: msg.charName };
                 const combatSender = msg.charName || msg.playerName;
-                this._recordChatEntry({ id: this._nextId('msg'), sender: combatSender, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(msg.playerName) === 'ai', createdAt: Date.now(), relatedPlayer: msg.playerName || combatSender, relatedCharacter: msg.charName || combatSender }, 'PLAYER_CHAT');
+                this._recordChatEntry({ id: Utils.generateId('msg'), sender: combatSender, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(msg.playerName) === 'ai', createdAt: Date.now(), relatedPlayer: msg.playerName || combatSender, relatedCharacter: msg.charName || combatSender }, 'PLAYER_CHAT');
                 this._broadcastCombatStatus();
                 this._queueCombatExecution();
                 break;
@@ -1182,7 +1177,7 @@ export const Network = {
                     const char = validateHeroData(msg.charData);
                     if (!State.party.find(p => p.id === char.id)) {
                         State.party.push(char);
-                        this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`, tone: 'neutral', createdAt: Date.now() });
+                        this._recordSystemEntry({ id: Utils.generateId('sys'), sender: 'System', text: `**${msg.playerName}** hat **${char.name}** zur Gruppe hinzugefuegt.`, tone: 'neutral', createdAt: Date.now() });
                         this.registerCharacter(msg.playerName, char.id);
                         this._ensurePlayerProfile(msg.playerName, { heroId: char.id, heroName: char.name, isReady: false, controlMode: this.getPlayerControlMode(msg.playerName) });
                         this.broadcastState();
@@ -1206,7 +1201,7 @@ export const Network = {
             case 'ITEM_ACTION': {
                 const result = this._applyInventoryAction(msg.action, msg.payload || {}, msg.playerName);
                 if (result.ok) {
-                    this._recordSystemEntry({ id: this._nextId('sys'), sender: 'System', text: result.message, tone: 'neutral', createdAt: Date.now() });
+                    this._recordSystemEntry({ id: Utils.generateId('sys'), sender: 'System', text: result.message, tone: 'neutral', createdAt: Date.now() });
                     if (msg.action === 'ASSIGN_LOOT' || msg.action === 'COLLECT_ALL_LOOT') {
                         const char = State.party.find(p => p.id === (msg.payload || {}).charId);
                         if (char) {
@@ -1390,7 +1385,7 @@ export const Network = {
             }
             case 'DM_MESSAGE':
                 if (msg.entry?.id && this._seenMessageIds.has(msg.entry.id)) break;
-                UI.addChatLog(msg.entry || { id: this._nextId('msg'), sender: msg.sender || 'DM', text: msg.text, senderType: 'dm', createdAt: Date.now() }, null, { persist: true });
+                UI.addChatLog(msg.entry || { id: Utils.generateId('msg'), sender: msg.sender || 'DM', text: msg.text, senderType: 'dm', createdAt: Date.now() }, null, { persist: true });
                 break;
             case 'DICE_ROLL_STARTED':
                 if (msg.payload?.id) UI.pushDiceFeedEntry(msg.payload);
@@ -1404,11 +1399,11 @@ export const Network = {
             case 'PLAYER_CHAT':
                 Sound.play('turn');
                 if (msg.entry?.id && this._seenMessageIds.has(msg.entry.id)) break;
-                UI.addChatLog(msg.entry || { id: this._nextId('msg'), sender: msg.sender || 'Spieler', text: msg.text, senderType: 'player', createdAt: Date.now() }, null, { persist: true });
+                UI.addChatLog(msg.entry || { id: Utils.generateId('msg'), sender: msg.sender || 'Spieler', text: msg.text, senderType: 'player', createdAt: Date.now() }, null, { persist: true });
                 break;
             case 'SYSTEM_CHAT':
                 if (msg.entry?.id && this._seenMessageIds.has(msg.entry.id)) break;
-                UI.addChatLog(msg.entry || { id: this._nextId('sys'), sender: msg.sender || 'System', text: msg.text, tone: 'neutral', createdAt: Date.now() }, null, { persist: true });
+                UI.addChatLog(msg.entry || { id: Utils.generateId('sys'), sender: msg.sender || 'System', text: msg.text, tone: 'neutral', createdAt: Date.now() }, null, { persist: true });
                 break;
             case 'TURN_UPDATE': {
                 this.turnOrder = msg.turnOrder || [];
@@ -1457,7 +1452,7 @@ export const Network = {
                 break;
             }
             case 'VOTE_RESULT': {
-                UI.addChatLog({ id: this._nextId('sys'), sender: 'System', text: `**Abstimmung beendet:** "${msg.chosen}" wurde gewaehlt.`, tone: 'neutral', createdAt: Date.now() }, null, { persist: true });
+                UI.addChatLog({ id: Utils.generateId('sys'), sender: 'System', text: `**Abstimmung beendet:** "${msg.chosen}" wurde gewaehlt.`, tone: 'neutral', createdAt: Date.now() }, null, { persist: true });
                 this.currentVote = null;
                 this._updateTurnUI();
                 break;

@@ -66,6 +66,15 @@ if (import.meta.env?.DEV) {
     });
 }
 
+// Global UI-State Sync for Chat/System Messages
+subscribe((_state, action) => {
+    if (action.type === 'ADD_CHAT_MSG') {
+        UI.addChatLog(action.entry, null, { persist: false });
+    } else if (action.type === 'ADD_SYSTEM_MSG') {
+        UI.addChatLog(action.entry, null, { persist: false });
+    }
+});
+
 init();
 initEvents();
 initFeatures();

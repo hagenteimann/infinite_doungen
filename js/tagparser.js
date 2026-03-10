@@ -9,25 +9,18 @@ import { sanitize } from './sanitize.js';
 import { ABILITY_LIMIT, DEATH_SAVE_DC } from './constants.js';
 
 export const TagParser = {
-    // Process JSON event array string instead of raw text
-    process: function (jsonString) {
-        if (!jsonString) return;
-        
-        try {
-            const events = JSON.parse(jsonString);
-            if (!Array.isArray(events)) return;
-            
-            events.forEach(evt => {
-                this.applyEvent(evt);
-            });
-            
-            CombatManager.cleanupDead(); 
-            UI.updateAll();
-        } catch(e) {
-            console.error("TagParser failed to parse events JSON:", e);
-        }
+    // Process event array directly
+    process: function (events) {
+        if (!events || !Array.isArray(events)) return;
+
+        events.forEach(evt => {
+            this.applyEvent(evt);
+        });
+
+        CombatManager.cleanupDead();
+        UI.updateAll();
     },
-    
+
     applyEvent: function (evt) {
         if (!evt || !evt.type) return;
         const type = evt.type.toUpperCase();
@@ -92,9 +85,9 @@ export const TagParser = {
                 });
             }
         }
-        else if (type === 'KAMPF_BEENDET') { 
-            State.activeEnemies = []; 
-            CombatManager.endCombat(); 
+        else if (type === 'KAMPF_BEENDET') {
+            State.activeEnemies = [];
+            CombatManager.endCombat();
         }
         else if (type === 'XP') {
             if (evt.target && evt.target.toLowerCase() === 'alle') {
@@ -157,7 +150,7 @@ export const TagParser = {
         }
     },
 
-    handleProbe: function(evt) {
+    handleProbe: function (evt) {
         let charName = evt.char;
         let statName = (evt.stat || "STR").toUpperCase();
         let desc = evt.desc || statName;
@@ -183,21 +176,21 @@ export const TagParser = {
         const dcNote = (weatherDcMod > 0 || fatigueDcMod > 0)
             ? ` [DC ${dc}${weatherDcMod > 0 ? ` +${weatherDcMod} ${State.weather.name}` : ''}${fatigueDcMod > 0 ? ` +${fatigueDcMod} Ersch�pfung` : ''}]`
             : '';
-            
-        State.pendingRolls.push({ 
-            id: Utils.generateId(), 
-            name: charName, 
-            stat: statName, 
-            mod: modifier, 
-            desc: desc + dcNote, 
-            dc: finalDc, 
-            diceType: dt, 
-            rolled: false, 
-            result: 0, 
-            rawRoll: 0, 
-            modBreakdown: breakdown 
+
+        State.pendingRolls.push({
+            id: Utils.generateId(),
+            name: charName,
+            stat: statName,
+            mod: modifier,
+            desc: desc + dcNote,
+            dc: finalDc,
+            diceType: dt,
+            rolled: false,
+            result: 0,
+            rawRoll: 0,
+            modBreakdown: breakdown
         });
-        
+
         UI.updateActionBox();
     }
 };

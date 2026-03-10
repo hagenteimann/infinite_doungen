@@ -178,6 +178,24 @@ export function dispatch(action) {
             Object.assign(State, action.updates);
             break;
         }
+        case 'ADD_CHAT_MSG': {
+            State.chatMessages = Array.isArray(State.chatMessages) ? State.chatMessages : [];
+            const exists = State.chatMessages.some(m => m.id === action.entry.id);
+            if (!exists) {
+                State.chatMessages.push(action.entry);
+                if (State.chatMessages.length > 200) State.chatMessages.shift();
+            }
+            break;
+        }
+        case 'ADD_SYSTEM_MSG': {
+            State.systemMessages = Array.isArray(State.systemMessages) ? State.systemMessages : [];
+            const exists = State.systemMessages.some(m => m.id === action.entry.id);
+            if (!exists) {
+                State.systemMessages.push(action.entry);
+                if (State.systemMessages.length > 100) State.systemMessages.shift();
+            }
+            break;
+        }
         default:
             console.warn(`Unknown dispatch action: ${action.type}`);
             return;

@@ -5,8 +5,10 @@ export const Utils = {
         /\b(STR|DEX|INT|CON)\s*([+-]\s*\d+)\b/gi,
         /([+-]\s*\d+)\s*(STR|DEX|INT|CON)\b/gi,
     ],
-    generateId: function () {
-        return (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2);
+    generateId: function (prefix = 'id') {
+        const ts = Date.now().toString(36);
+        const rand = Math.random().toString(36).substring(2, 7);
+        return `${prefix}-${ts}-${rand}`;
     },
     splitByCommaOutsideBrackets: function (str) {
         let res = [];

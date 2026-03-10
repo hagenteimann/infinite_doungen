@@ -71,7 +71,7 @@ export const TTS = {
         document.getElementById('tts-pitch-val').textContent = this.cfg.pitch;
         document.getElementById('tts-vol').value = this.cfg.vol;
         document.getElementById('tts-vol-val').textContent = this.cfg.vol;
-        ['rate','pitch','vol'].forEach(k => {
+        ['rate', 'pitch', 'vol'].forEach(k => {
             document.getElementById(`tts-${k}`).oninput = (e) => {
                 document.getElementById(`tts-${k}-val`).textContent = parseFloat(e.target.value).toFixed(2);
             };
@@ -81,9 +81,9 @@ export const TTS = {
 
     savePicker: function () {
         this.cfg.voice = document.getElementById('tts-voice-select').value;
-        this.cfg.rate  = parseFloat(document.getElementById('tts-rate').value);
+        this.cfg.rate = parseFloat(document.getElementById('tts-rate').value);
         this.cfg.pitch = parseFloat(document.getElementById('tts-pitch').value);
-        this.cfg.vol   = parseFloat(document.getElementById('tts-vol').value);
+        this.cfg.vol = parseFloat(document.getElementById('tts-vol').value);
         localStorage.setItem('tts_cfg', JSON.stringify(this.cfg));
         document.getElementById('tts-picker-modal').classList.add('hidden');
     },
@@ -92,7 +92,7 @@ export const TTS = {
         if (this.synth.speaking) this.synth.cancel();
         const u = new SpeechSynthesisUtterance('In den Tiefen des Dungeons hallt euer Atem wider. Die Fackeln flackern.');
         u.lang = 'de-DE';
-        u.rate  = parseFloat(document.getElementById('tts-rate').value);
+        u.rate = parseFloat(document.getElementById('tts-rate').value);
         u.pitch = parseFloat(document.getElementById('tts-pitch').value);
         u.volume = parseFloat(document.getElementById('tts-vol').value);
         const voices = this.synth.getVoices();
@@ -357,7 +357,7 @@ export const UI = {
             DOM.journalContent.innerHTML = '<p class="text-slate-500 italic">Noch keine Eintraege. Starte ein Abenteuer und klicke auf Update!</p>';
             return;
         }
-        DOM.journalContent.innerHTML = sanitize(repairHtmlText(State.journal.map((e, i) =>             `
+        DOM.journalContent.innerHTML = sanitize(repairHtmlText(State.journal.map((e, i) => `
             <div class="journal-entry fade-in">
                 <div class="flex justify-between text-[9px] text-slate-500 mb-1">
                     <span>Eintrag #${State.journal.length - i}</span>
@@ -839,12 +839,12 @@ export const UI = {
         const incoming = typeof s === 'object' && s !== null ? s : null;
         const sender = repairDisplayText(incoming ? (incoming.sender || 'Unbekannt') : (s || ''));
         const textValue = repairDisplayText(incoming ? (incoming.text || '') : (t || ''));
-        const senderType = incoming?.senderType || (sender === 'DM' || sender.includes('Orakel') || sender.includes('Schicksal') ? 'dm' : ((sender.includes('System') || sender.includes('Wetter')) ? 'system' : 'player'));
+        const entryType = incoming?.senderType || (sender === 'DM' || sender.includes('Orakel') || sender.includes('Schicksal') ? 'dm' : ((sender.includes('System') || sender.includes('Wetter')) ? 'system' : 'player'));
         const entry = {
-            id: incoming?.id || options.id || ('msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)),
+            id: incoming?.id || options.id || Utils.generateId(entryType === 'system' ? 'sys' : 'msg'),
             sender,
             text: textValue,
-            senderType,
+            senderType: entryType,
             isAiControlled: !!incoming?.isAiControlled,
             tone: incoming?.tone || options.tone || 'neutral',
             timestamp: incoming?.timestamp || new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
@@ -854,17 +854,15 @@ export const UI = {
         };
         const persist = options.persist !== false;
 
-        if (entry.senderType === 'system') {
-            State.systemMessages = Array.isArray(State.systemMessages) ? State.systemMessages : [];
-            const exists = State.systemMessages.some(item => item.id === entry.id);
-            if (persist && !exists) State.systemMessages.push({ ...entry });
+        if (persist) {
+            dispatch({ type: entryType === 'system' ? 'ADD_SYSTEM_MSG' : 'ADD_CHAT_MSG', entry });
+        }
+
+        if (entryType === 'system') {
             this.renderSystemLog();
             return;
         }
 
-        State.chatMessages = Array.isArray(State.chatMessages) ? State.chatMessages : [];
-        const exists = State.chatMessages.some(item => item.id === entry.id);
-        if (persist && !exists) State.chatMessages.push({ ...entry });
         if (DOM.storyLog.querySelector('[data-chat-id="' + entry.id + '"]')) return;
 
         const row = document.createElement('article');
@@ -1022,8 +1020,8 @@ export const UI = {
                     </div>
                     <div class="pg2-footer">
                         ${isHost || isSolo
-                            ? `<button type="button" data-action="start-game" class="pg2-start-btn${canStart ? '' : ' is-disabled'}"${canStart ? '' : ' disabled'}><i class="fas fa-dungeon"></i> Abenteuer starten</button>`
-                            : `<div class="pg2-wait-note"><i class="fas fa-hourglass-half"></i> Der Host startet das Abenteuer, sobald alle bereit sind.</div>`}
+                ? `<button type="button" data-action="start-game" class="pg2-start-btn${canStart ? '' : ' is-disabled'}"${canStart ? '' : ' disabled'}><i class="fas fa-dungeon"></i> Abenteuer starten</button>`
+                : `<div class="pg2-wait-note"><i class="fas fa-hourglass-half"></i> Der Host startet das Abenteuer, sobald alle bereit sind.</div>`}
                     </div>
                 </div>
             </div>`;
@@ -1115,7 +1113,7 @@ export const UI = {
 
         const sumBadge = c.isSummon ? `<span class="text-purple-400 text-[8px] border border-purple-500 px-1 rounded ml-1">Kreatur</span>` : '';
         const portraitSrc = c.portrait || '';
-        const portraitFallback = c.isSummon ? '<i class="fas fa-hat-wizard"></i>' : '<i class="fas fa-user"></i>'; 
+        const portraitFallback = c.isSummon ? '<i class="fas fa-hat-wizard"></i>' : '<i class="fas fa-user"></i>';
         const xpNeeded = Math.floor(XP_BASE * Math.pow(c.level, XP_SCALING_EXPONENT));
         const detailPortraitHtml = `
             <div class="hero-detail-header sticky top-0 z-20 rounded-xl overflow-hidden border ${c.isNPC ? (c.isSummon ? 'border-purple-600/50' : 'border-blue-600/50') : 'border-slate-600/60'} shadow-[0_10px_30px_rgba(0,0,0,0.45)] mb-3">
@@ -1187,38 +1185,38 @@ export const UI = {
             </div>`));
 
         if (!isPrivateInventory) {
-        const eqMap = new Map();
-        (c.equipment || []).forEach(it => { eqMap.set(it, (eqMap.get(it) || 0) + 1); });
+            const eqMap = new Map();
+            (c.equipment || []).forEach(it => { eqMap.set(it, (eqMap.get(it) || 0) + 1); });
 
-        let activeSetsHtml = "";
-        EQUIPMENT_SETS.forEach(set => {
-            let equippedPieces = 0;
-            set.pieces.forEach(p => { if ((c.equipment || []).includes(p)) equippedPieces++; });
-            if (equippedPieces >= 2) {
-                let bonusDesc = Object.entries(set.bonus).map(([k, v]) => `+${v} ${k}`).join(', ');
-                activeSetsHtml += `<div class="bg-indigo-900/40 border border-indigo-500/50 rounded p-1.5 mb-2 shadow-inner"><span class="text-indigo-300 font-bold text-[9px] uppercase"><i class="fas fa-layer-group text-indigo-400 mr-1"></i> Set-Bonus: ${set.name} (${equippedPieces}/${set.pieces.length})</span><div class="text-indigo-200 text-[8px] mt-0.5">${bonusDesc}</div></div>`;
-            }
-        });
+            let activeSetsHtml = "";
+            EQUIPMENT_SETS.forEach(set => {
+                let equippedPieces = 0;
+                set.pieces.forEach(p => { if ((c.equipment || []).includes(p)) equippedPieces++; });
+                if (equippedPieces >= 2) {
+                    let bonusDesc = Object.entries(set.bonus).map(([k, v]) => `+${v} ${k}`).join(', ');
+                    activeSetsHtml += `<div class="bg-indigo-900/40 border border-indigo-500/50 rounded p-1.5 mb-2 shadow-inner"><span class="text-indigo-300 font-bold text-[9px] uppercase"><i class="fas fa-layer-group text-indigo-400 mr-1"></i> Set-Bonus: ${set.name} (${equippedPieces}/${set.pieces.length})</span><div class="text-indigo-200 text-[8px] mt-0.5">${bonusDesc}</div></div>`;
+                }
+            });
 
-        document.getElementById(`equipment-list-${c.id}`).innerHTML = sanitize(activeSetsHtml + Array.from(eqMap.entries()).map(([it, count]) => {
-            const safeIt = it.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            const countHtml = count > 1 ? `<span class="text-indigo-400 font-bold ml-1">(x${count})</span>` : '';
-            const formatted = UI.formatItemDisplay(it);
-            const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
-            const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-indigo-400/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="true" data-count="${count}" class="bg-indigo-900/30 p-1.5 rounded cursor-pointer hover:bg-indigo-800/50 border border-indigo-700/50 flex justify-between group transition-colors" ${titleAttr}><span class="text-indigo-200">${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-indigo-400 mt-0.5"></i></li>`;
-        }).join('') || '<li class="text-slate-500 italic">Nichts ausgeruestet</li>');
+            document.getElementById(`equipment-list-${c.id}`).innerHTML = sanitize(activeSetsHtml + Array.from(eqMap.entries()).map(([it, count]) => {
+                const safeIt = it.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                const countHtml = count > 1 ? `<span class="text-indigo-400 font-bold ml-1">(x${count})</span>` : '';
+                const formatted = UI.formatItemDisplay(it);
+                const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
+                const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-indigo-400/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
+                return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="true" data-count="${count}" class="bg-indigo-900/30 p-1.5 rounded cursor-pointer hover:bg-indigo-800/50 border border-indigo-700/50 flex justify-between group transition-colors" ${titleAttr}><span class="text-indigo-200">${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-indigo-400 mt-0.5"></i></li>`;
+            }).join('') || '<li class="text-slate-500 italic">Nichts ausgeruestet</li>');
 
-        const invMap = new Map();
-        c.inventory.forEach(it => { invMap.set(it, (invMap.get(it) || 0) + 1); });
-        document.getElementById(`inventory-list-${c.id}`).innerHTML = sanitize(Array.from(invMap.entries()).map(([it, count]) => {
-            const safeIt = it.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            const countHtml = count > 1 ? `<span class="text-amber-500 font-bold ml-1">(x${count})</span>` : '';
-            const formatted = UI.formatItemDisplay(it);
-            const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
-            const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-            return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="false" data-count="${count}" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors" ${titleAttr}><span>${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
-        }).join('') || '<li class="text-slate-500 italic">Leer</li>');
+            const invMap = new Map();
+            c.inventory.forEach(it => { invMap.set(it, (invMap.get(it) || 0) + 1); });
+            document.getElementById(`inventory-list-${c.id}`).innerHTML = sanitize(Array.from(invMap.entries()).map(([it, count]) => {
+                const safeIt = it.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                const countHtml = count > 1 ? `<span class="text-amber-500 font-bold ml-1">(x${count})</span>` : '';
+                const formatted = UI.formatItemDisplay(it);
+                const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
+                const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
+                return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="false" data-count="${count}" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors" ${titleAttr}><span>${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
+            }).join('') || '<li class="text-slate-500 italic">Leer</li>');
         }
 
         DOM.exportHeroBtn.dataset.action = 'export-hero';
