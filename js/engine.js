@@ -960,7 +960,7 @@ export const Engine = {
                 const c = State.party.find(p => p.name === r.name);
                 return c ? Object.entries(Network.playerCharMap).find(([, cid]) => cid === c.id)?.[0] : null;
             }).filter(Boolean));
-            
+
             if (allPlayers.size > 1) {
                 Network._currentActionPlayerName = 'Gruppe';
                 State.actingChar = 'party';
@@ -1026,7 +1026,7 @@ export const Engine = {
     generatePortrait: async function () {
         const a = DOM.newAppearance.value, c = DOM.newClass.value;
         DOM.genImgBtn.innerText = 'Laedt...';
-        const primaryPrompt = `Fantasy portrait, face only, highly detailed, ${c}${a ? ', ' + a : ''}`.split('\n').join(' ').trim();
+        const primaryPrompt = `Fantasy portrait, American shot, waist-up, highly detailed, ${c}${a ? ', ' + a : ''}`.split('\n').join(' ').trim();
         const prompts = [
             primaryPrompt,
             `Fantasy portrait, ${c}${a ? ', ' + a : ''}`,
@@ -1093,11 +1093,11 @@ export const Engine = {
             const npcClass = npcData.class || npcData.Klasse || npcData.klasse || "Abenteurer";
             const npcApp = npcData.appearance || npcData.Aussehen || npcData.aussehen || "Gestalt";
 
-            let imgPrompt = `Fantasy portrait, face only, highly detailed, ${npcClass}, ${npcApp}`.replace(/\n/g, ' ').trim();
+            let imgPrompt = `Fantasy portrait, American shot, waist-up, highly detailed, ${npcClass}, ${npcApp}`.replace(/\n/g, ' ').trim();
             let pUrl = await API.generateImageWithFallbacks([
                 imgPrompt,
                 `Fantasy portrait, ${npcClass}, ${npcApp}`,
-                `Fantasy portrait, face only, highly detailed, ${npcClass}`
+                `Fantasy portrait, American shot, waist-up, highly detailed, ${npcClass}`
             ]);
 
             State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name: npcName, class: npcClass, hp: 20, maxHp: 20, portrait: pUrl, imagePrompt: imgPrompt, inventory: [], isNPC: true }));
@@ -1113,10 +1113,10 @@ export const Engine = {
     spawnNPCFromTag: async function (name, cls, app) {
         UI.addChatLog('System', `${SYSTEM_NOTICE.joining} **${name}** tritt der Gruppe bei...`);
         try {
-            let imgPrompt = `Fantasy portrait, face only, highly detailed, ${cls}, ${app}`.replace(/\n/g, ' ');
+            let imgPrompt = `Fantasy portrait, American shot, waist-up, highly detailed, ${cls}, ${app}`.replace(/\n/g, ' ');
             let p = await API.generateImageWithFallbacks([
                 imgPrompt,
-                `Fantasy portrait, face only, highly detailed, ${cls}`
+                `Fantasy portrait, American shot, waist-up, highly detailed, ${cls}`
             ]);
             State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name, class: cls, hp: 20, maxHp: 20, portrait: p, inventory: [], isNPC: true }));
             UI.addChatLog('System', `${SYSTEM_NOTICE.fate} **${name}** schlie\u00DFt sich der Gruppe an!`);

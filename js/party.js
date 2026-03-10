@@ -30,7 +30,7 @@ function showFloatingNumber(targetName, amount, type) {
 
     const rect = targetCard.getBoundingClientRect();
     float.style.position = 'fixed';
-    float.style.left = (rect.left + rect.width/2 - 15) + 'px';
+    float.style.left = (rect.left + rect.width / 2 - 15) + 'px';
     float.style.top = rect.top + 'px';
     float.style.zIndex = '1000';
 
@@ -52,7 +52,7 @@ function showLevelUpAnimation(char) {
     float.textContent = 'LEVEL UP!';
     const rect = targetCard.getBoundingClientRect();
     float.style.position = 'fixed';
-    float.style.left = (rect.left + rect.width/2 - 50) + 'px';
+    float.style.left = (rect.left + rect.width / 2 - 50) + 'px';
     float.style.top = (rect.top - 60) + 'px';
     document.body.appendChild(float);
     setTimeout(() => float.remove(), 1500);
@@ -67,7 +67,7 @@ function showLevelUpAnimation(char) {
 }
 
 function buildLevelUpPortraitPrompts(char) {
-    const basePrompt = String(char.imagePrompt || ('Fantasy portrait, face only, highly detailed, ' + (char.class || 'Abenteurer'))).replace(/\s+/g, ' ').trim();
+    const basePrompt = String(char.imagePrompt || ('Fantasy portrait, American shot, waist-up, highly detailed, ' + (char.class || 'Abenteurer'))).replace(/\s+/g, ' ').trim();
     const level = Number(char.level || 1);
     const aura = level >= 12
         ? 'legendary champion aura, ornate enchanted armor, intense magical glow, battle-scarred but noble'
@@ -78,7 +78,7 @@ function buildLevelUpPortraitPrompts(char) {
                 : 'slightly more experienced adventurer, a touch more confident, refined fantasy details';
     const consistency = 'same character, same face, same hairstyle, same identity, same framing';
     return [
-        `${basePrompt}, ${consistency}, ${aura}, level ${level}, fantasy portrait, face only, highly detailed`,
+        `${basePrompt}, ${consistency}, ${aura}, level ${level}, fantasy portrait, American shot, waist-up, highly detailed`,
         `${basePrompt}, ${consistency}, ${aura}, heroic fantasy portrait`,
         `${char.class || 'Abenteurer'}, ${consistency}, ${aura}, fantasy portrait`,
     ].map(p => p.replace(/\s+/g, ' ').trim());
@@ -190,11 +190,11 @@ export const PartyManager = {
         while (char.xp >= needed) {
             char.xp -= needed; char.level++; char.statPoints += STAT_POINTS_PER_LEVEL;
             const classBonusMap = {
-                'Krieger':    char.level % 2 === 0 ? 'STR' : 'CON',
+                'Krieger': char.level % 2 === 0 ? 'STR' : 'CON',
                 'Waldläufer': 'DEX',
-                'Magier':     'INT',
-                'Schurke':    char.level % 2 === 0 ? 'DEX' : 'STR',
-                'Kleriker':   char.level % 2 === 0 ? 'INT' : 'CON'
+                'Magier': 'INT',
+                'Schurke': char.level % 2 === 0 ? 'DEX' : 'STR',
+                'Kleriker': char.level % 2 === 0 ? 'INT' : 'CON'
             };
             bonusStat = classBonusMap[char.class];
             if (bonusStat && char.attributes[bonusStat] !== undefined) {

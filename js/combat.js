@@ -67,7 +67,7 @@ export const CombatManager = {
 
                     let summonPUrl = "";
                     try {
-                        let summonImgPrompt = `Fantasy portrait, face only, highly detailed, ${summonName}`.replace(/\n/g, ' ').trim();
+                        let summonImgPrompt = `Fantasy portrait, American shot, waist-up, highly detailed, ${summonName}`.replace(/\n/g, ' ').trim();
                         summonPUrl = await API.generateImageWithFallbacks([
                             summonImgPrompt,
                             `Fantasy portrait, ${summonName}`,
@@ -86,7 +86,7 @@ export const CombatManager = {
         const descStr = desc ? `, ${desc}` : '';
         let pUrl = "";
         try {
-            let imgPrompt = `Fantasy portrait, face only, highly detailed, ${name}${descStr}`.replace(/\n/g, ' ').trim();
+            let imgPrompt = `Fantasy portrait, American shot, waist-up, highly detailed, ${name}${descStr}`.replace(/\n/g, ' ').trim();
             pUrl = await API.generateImageWithFallbacks([
                 imgPrompt,
                 `Fantasy portrait, ${name}`,
@@ -104,7 +104,8 @@ export const CombatManager = {
     },
     endCombat: function () {
         dispatch({ type: 'COMBAT_ENDED' });
-        if (State.party.some(p => p.isSummon)) { State.party = State.party.filter(p => !p.isSummon); UI.addChatLog("System", `💨 Beschworene Kreaturen verschwinden.`); }
+        if (State.party.some(p => p.isSummon)) { State.party = State.party.filter(p => !p.isSummon); UI.addChatLog("System", `💨 Beschworene Kreaturen verschwinden.`); }
+
         const xpPool = State.defeatedEnemies.reduce((sum, e) => {
             if (e.fled) return sum;
             return sum + Math.floor((e.maxHp || 20) * ENEMY_XP_MULTIPLIER) + ENEMY_XP_BASE;
