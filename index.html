@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="de">
 
 <head>
@@ -57,6 +57,9 @@
             <button data-action="show-api-settings"
                 class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-purple-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
                 title="API Einstellungen oeffnen"><i class="fas fa-plug text-purple-400"></i> API</button>
+            <button id="music-toggle" data-action="show-music-settings"
+                class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-pink-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(236,72,153,0.35)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
+                title="Musiksteuerung oeffnen"><i class="fas fa-music text-pink-300"></i> Musik</button>
             <button id="sound-toggle" data-action="toggle-sound"
                 class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-indigo-400/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(129,140,248,0.4)] transition-all duration-300 backdrop-blur-md sound-on"
                 title="Sound an/aus"><i class="fas fa-volume-up text-indigo-300"></i></button>
@@ -350,14 +353,14 @@
                 </div>
             </div>
 
-            <!-- Händler Ansicht -->
+            <!-- HÃ¤ndler Ansicht -->
             <div id="merchant-section"
                 class="hidden p-3 bg-blue-900/10 border border-blue-500/30 backdrop-blur-md rounded-xl shadow-[0_4px_15px_rgba(59,130,246,0.1)] fade-in mt-2 relative overflow-hidden">
                 <div class="absolute -top-10 -right-10 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
                 <h3
                     class="text-[10px] font-bold text-blue-400 mb-3 uppercase tracking-widest flex justify-between items-center relative z-10">
                     <span class="flex items-center gap-1.5"><i class="fas fa-store text-blue-400/80"></i> <span
-                            id="merchant-name" class="drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]">Händler</span></span>
+                            id="merchant-name" class="drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]">HÃ¤ndler</span></span>
                     <button data-action="leave-merchant"
                         class="text-slate-400 hover:text-white px-2 py-1 bg-white/5 rounded hover:bg-white/10 transition-colors"><i
                             class="fas fa-times"></i></button>
@@ -390,8 +393,8 @@
                     class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Hagen</button>
                 <button data-action="apply-preset" data-preset="Ben der Starke"
                     class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Ben</button>
-                <button data-action="apply-preset" data-preset="Jos�"
-                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Jos�</button>
+                <button data-action="apply-preset" data-preset="Josï¿½"
+                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Josï¿½</button>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-1.5">
@@ -406,7 +409,7 @@
                         <option class="bg-slate-900">Krieger</option>
                         <option class="bg-slate-900">Magier</option>
                         <option class="bg-slate-900">Schurke</option>
-                        <option class="bg-slate-900">Waldläufer</option>
+                        <option class="bg-slate-900">WaldlÃ¤ufer</option>
                         <option class="bg-slate-900">Kleriker</option>
                     </select>
                 </div>
@@ -433,7 +436,7 @@
             <div class="flex gap-3 mt-5 pt-2 border-t border-white/5">
                 <button id="gen-img-btn" data-action="gen-portrait"
                     class="flex-1 bg-blue-600/80 hover:bg-blue-500 py-3 rounded-xl border border-blue-400/50 font-bold text-xs shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all duration-300 text-white flex items-center justify-center gap-2"><i
-                        class="fas fa-sparkles text-blue-200"></i> Porträt</button>
+                        class="fas fa-sparkles text-blue-200"></i> PortrÃ¤t</button>
                 <button id="save-char-btn" data-action="finalize-char"
                     class="flex-1 bg-amber-600/80 hover:bg-amber-500 py-3 rounded-xl border border-amber-500/50 font-bold text-xs shadow-[0_0_15px_rgba(217,119,6,0.4)] hover:shadow-[0_0_20px_rgba(245,158,11,0.6)] opacity-50 transition-all duration-300 disabled:shadow-none text-white flex items-center justify-center gap-2"
                     disabled><i class="fas fa-check text-amber-200"></i> Speichern</button>
@@ -492,7 +495,7 @@
                 <i class="fas fa-key text-amber-500/70 mr-2"></i>Eigener API-Key
             </h2>
             <p class="text-[10px] text-slate-400 text-center">Trage hier deinen Google AI Studio Key ein. Lass das Feld
-                leer, um ihn zu löschen.</p>
+                leer, um ihn zu lÃ¶schen.</p>
             <input type="password" id="custom-key-input"
                 class="w-full bg-black/50 p-3 rounded-lg border border-white/10 focus:border-amber-500/50 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner"
                 placeholder="AIzaSy...">
@@ -526,7 +529,7 @@
         </div>
     </div>
 
-    <!-- Item Action Modal (Nutzen / Geben / Ausrüsten) -->
+    <!-- Item Action Modal (Nutzen / Geben / AusrÃ¼sten) -->
     <div id="item-action-modal"
         class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[130] flex items-center justify-center p-4">
         <div
@@ -542,7 +545,7 @@
                 <input type="hidden" id="item-action-max-count" value="1">
                 <div id="item-action-amount-container"
                     class="hidden mb-2 bg-black/20 p-2 rounded-xl border border-white/5 shadow-inner">
-                    <label class="text-[10px] text-amber-500 font-bold uppercase mb-1 block">Menge auswählen:</label>
+                    <label class="text-[10px] text-amber-500 font-bold uppercase mb-1 block">Menge auswÃ¤hlen:</label>
                     <div class="flex gap-2">
                         <input type="range" id="item-action-slider" min="1" max="1" value="1"
                             class="flex-1 accent-amber-500 cursor-pointer">
@@ -556,7 +559,7 @@
                             class="fas fa-hand-sparkles mr-1 text-indigo-200"></i> Nutzen</button>
                     <button data-action="confirm-equip"
                         class="flex-1 bg-amber-600/80 hover:bg-amber-500 py-3 rounded-xl font-bold text-xs border border-amber-500/50 shadow-[0_0_15px_rgba(217,119,6,0.4)] hover:shadow-[0_0_20px_rgba(245,158,11,0.6)] transition-all duration-300 text-white"><i
-                            class="fas fa-shield-alt mr-1 text-amber-200"></i> Ausrüsten</button>
+                            class="fas fa-shield-alt mr-1 text-amber-200"></i> AusrÃ¼sten</button>
                 </div>
 
                 <div class="border-t border-white/10 pt-4">
@@ -575,7 +578,7 @@
 
                 <button id="btn-offer-item" data-action="confirm-offer"
                     class="hidden w-full bg-blue-600/80 hover:bg-blue-500 py-3 rounded-xl font-bold text-xs border border-blue-500/50 shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all duration-300 text-white"><i
-                        class="fas fa-coins mr-1 text-blue-200"></i> Dem Händler anbieten</button>
+                        class="fas fa-coins mr-1 text-blue-200"></i> Dem HÃ¤ndler anbieten</button>
 
                 <button data-action="confirm-drop"
                     class="w-full bg-red-800/60 hover:bg-red-700 py-3 rounded-xl font-bold text-xs border border-red-700/50 shadow-[0_0_15px_rgba(153,27,27,0.4)] hover:shadow-[0_0_20px_rgba(220,38,38,0.6)] transition-all duration-300 mt-2 text-red-100 hover:text-white"><i
@@ -602,21 +605,21 @@
                 class="cinzel text-xl text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 text-center mb-1 drop-shadow-md">
                 <i class="fas fa-hammer text-indigo-400/70 mr-2"></i> Magische Schmiede
             </h2>
-            <p class="text-center text-[10px] text-slate-400 mb-5">Wähle Zutaten aus dem Inventar aller Gefaehrten.</p>
+            <p class="text-center text-[10px] text-slate-400 mb-5">WÃ¤hle Zutaten aus dem Inventar aller Gefaehrten.</p>
 
             <div class="grid grid-cols-2 gap-4 flex-1 min-h-0 min-h-[200px]">
                 <div
                     class="bg-black/40 border border-white/5 rounded-xl p-3 flex flex-col h-full overflow-hidden shadow-inner backdrop-blur-sm">
                     <h3
                         class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-white/5 pb-2 shrink-0">
-                        Verfügbare Items</h3>
+                        VerfÃ¼gbare Items</h3>
                     <div id="craft-inv-list" class="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 pr-1"></div>
                 </div>
                 <div
                     class="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 flex flex-col h-full overflow-hidden shadow-[inset_0_0_20px_rgba(79,70,229,0.1)] backdrop-blur-sm">
                     <h3
                         class="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-3 border-b border-indigo-500/30 pb-2 shrink-0">
-                        Ausgewählte Zutaten</h3>
+                        AusgewÃ¤hlte Zutaten</h3>
                     <div id="craft-sel-list" class="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 pr-1"></div>
                 </div>
             </div>
@@ -634,7 +637,7 @@
                 </div>
 
                 <label
-                    class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider mt-4 block mb-2">Zusätzliche
+                    class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider mt-4 block mb-2">ZusÃ¤tzliche
                     Attribute <span class="text-slate-500 text-[9px] font-normal normal-case">(optional)</span></label>
                 <div class="grid grid-cols-4 gap-3">
                     <div>
@@ -681,12 +684,12 @@
             class="bg-slate-800/95 backdrop-blur-xl border border-amber-500/50 p-6 rounded-2xl w-full max-w-sm shadow-[0_0_40px_rgba(245,158,11,0.3)]">
             <h2
                 class="cinzel text-xl text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-red-400 text-center mb-2 drop-shadow-md">
-                <i class="fas fa-exclamation-triangle text-amber-500 mr-2"></i> Fähigkeiten am Limit
+                <i class="fas fa-exclamation-triangle text-amber-500 mr-2"></i> FÃ¤higkeiten am Limit
             </h2>
             <p class="text-center text-xs text-slate-300 mb-4">
-                <span id="ar-char-name" class="font-bold text-amber-400">Held</span> hat das Limit von 3 Fähigkeiten
-                erreicht. Wähle eine aus, die vergessen werden soll, um <span id="ar-new-ability"
-                    class="font-bold text-amber-400">Neue Fähigkeit</span> zu erlernen.
+                <span id="ar-char-name" class="font-bold text-amber-400">Held</span> hat das Limit von 3 FÃ¤higkeiten
+                erreicht. WÃ¤hle eine aus, die vergessen werden soll, um <span id="ar-new-ability"
+                    class="font-bold text-amber-400">Neue FÃ¤higkeit</span> zu erlernen.
             </p>
             <div id="ar-ability-list" class="space-y-2 mb-4"></div>
             <div class="flex gap-3 mt-4 pt-4 border-t border-white/10">
@@ -720,7 +723,7 @@
             </div>
             <div class="flex gap-3 justify-end pt-3 border-t border-white/10">
                 <button data-close-modal="prompt-manager-modal"
-                    class="bg-white/5 hover:bg-white/10 py-2.5 px-6 rounded-xl border border-white/10 font-bold text-xs transition-all text-slate-300 hover:text-white uppercase tracking-widest">Schließen</button>
+                    class="bg-white/5 hover:bg-white/10 py-2.5 px-6 rounded-xl border border-white/10 font-bold text-xs transition-all text-slate-300 hover:text-white uppercase tracking-widest">SchlieÃŸen</button>
             </div>
         </div>
     </div>
@@ -751,6 +754,29 @@
         </div>
     </div>
 
+    <div id="music-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-[145] flex justify-center items-center p-4">
+        <div class="bg-slate-900/95 backdrop-blur-xl border border-pink-500/40 p-6 rounded-2xl w-full max-w-sm shadow-[0_0_40px_rgba(236,72,153,0.25)]">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <h2 class="cinzel text-lg text-transparent bg-clip-text bg-gradient-to-r from-pink-300 to-amber-200"><i class="fas fa-music text-pink-400 mr-2"></i>Musik</h2>
+                <button data-close-modal="music-modal" class="text-slate-400 hover:text-white text-lg"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-4">
+                <button id="music-power-btn" data-action="toggle-music-playback" class="w-full rounded-xl border px-3 py-2 text-xs font-bold transition-all"></button>
+                <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+                    <div class="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Aktueller Track</div>
+                    <div id="music-track-label" class="text-sm text-slate-200 font-medium">Bereit zum Abspielen</div>
+                    <div class="text-[10px] text-slate-500 mt-1">Die Playlist laeuft automatisch nacheinander und startet danach wieder von vorn.</div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between text-[10px] uppercase tracking-widest text-slate-400 mb-2">
+                        <span>Lautstaerke</span>
+                        <span id="music-volume-value">45%</span>
+                    </div>
+                    <input id="music-volume-slider" type="range" min="0" max="100" step="1" value="45" class="w-full accent-pink-500 cursor-pointer">
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- API Settings Modal -->
     <div id="api-settings-modal"
         class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex justify-center items-center p-4">
@@ -812,7 +838,7 @@
                         class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2.5 text-sm text-slate-200 outline-none focus:border-indigo-500/50 transition-all shadow-inner truncate">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mt-2">Bild
                         Modell (optional)</label>
-                    <input type="text" id="api-model-or-image" placeholder="Leer lassen für Standard-Platzhalter..."
+                    <input type="text" id="api-model-or-image" placeholder="Leer lassen fÃ¼r Standard-Platzhalter..."
                         class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2.5 text-sm text-slate-200 outline-none focus:border-indigo-500/50 transition-all shadow-inner truncate">
                 </div>
             </div>
@@ -829,8 +855,8 @@
     <!-- TTS Voice Picker Modal -->
     <div id="tts-picker-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-purple-500/30 rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 class="text-lg font-bold text-purple-300 mb-1 flex items-center gap-2"><i class="fas fa-microphone"></i> Erzählerstimme</h2>
-            <p class="text-xs text-slate-500 mb-4">Wähle eine Stimme aus den auf deinem System installierten Stimmen.</p>
+            <h2 class="text-lg font-bold text-purple-300 mb-1 flex items-center gap-2"><i class="fas fa-microphone"></i> ErzÃ¤hlerstimme</h2>
+            <p class="text-xs text-slate-500 mb-4">WÃ¤hle eine Stimme aus den auf deinem System installierten Stimmen.</p>
             <div class="mb-4">
                 <label class="text-xs text-slate-400 uppercase tracking-widest mb-2 block">Stimme</label>
                 <select id="tts-voice-select" class="w-full bg-slate-800 border border-slate-600 text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500"></select>
@@ -842,12 +868,12 @@
                     <div class="text-center text-xs text-slate-400 mt-1" id="tts-rate-val">0.92</div>
                 </div>
                 <div>
-                    <label class="text-xs text-slate-400 uppercase tracking-widest mb-1 block">Tonhöhe</label>
+                    <label class="text-xs text-slate-400 uppercase tracking-widest mb-1 block">TonhÃ¶he</label>
                     <input type="range" id="tts-pitch" min="0.5" max="1.5" step="0.05" value="0.85" class="w-full accent-purple-500">
                     <div class="text-center text-xs text-slate-400 mt-1" id="tts-pitch-val">0.85</div>
                 </div>
                 <div>
-                    <label class="text-xs text-slate-400 uppercase tracking-widest mb-1 block">Lautstärke</label>
+                    <label class="text-xs text-slate-400 uppercase tracking-widest mb-1 block">LautstÃ¤rke</label>
                     <input type="range" id="tts-vol" min="0.1" max="1" step="0.05" value="1" class="w-full accent-purple-500">
                     <div class="text-center text-xs text-slate-400 mt-1" id="tts-vol-val">1.0</div>
                 </div>

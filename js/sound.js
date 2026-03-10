@@ -1,11 +1,118 @@
-import { State } from './state.js';
+﻿import { State } from './state.js';
+
+const MUSIC_TRACKS = [
+    { label: 'Lumina', src: new URL('../Musik/onetent-fantasy-music-lumina-143991.mp3', import.meta.url).href },
+    { label: 'Epic Journey', src: new URL('../Musik/openmindaudio-fantasy-cinematic-background-epic-journey-469170.mp3', import.meta.url).href },
+    { label: 'Mythic World', src: new URL('../Musik/openmindaudio-fantasy-cinematic-background-mythic-world-469173.mp3', import.meta.url).href },
+    { label: 'Fairy Tale', src: new URL('../Musik/solarflex-magic-fantasy-fairy-tale-music-495646.mp3', import.meta.url).href },
+];
 
 export const Sound = {
     ctx: null,
+    musicAudio: null,
+    musicIndex: 0,
+    musicStarted: false,
+    musicTracks: MUSIC_TRACKS,
+
     getCtx: function () {
         if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         return this.ctx;
     },
+
+    initMusic: function () {
+        const storedEnabled = localStorage.getItem('music_enabled');
+        const storedVolume = localStorage.getItem('music_volume');
+        State.musicEnabled = storedEnabled === null ? true : storedEnabled === 'true';
+        const parsedVolume = Number(storedVolume);
+        State.musicVolume = Number.isFinite(parsedVolume) ? Math.min(1, Math.max(0, parsedVolume)) : 0.45;
+        this._ensureMusicAudio();
+        this._syncMusicState();
+    },
+
+    _ensureMusicAudio: function () {
+        if (this.musicAudio || this.musicTracks.length === 0) return this.musicAudio;
+        const audio = new Audio(this.musicTracks[this.musicIndex].src);
+        audio.preload = 'auto';
+        audio.loop = false;
+        audio.volume = State.musicVolume;
+        audio.addEventListener('ended', () => {
+            this.musicIndex = (this.musicIndex + 1) % this.musicTracks.length;
+            this._loadCurrentTrack(true);
+        });
+        audio.addEventListener('play', () => {
+            this.musicStarted = true;
+            this._syncMusicState();
+        });
+        audio.addEventListener('pause', () => this._syncMusicState());
+        this.musicAudio = audio;
+        return audio;
+    },
+
+    _loadCurrentTrack: function (autoplay = false) {
+        const audio = this._ensureMusicAudio();
+        if (!audio || this.musicTracks.length === 0) return;
+        const track = this.musicTracks[this.musicIndex];
+        if (audio.src !== track.src) audio.src = track.src;
+        audio.volume = State.musicVolume;
+        audio.load();
+        this._syncMusicState();
+        if (autoplay && State.musicEnabled) this.playMusic();
+    },
+
+    _syncMusicState: function () {
+        const track = this.musicTracks[this.musicIndex] || null;
+        State.currentMusicTrack = track ? track.label : '';
+        State.musicIsPlaying = !!(this.musicAudio && !this.musicAudio.paused && State.musicEnabled);
+        window.dispatchEvent(new CustomEvent('music-state-changed'));
+    },
+
+    handleUserGesture: function () {
+        if (State.soundEnabled) {
+            try { this.getCtx().resume(); } catch (e) { console.warn('Audio context resume failed:', e); }
+        }
+        if (State.musicEnabled) this.playMusic();
+    },
+
+    playMusic: async function () {
+        if (!State.musicEnabled || this.musicTracks.length === 0) return;
+        const audio = this._ensureMusicAudio();
+        if (!audio) return;
+        audio.volume = State.musicVolume;
+        if (!audio.src) this._loadCurrentTrack(false);
+        try {
+            await audio.play();
+            this.musicStarted = true;
+        } catch (e) {
+            console.warn('Music playback deferred until next user gesture:', e);
+        }
+        this._syncMusicState();
+    },
+
+    pauseMusic: function () {
+        if (!this.musicAudio) return;
+        this.musicAudio.pause();
+        this._syncMusicState();
+    },
+
+    toggleMusic: function (forceValue = null) {
+        const next = typeof forceValue === 'boolean' ? forceValue : !State.musicEnabled;
+        State.musicEnabled = next;
+        localStorage.setItem('music_enabled', String(next));
+        if (next) this.playMusic();
+        else this.pauseMusic();
+        this._syncMusicState();
+        return next;
+    },
+
+    setMusicVolume: function (value) {
+        const next = Math.min(1, Math.max(0, Number(value) || 0));
+        State.musicVolume = next;
+        localStorage.setItem('music_volume', String(next));
+        if (this.musicAudio) this.musicAudio.volume = next;
+        this._syncMusicState();
+        return next;
+    },
+
     play: function (type) {
         if (!State.soundEnabled) return;
         try {

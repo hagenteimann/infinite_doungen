@@ -1,4 +1,4 @@
-import { State, subscribe } from './state.js';
+﻿import { State, subscribe } from './state.js';
 import { TTS, DOM, initDOM, UI } from './ui.js';
 import { Weather, initFeatures } from './features.js';
 import { Sound } from './sound.js';
@@ -11,6 +11,9 @@ import { initEvents } from './events.js';
 import { Network } from './network.js';
 
 const init = () => {
+    Sound.initMusic();
+    window.addEventListener('music-state-changed', () => UI.updateMusicControls());
+
     initDOM();
 
     const autoSave = localStorage.getItem(AUTO_SAVE_KEY);
@@ -46,14 +49,12 @@ const init = () => {
 
     });
     document.addEventListener('click', (e) => {
-        if (State.soundEnabled) {
-            Sound.getCtx().resume();
-            if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.cursor-pointer')) {
-                Sound.play('click');
-            }
+        Sound.handleUserGesture();
+        if (State.soundEnabled && (e.target.closest('button') || e.target.closest('a') || e.target.closest('.cursor-pointer'))) {
+            Sound.play('click');
         }
     });
-    document.addEventListener('keydown', () => { if (State.soundEnabled) Sound.getCtx().resume(); }, { once: true });
+    document.addEventListener('keydown', () => { Sound.handleUserGesture(); }, { once: true });
 };
 
 window.App = { Engine, UI, Utils, API, State, Weather, Network };

@@ -18,6 +18,8 @@ export function initEvents() {
 
         const ACTIONS = {
             'show-api-settings': () => UI.showApiSettings(),
+            'show-music-settings': () => UI.showMusicSettings(),
+            'toggle-music-playback': () => Engine.toggleMusicPlayback(),
             'entry-start-solo': () => Engine.beginSessionFlow('solo'),
             'entry-start-host': () => Engine.beginSessionFlow('host'),
             'entry-join-room': () => Engine.beginSessionFlow('join'),
@@ -152,6 +154,7 @@ export function initEvents() {
         if (el.id === 'entry-room-code') State.pendingRoomCode = el.value.toUpperCase();
         else if (el.id === 'start-api-key-input') State.pendingApiKeyValue = el.value;
         else if (el.id === 'start-api-model-input') State.pendingApiModelText = el.value;
+        else if (el.id === 'music-volume-slider') Engine.setMusicVolume(Number(el.value) / 100);
     });
 
     document.addEventListener('change', (e) => {

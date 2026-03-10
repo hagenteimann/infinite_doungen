@@ -125,7 +125,7 @@ export const initDOM = () => {
         'modal-eq-actions', 'load-input', 'merchant-section', 'merchant-name', 'merchant-items', 'btn-offer-item',
         'crafting-modal', 'craft-inv-list', 'craft-sel-list', 'craft-target-item',
         'journal-content', 'stats-content', 'system-content', 'quick-actions-container', 'sound-toggle',
-        'topbar-thinking-status', 'topbar-thinking-text', 'tab-party', 'tab-dice', 'tab-system', 'tab-journal', 'tab-stats',
+        'music-toggle', 'music-modal', 'music-track-label', 'music-volume-slider', 'music-volume-value', 'music-power-btn',
         'tab-content-party', 'tab-content-dice', 'tab-content-system', 'tab-content-journal', 'tab-content-stats',
         'enemy-lightbox', 'enemy-lightbox-image', 'enemy-lightbox-title'
     ];
@@ -598,6 +598,40 @@ export const UI = {
         button.classList.toggle('border-cyan-500/50', mode === 'ai');
         button.classList.toggle('text-cyan-100', mode === 'ai');
     },
+    updateMusicControls: function () {
+        const button = DOM.musicToggle;
+        const modal = DOM.musicModal;
+        const trackLabel = DOM.musicTrackLabel;
+        const volumeSlider = DOM.musicVolumeSlider;
+        const volumeValue = DOM.musicVolumeValue;
+        const powerButton = DOM.musicPowerBtn;
+        const enabled = !!State.musicEnabled;
+        const playing = !!State.musicIsPlaying;
+        const volumePercent = Math.round((Number(State.musicVolume) || 0) * 100);
+        if (button) {
+            button.innerHTML = '<i class="fas ' + (enabled ? 'fa-music text-pink-300' : 'fa-music text-slate-500') + '"></i> Musik';
+            button.classList.toggle('border-pink-500/50', enabled);
+            button.classList.toggle('text-white', enabled);
+            button.classList.toggle('bg-pink-900/20', enabled);
+            button.setAttribute('title', enabled ? 'Musiksteuerung oeffnen' : 'Musik einschalten');
+        }
+        if (trackLabel) trackLabel.textContent = playing ? (State.currentMusicTrack || 'Playlist laeuft') : (enabled ? 'Bereit zum Abspielen' : 'Musik ist aus');
+        if (volumeSlider) volumeSlider.value = String(volumePercent);
+        if (volumeValue) volumeValue.textContent = volumePercent + '%';
+        if (powerButton) {
+            powerButton.innerHTML = enabled ? '<i class="fas fa-pause mr-2"></i>Musik aus' : '<i class="fas fa-play mr-2"></i>Musik an';
+            powerButton.className = 'w-full rounded-xl border px-3 py-2 text-xs font-bold transition-all ' + (enabled
+                ? 'bg-pink-600/80 hover:bg-pink-500 border-pink-400/60 text-white shadow-[0_0_18px_rgba(236,72,153,0.35)]'
+                : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-200');
+        }
+        if (modal) modal.dataset.musicEnabled = enabled ? 'true' : 'false';
+    },
+
+    showMusicSettings: function () {
+        this.updateMusicControls();
+        DOM.musicModal?.classList.remove('hidden');
+    },
+
     updateTargetModeButton: function () {
         const button = document.getElementById('target-mode-btn');
         if (!button) return;

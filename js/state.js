@@ -1,4 +1,4 @@
-export const State = {
+﻿export const State = {
     party: [], activeEnemies: [], defeatedEnemies: [], lootDrops: [],
     lastStoryPart: "", gameStarted: false, isProcessing: false,
     tempPortraitData: "", tempImagePrompt: "",
@@ -13,6 +13,10 @@ export const State = {
     dungeonLevel: 1,
     sessionStats: { totalDamageDealt: 0, totalDamageTaken: 0, totalXPEarned: 0, totalHealed: 0, diceRolls: [], highestRoll: 0, lowestRoll: 21, combatsWon: 0, turnsPlayed: 0 },
     soundEnabled: true,
+    musicEnabled: true,
+    musicVolume: 0.45,
+    musicIsPlaying: false,
+    currentMusicTrack: '',
     quickplayEnabled: false,
     fate: 0,
     fatigue: 0,

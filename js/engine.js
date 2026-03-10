@@ -396,6 +396,16 @@ export const Engine = {
         if (State.soundEnabled) Sound.play('dice');
     },
 
+    toggleMusicPlayback: function () {
+        Sound.toggleMusic();
+        UI.updateMusicControls();
+    },
+
+    setMusicVolume: function (value) {
+        Sound.setMusicVolume(value);
+        UI.updateMusicControls();
+    },
+
     toggleQuickplay: function () {
         State.quickplayEnabled = !State.quickplayEnabled;
         const btn = document.getElementById('quickplay-btn');
