@@ -877,52 +877,88 @@ export const UI = {
         const localPlayerKey = String(State.localPlayerName || window.App?.Network?.playerName || '').trim();
         const localProfile = State.playerProfiles?.[localPlayerKey] || null;
         const localHero = localProfile?.heroId ? State.party.find(p => p.id === localProfile.heroId) : null;
+        const isConnected = window.App?.Network?.isConnected?.();
+        const isHost = window.App?.Network?.isHost?.();
+        const roomCode = repairDisplayText(window.App?.Network?.roomCode || '');
+        const canStart = window.App?.Engine?.getPregameStatus?.().ok;
+        const isSolo = !isConnected;
+
         const rows = players.map(playerName => {
             const profile = State.playerProfiles?.[playerName] || {};
             const controlMode = profile.controlMode || State.playerControlMode?.[playerName] || 'human';
             const displayName = repairDisplayText(window.App?.Network?.getDisplayPlayerName?.(playerName, 'Ein Held') || playerName);
-            return `<div class="pregame-player-row">
-                <div>
-                    <div class="pregame-player-name">${displayName} ${playerName === localPlayerKey ? '<span class="pregame-me-badge">Du</span>' : ''}</div>
-                    <div class="pregame-player-meta">${repairDisplayText(profile.heroName || 'Noch kein Held gewaehlt')}</div>
+            const isMe = playerName === localPlayerKey;
+            const initial = displayName.charAt(0).toUpperCase();
+            return `<div class="pg2-player-row${isMe ? ' is-me' : ''}">
+                <div class="pg2-avatar">${initial}</div>
+                <div class="pg2-player-info">
+                    <div class="pg2-player-name">${displayName}${isMe ? ' <span class="pg2-me-badge">Du</span>' : ''}</div>
+                    <div class="pg2-player-hero">${repairDisplayText(profile.heroName || 'Noch kein Held')}</div>
                 </div>
-                <div class="pregame-player-flags">
-                    <span class="pregame-flag ${profile.isReady ? 'is-ready' : 'is-waiting'}">${profile.isReady ? 'Bereit' : 'Wartet'}</span>
-                    <span class="pregame-flag is-control">${controlMode === 'ai' ? 'AI' : 'Human'}</span>
+                <div class="pg2-player-status">
+                    <span class="pg2-flag ${profile.isReady ? 'is-ready' : 'is-waiting'}">${profile.isReady ? '<i class="fas fa-check"></i> Bereit' : '<i class="fas fa-clock"></i> Wartet'}</span>
+                    ${controlMode === 'ai' ? '<span class="pg2-flag is-ai">AI</span>' : ''}
                 </div>
             </div>`;
         }).join('');
-        const roomLine = window.App?.Network?.isConnected?.() ? (window.App.Network.isHost() ? `Raumcode: <span class="pregame-emphasis">${repairDisplayText(window.App.Network.roomCode || '')}</span>` : `Verbunden mit Raum <span class="pregame-emphasis">${repairDisplayText(window.App.Network.roomCode || '')}</span>`) : 'Solo-Sitzung';
-        const canStart = window.App?.Engine?.getPregameStatus?.().ok;
-        const isSolo = !window.App?.Network?.isConnected?.();
+
+        let sessionChip = '';
+        if (isConnected && isHost) {
+            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-crown"></i> Host &nbsp;·&nbsp; Code: <span class="pg2-room-code">${roomCode}</span></div>`;
+        } else if (isConnected) {
+            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-link"></i> Verbunden &nbsp;·&nbsp; Raum: <span class="pg2-room-code">${roomCode}</span></div>`;
+        } else {
+            sessionChip = `<div class="pg2-room-chip pg2-room-chip-solo"><i class="fas fa-user"></i> Solo-Sitzung</div>`;
+        }
+
+        const heroHp = localHero ? `${localHero.hp ?? localHero.maxHp ?? '?'}/${localHero.maxHp ?? '?'}` : null;
+        const heroLevel = localHero?.level ?? null;
+
+        const heroSection = localHero ? `
+            <div class="pg2-hero-card">
+                <div class="pg2-hero-avatar"><i class="fas fa-shield-halved"></i></div>
+                <div class="pg2-hero-info">
+                    <div class="pg2-hero-name">${repairDisplayText(localHero.name)}</div>
+                    <div class="pg2-hero-class">${repairDisplayText(localHero.class || 'Held')}</div>
+                    <div class="pg2-hero-stats">
+                        ${heroLevel !== null ? `<span><i class="fas fa-star"></i> Lvl ${heroLevel}</span>` : ''}
+                        ${heroHp ? `<span><i class="fas fa-heart"></i> ${heroHp} HP</span>` : ''}
+                    </div>
+                </div>
+            </div>` : `
+            <div class="pg2-hero-empty">
+                <i class="fas fa-user-plus pg2-hero-empty-icon"></i>
+                <p>Kein Held gewählt</p>
+                <p class="pg2-hero-empty-hint">Lade einen Save oder erstelle einen neuen Helden.</p>
+            </div>`;
+
         return `
             <div class="entry-shell">
-                <div class="pregame-card">
-                    <div class="pregame-header">
-                        <div>
-                            <p class="pregame-kicker">Reisevorbereitung</p>
-                            <h2 class="pregame-title cinzel">${isSolo ? 'Dein Held' : 'Die Heldengruppe sammelt sich'}</h2>
-                            <p class="pregame-subtitle">${roomLine}</p>
-                        </div>
+                <div class="pg2-card${isSolo ? ' pg2-card-solo' : ''}">
+                    <div class="pg2-header">
+                        <span class="pg2-kicker"><i class="fas fa-map-signs"></i> Reisevorbereitung</span>
+                        <h2 class="pg2-title cinzel">${isSolo ? 'Dein Held' : 'Die Gruppe sammelt sich'}</h2>
+                        ${sessionChip}
                     </div>
-                    <div class="${isSolo ? 'pregame-grid pregame-grid-solo' : 'pregame-grid'}">
-                        ${!isSolo ? `<section class="pregame-panel">
-                            <div class="pregame-panel-title">Spielerstatus</div>
-                            <div class="pregame-player-list">${rows || '<div class="pregame-empty">Noch keine Spieler verbunden.</div>'}</div>
+                    <div class="${isSolo ? '' : 'pg2-grid'}">
+                        ${!isSolo ? `<section class="pg2-panel">
+                            <div class="pg2-panel-title"><i class="fas fa-users"></i> Spielerstatus</div>
+                            <div class="pg2-player-list">${rows || '<div class="pg2-empty"><i class="fas fa-wifi"></i> Noch keine Spieler verbunden.</div>'}</div>
                         </section>` : ''}
-                        <section class="pregame-panel">
-                            <div class="pregame-panel-title">Held auswählen</div>
-                            <div class="pregame-hero-box">
-                                <div class="pregame-hero-name">${localHero ? repairDisplayText(localHero.name) : 'Kein Held gewählt'}</div>
-                                <div class="pregame-hero-meta">${localHero ? repairDisplayText(localHero.class || 'Held') : 'Lade einen Save oder erstelle einen neuen Helden.'}</div>
+                        <section class="pg2-panel">
+                            <div class="pg2-panel-title"><i class="fas fa-shield-halved"></i> Dein Held</div>
+                            ${heroSection}
+                            <div class="pg2-action-row">
+                                <button type="button" data-action="pregame-load-hero" class="pg2-ghost-btn"><i class="fas fa-file-import"></i> Laden</button>
+                                <button type="button" data-action="pregame-create-hero" class="pg2-ghost-btn"><i class="fas fa-plus"></i> Erstellen</button>
                             </div>
-                            <div class="pregame-action-row">
-                                <button type="button" data-action="pregame-load-hero" class="pregame-ghost-btn"><i class="fas fa-file-import"></i> Held laden</button>
-                                <button type="button" data-action="pregame-create-hero" class="pregame-ghost-btn"><i class="fas fa-plus"></i> Held erstellen</button>
-                            </div>
-                            ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="${localProfile?.isReady ? 'pregame-ready-btn is-ready' : 'pregame-ready-btn'}">${localProfile?.isReady ? '<i class="fas fa-check-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>` : ''}
-                            ${window.App?.Network?.isHost?.() || isSolo ? `<button type="button" data-action="start-game" class="pregame-start-btn ${canStart ? '' : 'is-disabled'}" ${canStart ? '' : 'disabled'}><i class="fas fa-dungeon"></i> Abenteuer starten</button>` : '<div class="pregame-wait-note">Der Host startet das Abenteuer, sobald alle bereit sind.</div>'}
+                            ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn${localProfile?.isReady ? ' is-ready' : ''}">${localProfile?.isReady ? '<i class="fas fa-times-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>` : ''}
                         </section>
+                    </div>
+                    <div class="pg2-footer">
+                        ${isHost || isSolo
+                            ? `<button type="button" data-action="start-game" class="pg2-start-btn${canStart ? '' : ' is-disabled'}"${canStart ? '' : ' disabled'}><i class="fas fa-dungeon"></i> Abenteuer starten</button>`
+                            : `<div class="pg2-wait-note"><i class="fas fa-hourglass-half"></i> Der Host startet das Abenteuer, sobald alle bereit sind.</div>`}
                     </div>
                 </div>
             </div>`;
