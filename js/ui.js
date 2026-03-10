@@ -872,8 +872,7 @@ export const UI = {
         const speaker = entry.isAiControlled ? entry.sender + ' <span class="chat-ai-badge">AI</span>' : entry.sender;
         if (entry.senderType === 'dm') {
             const ttsBtn = '<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>';
-            const relation = entry.relatedPlayer ? '<div class="chat-turn-label">Zug von ' + entry.relatedPlayer + '</div>' : '';
-            row.innerHTML = sanitize('<div class="dm-message-card chat-bubble chat-bubble-dm"><div class="chat-meta-row"><span class="chat-sender chat-sender-dm">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span>' + ttsBtn + '</div>' + relation + '<div class="tts-text dm-copy text-sm md:text-base leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, true) + '</div></div>');
+            row.innerHTML = sanitize('<div class="dm-message-card chat-bubble chat-bubble-dm"><div class="chat-meta-row"><span class="chat-sender chat-sender-dm">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span>' + ttsBtn + '</div><div class="tts-text dm-copy text-sm md:text-base leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, true) + '</div></div>');
         } else {
             const mine = window.App?.Network?.playerName && entry.sender === window.App.Network.playerName ? ' chat-bubble-self' : '';
             row.innerHTML = sanitize('<div class="chat-bubble chat-bubble-player' + mine + '"><div class="chat-meta-row"><span class="chat-sender">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span></div><div class="tts-text text-sm leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, false) + '</div></div>');
