@@ -12,6 +12,11 @@ export function initEvents() {
             return;
         }
 
+        // Close sound menu when clicking outside
+        if (!e.target.closest('#sound-menu-wrapper')) {
+            document.getElementById('sound-menu-panel')?.classList.add('hidden');
+        }
+
         const actionEl = e.target.closest('[data-action]');
         if (!actionEl) return;
         const action = actionEl.dataset.action;
@@ -29,6 +34,7 @@ export function initEvents() {
             'pregame-toggle-ready': () => Engine.togglePregameReady(),
             'pregame-load-hero': () => Engine.openHeroImport(),
             'pregame-create-hero': () => UI.showCreator(),
+            'toggle-sound-menu': () => document.getElementById('sound-menu-panel')?.classList.toggle('hidden'),
             'toggle-sound': () => Engine.toggleSound(),
             'tts-open-picker': () => TTS.openPicker(),
             'download-save': () => Engine.downloadSave(),

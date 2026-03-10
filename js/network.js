@@ -565,7 +565,10 @@ export const Network = {
 
     broadcastChat(sender, text, meta = {}) {
         if (!this.isHost()) return;
-        this._recordChatEntry({ id: this._nextId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: false, createdAt: Date.now(), relatedPlayer: meta.relatedPlayer || '', relatedCharacter: meta.relatedCharacter || '' }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
+        const msgs = State.chatMessages;
+        const lastCreatedAt = msgs && msgs.length > 0 ? (msgs[msgs.length - 1].createdAt || 0) : 0;
+        const createdAt = Math.max(Date.now(), lastCreatedAt + 1);
+        this._recordChatEntry({ id: this._nextId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: false, createdAt, relatedPlayer: meta.relatedPlayer || '', relatedCharacter: meta.relatedCharacter || '' }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
     },
 
     broadcastSystemChat(sender, text) {
