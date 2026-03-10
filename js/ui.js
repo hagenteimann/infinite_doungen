@@ -217,7 +217,7 @@ export const UI = {
         let visibleStats = [];
         let hiddenEffects = [];
         effects.forEach(e => {
-            if (e.match(/^[+-]\d+\s*(STR|DEX|INT|CON)|(STR|DEX|INT|CON)\s*[+-]\d+$/i)) {
+            if (/^(?:[+-]\s*\d+\s*(?:STR|DEX|INT|CON)|(?:STR|DEX|INT|CON)\s*[+-]\s*\d+)$/i.test(e)) {
                 visibleStats.push(e);
             } else {
                 hiddenEffects.push(e);

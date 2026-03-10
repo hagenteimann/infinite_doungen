@@ -595,12 +595,12 @@ export const Network = {
             const char = this._getCharForPlayer(currentPlayer);
             if (char && char.hp > 0) {
                 setTimeout(() => {
+                    this._currentActionPlayerName = currentPlayer;
                     const action = this._generateAutoAction(char);
                     this._recordChatEntry({ id: this._nextId('msg'), sender: char.name, text: action, senderType: 'player', isAiControlled: true, createdAt: Date.now(), relatedPlayer: currentPlayer, relatedCharacter: char.name }, 'PLAYER_CHAT');
                     Engine.interactWithAI(action);
                 }, 600);
             }
-
         }
     },
 

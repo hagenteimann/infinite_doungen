@@ -101,16 +101,15 @@ export const Engine = {
         }, null, { persist: true });
     },
     _getActiveDmContext() {
-        // Use the stored action player name (set when a player action arrives) over the turn index,
-        // because currentTurnIndex may already have been advanced before the context is read.
+        // Only use an explicitly set player name — never fall back to turnOrder[currentTurnIndex]
+        // which is unreliable at async boundaries and causes wrong "Zug von …" labels.
         const activePlayer = Network.isConnected()
-            ? (Network._currentActionPlayerName || Network.turnOrder?.[Network.currentTurnIndex] || '')
-            : '';
+            ? (Network._currentActionPlayerName || '')
+            : this._getResolvedLocalPlayerName();
         const actingValue = String(State.actingChar || '').trim();
         const actingName = actingValue && actingValue !== 'party' ? actingValue : '';
-        const fallbackPlayer = this._getResolvedLocalPlayerName();
         return {
-            relatedPlayer: Network.getDisplayPlayerName(activePlayer || fallbackPlayer || actingName || '', ''),
+            relatedPlayer: Network.getDisplayPlayerName(activePlayer || '', ''),
             relatedCharacter: actingName || ''
         };
     },
