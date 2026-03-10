@@ -68,7 +68,9 @@ export const Network = {
     isMyTurn() {
         if (!this.isConnected() || this.turnOrder.length <= 1) return true;
         if (this.isInCombat()) return !this._mySubmittedAction;
-        return this.turnOrder[this.currentTurnIndex] === this.playerName;
+        const current = String(this.turnOrder[this.currentTurnIndex] || '').toLowerCase().trim();
+        const me = String(this.playerName || '').toLowerCase().trim();
+        return current === me;
     },
 
     generateRoomCode() {
@@ -1334,11 +1336,20 @@ export const Network = {
         if (incoming.pendingAbilityLearning !== undefined) State.pendingAbilityLearning = incoming.pendingAbilityLearning;
         if (incoming.quickplayEnabled !== undefined) State.quickplayEnabled = incoming.quickplayEnabled;
         if (incoming.sessionPhase !== undefined) State.sessionPhase = incoming.sessionPhase;
+        if (incoming.isProcessing !== undefined) {
+            State.isProcessing = incoming.isProcessing;
+            UI.showLoader(State.isProcessing);
+        }
+        if (incoming.chatHistory !== undefined) State.chatHistory = incoming.chatHistory;
         if (incoming.afkSince !== undefined) State.afkSince = incoming.afkSince || {};
         if (incoming.playerProfiles !== undefined) State.playerProfiles = { ...(State.playerProfiles || {}), ...(incoming.playerProfiles || {}) };
         if (incoming.playerControlMode !== undefined) State.playerControlMode = { ...(State.playerControlMode || {}), ...(incoming.playerControlMode || {}) };
         if (incoming.chatMessages !== undefined) State.chatMessages = this._mergeCollectionById(State.chatMessages, incoming.chatMessages);
         if (incoming.systemMessages !== undefined) State.systemMessages = this._mergeCollectionById(State.systemMessages, incoming.systemMessages);
+
+        if (incoming.turnOrder !== undefined) this.turnOrder = incoming.turnOrder;
+        if (incoming.currentTurnIndex !== undefined) this.currentTurnIndex = incoming.currentTurnIndex;
+
         if (incoming.transientEvents !== undefined) {
             State.transientEvents = this._mergeCollectionById(State.transientEvents, incoming.transientEvents)
                 .filter(event => (event.expiresAt || 0) > Date.now())
@@ -1748,10 +1759,10 @@ export const Network = {
             : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayerLabel}</b>${isAutoTurn ? ' <i class="fas fa-robot text-[9px]"></i>' : ''} ist am Zug...</span>`)
             + `<div class="text-slate-500 text-[9px] mt-1">${turnOrderHtml}</div>`
             + (autoToggleHtml ? `<div class="flex flex-wrap gap-1 mt-1.5 justify-center">${autoToggleHtml}</div>` : '');
-        playerInput.disabled = !myTurn;
-        sendBtn.disabled = !myTurn;
-        playerInput.placeholder = myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayerLabel}...`;
-        this._setQuickActionsEnabled(myTurn);
+        playerInput.disabled = !myTurn || State.isProcessing;
+        sendBtn.disabled = !myTurn || State.isProcessing;
+        playerInput.placeholder = State.isProcessing ? 'DM antwortet...' : (myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayerLabel}...`);
+        this._setQuickActionsEnabled(myTurn && !State.isProcessing);
     },
 
     _renderCombatRoundPanel(el) {

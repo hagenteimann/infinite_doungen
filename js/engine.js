@@ -654,7 +654,10 @@ export const Engine = {
 
     submitPlayerAction: function (actionOverride) {
         if (State.pendingRolls.length > 0) return;
-        if (Network.isConnected() && !Network.isMyTurn()) return;
+        if (Network.isConnected() && !Network.isMyTurn()) {
+            UI.addChatLog('System', 'Es ist nicht dein Zug! Warte, bis du an der Reihe bist.', { tone: 'neutral' });
+            return;
+        }
 
         if (State.combatEnded) {
             State.defeatedEnemies = [];
@@ -709,13 +712,23 @@ export const Engine = {
 
         if (Network.isClient() && Network.isConnected()) {
             const createdAt = Date.now();
-            const messageId = 'msg-' + createdAt + '-' + Math.random().toString(36).slice(2, 7);
+            const messageId = Utils.generateId('msg');
             UI.addChatLog({ id: messageId, sender: actingName, text: action, senderType: 'player', createdAt, relatedPlayer: Network.playerName || State.localPlayerName || '', relatedCharacter: actingName }, null, { persist: true });
             Network.sendPlayerAction(action, actingName, messageId, createdAt);
             State.isProcessing = true;
             UI.showLoader(true, 'DM antwortet...');
+            // Safety timeout for clients
+            setTimeout(() => {
+                if (State.isProcessing) {
+                    State.isProcessing = false;
+                    UI.showLoader(false);
+                    UI.updateAll();
+                }
+            }, 60000);
             return;
         }
+
+        if (State.isProcessing) return;
 
         UI.addChatLog(actingName, action);
 
