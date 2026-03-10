@@ -2,6 +2,7 @@ import { State } from './state.js';
 import { EQUIPMENT_SETS, TALENT_TREES } from './prompts.js';
 import { Sound } from './sound.js';
 import { UI } from './ui.js';
+import { Utils } from './utils.js';
 import {
     BASE_HP, HP_PER_LEVEL, CON_HP_MULTIPLIER, CON_BASELINE,
     XP_BASE, XP_SCALING_EXPONENT, STAT_POINTS_PER_LEVEL,
@@ -65,22 +66,14 @@ function showLevelUpAnimation(char) {
 }
 
 export const PartyManager = {
+    getEquipmentDerivedData: function (char) {
+        return Utils.getEquipmentDerivedData(char?.equipment || []);
+    },
     getEffectiveAttributes: function (char) {
         let effAttrs = { ...char.attributes };
-        (char.equipment || []).forEach(item => {
-            const regex1 = /(STR|DEX|INT|CON)\s*([+-]\s*\d+)/gi;
-            let match;
-            while ((match = regex1.exec(item)) !== null) {
-                const stat = match[1].toUpperCase();
-                const val = parseInt(match[2].replace(/\s+/g, ''));
-                if (effAttrs[stat] !== undefined) effAttrs[stat] += val;
-            }
-            const regex2 = /([+-]\s*\d+)\s*(STR|DEX|INT|CON)/gi;
-            while ((match = regex2.exec(item)) !== null) {
-                const stat = match[2].toUpperCase();
-                const val = parseInt(match[1].replace(/\s+/g, ''));
-                if (effAttrs[stat] !== undefined) effAttrs[stat] += val;
-            }
+        const derived = this.getEquipmentDerivedData(char);
+        Object.entries(derived.statBonuses).forEach(([stat, bonus]) => {
+            if (effAttrs[stat] !== undefined) effAttrs[stat] += bonus;
         });
 
         if (char.equipment && char.equipment.length > 0) {
@@ -97,18 +90,49 @@ export const PartyManager = {
         return effAttrs;
     },
     getItemSpecialEffects: function (char) {
-        const effects = [];
-        (char.equipment || []).forEach(item => {
-            const parenRegex = /\(([^)]+)\)/g;
-            let m;
-            while ((m = parenRegex.exec(item)) !== null) {
-                const spec = m[1].trim();
-                if (!spec.match(/^(?:STR|DEX|INT|CON)\s*[+-]\s*\d+$/) && !spec.match(/^[+-]\s*\d+\s*(?:STR|DEX|INT|CON)$/i)) {
-                    effects.push(spec);
-                }
-            }
-        });
-        return effects;
+        return this.getEquipmentDerivedData(char).itemAbilities.map(item => item.effect);
+    },
+    getAbilityEntries: function (char) {
+        if (!char) return [];
+        const entries = [];
+        const seen = new Set();
+        const pushEntry = (entry) => {
+            if (!entry?.name) return;
+            const dedupeKey = [entry.type || 'ability', entry.source || '', entry.name].join('::');
+            if (seen.has(dedupeKey)) return;
+            seen.add(dedupeKey);
+            entries.push(entry);
+        };
+
+        const coreAbilities = [];
+        if (Array.isArray(char.abilities)) coreAbilities.push(...char.abilities);
+        if (char.ability) coreAbilities.push(char.ability);
+        coreAbilities.forEach(name => pushEntry({
+            name,
+            source: '',
+            type: 'ability',
+            cooldownKey: Utils.getAbilityCooldownKey(char.id, name),
+            promptLabel: name,
+        }));
+
+        this.getEquipmentDerivedData(char).itemAbilities.forEach(item => pushEntry({
+            name: item.effect,
+            source: item.source || '',
+            type: 'item',
+            cooldownKey: Utils.getAbilityCooldownKey(char.id, item.effect, item.source || 'item'),
+            promptLabel: item.effect,
+        }));
+
+        return entries;
+    },
+    findAbilityEntry: function (char, abilityName, sourceName = '') {
+        const targetName = String(abilityName || '').trim().toLowerCase();
+        const targetSource = String(sourceName || '').trim().toLowerCase();
+        return this.getAbilityEntries(char).find(entry => {
+            if (String(entry.name || '').trim().toLowerCase() !== targetName) return false;
+            if (targetSource) return String(entry.source || '').trim().toLowerCase() === targetSource;
+            return true;
+        }) || null;
     },
     getEffectiveMaxHp: function (char) {
         const effAttrs = this.getEffectiveAttributes(char);

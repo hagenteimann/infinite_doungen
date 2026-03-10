@@ -1,6 +1,10 @@
 import { repairDisplayText, repairStoredText } from './sanitize.js';
 export const Utils = {
     GOLD_ITEM_NAME: 'Goldmuenze',
+    ITEM_STAT_REGEXES: [
+        /\b(STR|DEX|INT|CON)\s*([+-]\s*\d+)\b/gi,
+        /([+-]\s*\d+)\s*(STR|DEX|INT|CON)\b/gi,
+    ],
     generateId: function () {
         return (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2);
     },
@@ -64,6 +68,93 @@ export const Utils = {
             if (share > 0) this.addGoldToInventory(char.inventory, share);
             return { hero: char, amount: share };
         }).filter(entry => entry.amount > 0);
+    },
+    _normalizeItemText: function (value) {
+        return repairDisplayText(String(value || '')).trim();
+    },
+    _isStatEffectText: function (text) {
+        const normalized = this._normalizeItemText(text);
+        if (!normalized) return false;
+        return /^(?:(?:STR|DEX|INT|CON)\s*[+-]\s*\d+|[+-]\s*\d+\s*(?:STR|DEX|INT|CON))$/i.test(normalized);
+    },
+    getItemEffectParts: function (itemName) {
+        const original = this._normalizeItemText(itemName);
+        const effects = [];
+        const baseName = original.replace(/\(([^)]+)\)/g, (_, content) => {
+            const cleaned = this._normalizeItemText(content);
+            if (cleaned) effects.push(cleaned);
+            return ' ';
+        }).replace(/\s+/g, ' ').trim();
+        return {
+            raw: original,
+            baseName: baseName || original,
+            effects,
+        };
+    },
+    getEquipmentDerivedData: function (equipment) {
+        const derived = {
+            statBonuses: { STR: 0, DEX: 0, INT: 0, CON: 0 },
+            itemAbilities: [],
+            displayItems: [],
+        };
+
+        (Array.isArray(equipment) ? equipment : []).forEach(itemName => {
+            const parts = this.getItemEffectParts(itemName);
+            const visibleStats = [];
+            const hiddenEffects = [];
+
+            parts.effects.forEach(effect => {
+                if (this._isStatEffectText(effect)) {
+                    visibleStats.push(effect);
+                    this.ITEM_STAT_REGEXES.forEach(regex => {
+                        regex.lastIndex = 0;
+                        let match;
+                        while ((match = regex.exec(effect)) !== null) {
+                            const stat = (match[1] && /^(STR|DEX|INT|CON)$/i.test(match[1]) ? match[1] : match[2]).toUpperCase();
+                            const rawValue = match[2] && /^([+-]|\s)/.test(match[2]) ? match[2] : match[1];
+                            const value = parseInt(String(rawValue || '').replace(/\s+/g, ''), 10);
+                            if (!Number.isNaN(value) && derived.statBonuses[stat] !== undefined) {
+                                derived.statBonuses[stat] += value;
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                hiddenEffects.push(effect);
+                derived.itemAbilities.push({
+                    source: parts.baseName,
+                    effect,
+                    fullItem: parts.raw,
+                });
+            });
+
+            const displayName = visibleStats.length > 0
+                ? `${parts.baseName} (${visibleStats.join(', ')})`
+                : parts.baseName;
+
+            derived.displayItems.push({
+                raw: parts.raw,
+                displayName,
+                tooltip: hiddenEffects.join(' | '),
+                hasEffects: hiddenEffects.length > 0,
+                visibleStats,
+                hiddenEffects,
+            });
+        });
+
+        return derived;
+    },
+    normalizeAbilityKeyPart: function (value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '') || 'core';
+    },
+    getAbilityCooldownKey: function (charId, abilityName, sourceName = '') {
+        return [String(charId || 'unknown'), this.normalizeAbilityKeyPart(sourceName || 'core'), this.normalizeAbilityKeyPart(abilityName)].join('::');
     },
     sanitizeCharacter: function (c) {
         c = repairStoredText(c || {});

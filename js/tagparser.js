@@ -1,4 +1,4 @@
-﻿import { State, dispatch } from './state.js';
+import { State, dispatch } from './state.js';
 import { Sound } from './sound.js';
 import { DOM, UI } from './ui.js';
 import { Utils } from './utils.js';
@@ -35,7 +35,7 @@ export const TagParser = {
         if (type === 'GEGNER_SCHADEN') {
             let e = Utils.findTarget(State.activeEnemies, evt.target);
             if (e) CombatManager.damage(e, evt.amount || 0);
-            else UI.addChatLog("System", `⚠️ Mechanik verworfen: Feind '${evt.target}' nicht gefunden.`);
+            else UI.addChatLog("System", `?? Mechanik verworfen: Feind '${evt.target}' nicht gefunden.`);
         }
         else if (type === 'SCHADEN') {
             let c = Utils.findTarget(State.party, evt.target);
@@ -43,13 +43,13 @@ export const TagParser = {
             else {
                 let e = Utils.findTarget(State.activeEnemies, evt.target);
                 if (e) CombatManager.damage(e, evt.amount || 0);
-                else UI.addChatLog("System", `⚠️ Mechanik verworfen: Ziel '${evt.target}' für Schaden nicht gefunden.`);
+                else UI.addChatLog("System", `?? Mechanik verworfen: Ziel '${evt.target}' f�r Schaden nicht gefunden.`);
             }
         }
         else if (type === 'HEILUNG') {
             let c = Utils.findTarget(State.party, evt.target);
             if (c) PartyManager.heal(c, evt.amount || 0);
-            else UI.addChatLog("System", `⚠️ Mechanik verworfen: Ziel '${evt.target}' für Heilung nicht gefunden.`);
+            else UI.addChatLog("System", `?? Mechanik verworfen: Ziel '${evt.target}' f�r Heilung nicht gefunden.`);
         }
         else if (type === 'GEGNER') {
             if (evt.hp > 0) {
@@ -64,7 +64,7 @@ export const TagParser = {
             let e = Utils.findTarget(State.activeEnemies, evt.name);
             if (e) {
                 CombatManager.damage(e, e.hp); // For now just kill them to remove from combat
-                UI.addChatLog("System", `🏃 **${e.name}** ist geflohen!`);
+                UI.addChatLog("System", `?? **${e.name}** ist geflohen!`);
             }
         }
         else if (type === 'BEUTE') {
@@ -105,7 +105,7 @@ export const TagParser = {
             }
         }
         else if (type === 'NEUER_NPC') {
-            Engine.spawnNPCFromTag(evt.name || 'Unbekannt', evt.class || 'Bürger', evt.appearance || 'Begleiter');
+            Engine.spawnNPCFromTag(evt.name || 'Unbekannt', evt.class || 'B�rger', evt.appearance || 'Begleiter');
         }
         else if (type === 'TAUSCH') {
             let c = Utils.findTarget(State.party, evt.char);
@@ -113,12 +113,12 @@ export const TagParser = {
                 PartyManager.consumeItem(c, evt.given);
                 const receivedItem = evt.received.trim().charAt(0).toUpperCase() + evt.received.trim().slice(1);
                 c.inventory.push(receivedItem);
-                UI.addChatLog("System", `🤝 **${c.name}** tauschte **${evt.given}** gegen **${receivedItem}**.`);
+                UI.addChatLog("System", `?? **${c.name}** tauschte **${evt.given}** gegen **${receivedItem}**.`);
             }
         }
         else if (type === 'GOLD') {
             if (evt.amount > 0) {
-                dispatch({ type: 'ADD_LOOT', items: [`${evt.amount} Goldmünzen`] });
+                dispatch({ type: 'ADD_LOOT', items: [`${evt.amount} Goldm�nzen`] });
             }
         }
         else if (type === 'COOLDOWN') {
@@ -129,9 +129,9 @@ export const TagParser = {
         }
         else if (type === 'FLUCHT_ERFOLG') {
             if (State.isBossFight) {
-                UI.addChatLog("System", `🚫 **Flucht unmöglich!** Der Boss blockiert jeden Fluchtversuch!`);
+                UI.addChatLog("System", `?? **Flucht unm�glich!** Der Boss blockiert jeden Fluchtversuch!`);
             } else {
-                UI.addChatLog("System", `🌀 **Flucht erfolgreich!** Die Gruppe entkommt dem Kampf!`);
+                UI.addChatLog("System", `?? **Flucht erfolgreich!** Die Gruppe entkommt dem Kampf!`);
                 State.activeEnemies = [];
                 State.defeatedEnemies = [];
                 State.combatEnded = true;
@@ -146,9 +146,9 @@ export const TagParser = {
                 if (roll >= dc) {
                     c.hp = 1;
                     Sound.play('heal');
-                    UI.addChatLog("System", `💫 **TODESRETTUNG – ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} → ✅ **Überlebt!** Stabilisiert mit 1 HP.`);
+                    UI.addChatLog("System", `?? **TODESRETTUNG � ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} ? ? **�berlebt!** Stabilisiert mit 1 HP.`);
                 } else {
-                    UI.addChatLog("System", `💀 **TODESRETTUNG – ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} → ❌ **Fehlgeschlagen!** Letzter Versuch zur Rettung!`);
+                    UI.addChatLog("System", `?? **TODESRETTUNG � ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} ? ? **Fehlgeschlagen!** Letzter Versuch zur Rettung!`);
                 }
             }
         }
@@ -181,7 +181,7 @@ export const TagParser = {
         const fatigueDcMod = State.fatigue >= 10 ? Math.floor((State.fatigue - 7) / 3) : 0;
         const finalDc = dc + weatherDcMod + fatigueDcMod;
         const dcNote = (weatherDcMod > 0 || fatigueDcMod > 0)
-            ? ` [DC ${dc}${weatherDcMod > 0 ? ` +${weatherDcMod} ${State.weather.name}` : ''}${fatigueDcMod > 0 ? ` +${fatigueDcMod} Erschöpfung` : ''}]`
+            ? ` [DC ${dc}${weatherDcMod > 0 ? ` +${weatherDcMod} ${State.weather.name}` : ''}${fatigueDcMod > 0 ? ` +${fatigueDcMod} Ersch�pfung` : ''}]`
             : '';
             
         State.pendingRolls.push({ 
@@ -201,4 +201,5 @@ export const TagParser = {
         UI.updateActionBox();
     }
 };
+
 

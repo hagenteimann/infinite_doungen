@@ -87,7 +87,7 @@ export function initEvents() {
             'remove-char': () => Engine.removeCharacter(actionEl.dataset.charId),
             'export-hero': () => Engine.exportHero(actionEl.dataset.charId),
             'learn-talent': () => Engine.learnTalent(actionEl.dataset.charId, actionEl.dataset.talent),
-            'use-ability': () => Engine.useAbility(actionEl.dataset.charId, actionEl.dataset.ability, actionEl.dataset.itemAbility === 'true'),
+            'use-ability': () => Engine.useAbility(actionEl.dataset.charId, actionEl.dataset.ability, actionEl.dataset.itemAbility === 'true', actionEl.dataset.abilitySource || ''),
             'roll-specific': () => Engine.rollSpecific(actionEl.dataset.rollId),
             'roll-all': () => Engine.rollAllPending(),
             'submit-rolls': () => Engine.submitPendingRolls(),

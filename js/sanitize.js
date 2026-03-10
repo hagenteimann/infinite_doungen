@@ -23,7 +23,7 @@ const TRUSTED = {
     'data-count', 'data-idx', 'data-talent', 'data-ability',
     'data-close-modal', 'data-route', 'data-merchant-id',
     'data-safe-id', 'data-merchant-name', 'data-entity-type', 'data-entity-id',
-    'data-name', 'data-roll-id', 'data-item-ability', 'data-text', 'data-preset',
+    'data-name', 'data-roll-id', 'data-item-ability', 'data-ability-source', 'data-text', 'data-preset',
     'data-tab', 'data-stat',
     'value', 'id', 'src', 'min', 'max', 'type', 'disabled',
     'selected', 'placeholder', 'aria-hidden',

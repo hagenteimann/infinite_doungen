@@ -1,4 +1,4 @@
-import { State } from './state.js';
+﻿import { State } from './state.js';
 import { PRESETS, TALENT_TREES, EQUIPMENT_SETS } from './prompts.js';
 import { PartyManager } from './party.js';
 import { Sound } from './sound.js';
@@ -904,9 +904,9 @@ export const UI = {
 
         let sessionChip = '';
         if (isConnected && isHost) {
-            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-crown"></i> Host &nbsp;·&nbsp; Code: <span class="pg2-room-code">${roomCode}</span></div>`;
+            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-crown"></i> Host &nbsp;Â·&nbsp; Code: <span class="pg2-room-code">${roomCode}</span></div>`;
         } else if (isConnected) {
-            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-link"></i> Verbunden &nbsp;·&nbsp; Raum: <span class="pg2-room-code">${roomCode}</span></div>`;
+            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-link"></i> Verbunden &nbsp;Â·&nbsp; Raum: <span class="pg2-room-code">${roomCode}</span></div>`;
         } else {
             sessionChip = `<div class="pg2-room-chip pg2-room-chip-solo"><i class="fas fa-user"></i> Solo-Sitzung</div>`;
         }
@@ -928,7 +928,7 @@ export const UI = {
             </div>` : `
             <div class="pg2-hero-empty">
                 <i class="fas fa-user-plus pg2-hero-empty-icon"></i>
-                <p>Kein Held gewählt</p>
+                <p>Kein Held gewÃ¤hlt</p>
                 <p class="pg2-hero-empty-hint">Lade einen Save oder erstelle einen neuen Helden.</p>
             </div>`;
 
@@ -1071,47 +1071,33 @@ export const UI = {
         DOM.detailsContent.innerHTML = sanitize(repairHtmlText(`
             ${detailPortraitHtml}
             ${(() => {
-                let abilities = [];
-                if (c.abilities) abilities = [...c.abilities];
-                if (c.ability && !abilities.includes(c.ability)) abilities.push(c.ability);
-                if (abilities.length === 0) return '<div class="mb-2 text-[9px] text-slate-500 italic">Keine Faehigkeiten erlernt</div>'; 
-                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-amber-700/50 pb-1 mb-2 text-amber-400 uppercase tracking-wider"><i class="fas fa-fire mr-1"></i>Faehigkeiten</h4>' + abilities.map(ab => {
-                    let cdKey = `${c.id}_${ab}`;
-                    let cdRemaining = State.abilityCooldowns[cdKey] || 0;
-                    let onCooldown = cdRemaining > 0;
-                    let safeAb = ab.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                    let cdBarHtml = '';
-                    if (onCooldown) {
-                        cdBarHtml = `<div class="mt-1 flex items-center gap-1.5"><div class="flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700/50"><div class="bg-gradient-to-r from-orange-600 to-amber-500 h-full rounded-full transition-all" style="width: ${Math.min(100, cdRemaining * 20)}%"></div></div><span class="text-[8px] text-orange-400 font-mono font-bold whitespace-nowrap">${cdRemaining} Rdn</span></div>`;
-                    }
-                    return `<div ${onCooldown ? '' : `data-action="use-ability" data-char-id="${c.id}" data-ability="${safeAb}"`} class="mb-2 p-1.5 ${onCooldown ? 'bg-slate-800/60 border-slate-600/50 opacity-60 cursor-not-allowed' : 'bg-amber-900/40 hover:bg-amber-800/80 border-amber-700/50 hover:border-amber-500 cursor-pointer'} border rounded text-center text-[9px] shadow-sm transition-all ${onCooldown ? '' : 'shadow-[0_0_10px_rgba(245,158,11,0.2)] hover:shadow-[0_0_15px_rgba(245,158,11,0.4)]'} group"><span class="${onCooldown ? 'text-slate-500' : 'text-amber-500'} font-bold block mb-0.5 ${onCooldown ? '' : 'group-hover:animate-pulse'}">${onCooldown ? '<i class="fas fa-hourglass-half"></i> Abklingzeit' : '<i class="fas fa-meteor"></i> Faehigkeit (Klicken)'}:</span>${ab}${cdBarHtml}</div>`;
+                const abilities = PartyManager.getAbilityEntries(c).filter(entry => entry.type === 'ability');
+                if (abilities.length === 0) return '<div class="mb-2 text-[9px] text-slate-500 italic">Keine Faehigkeiten erlernt</div>';
+                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-amber-700/50 pb-1 mb-2 text-amber-400 uppercase tracking-wider"><i class="fas fa-fire mr-1"></i>Faehigkeiten</h4>' + abilities.map(entry => {
+                    const cdRemaining = State.abilityCooldowns[entry.cooldownKey] || 0;
+                    const onCooldown = cdRemaining > 0;
+                    const safeAb = entry.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const cdBarHtml = onCooldown
+                        ? `<div class="mt-1 flex items-center gap-1.5"><div class="flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700/50"><div class="bg-gradient-to-r from-orange-600 to-amber-500 h-full rounded-full transition-all" style="width: ${Math.min(100, cdRemaining * 20)}%"></div></div><span class="text-[8px] text-orange-400 font-mono font-bold whitespace-nowrap">${cdRemaining} Rdn</span></div>`
+                        : '';
+                    return `<div ${onCooldown ? '' : `data-action="use-ability" data-char-id="${c.id}" data-ability="${safeAb}"`} class="mb-2 p-1.5 ${onCooldown ? 'bg-slate-800/60 border-slate-600/50 opacity-60 cursor-not-allowed' : 'bg-amber-900/40 hover:bg-amber-800/80 border-amber-700/50 hover:border-amber-500 cursor-pointer'} border rounded text-center text-[9px] shadow-sm transition-all ${onCooldown ? '' : 'shadow-[0_0_10px_rgba(245,158,11,0.2)] hover:shadow-[0_0_15px_rgba(245,158,11,0.4)]'} group"><span class="${onCooldown ? 'text-slate-500' : 'text-amber-500'} font-bold block mb-0.5 ${onCooldown ? '' : 'group-hover:animate-pulse'}">${onCooldown ? '<i class="fas fa-hourglass-half"></i> Abklingzeit' : '<i class="fas fa-meteor"></i> Faehigkeit (Klicken)'}:</span>${entry.name}${cdBarHtml}</div>`;
                 }).join('') + '</div>';
             })()}
             ${(() => {
-                // Feature 1: Item-Fähigkeiten aus ausgerüsteten Items extrahieren
-                let itemAbilities = [];
-                (c.equipment || []).forEach(item => {
-                    let effects = [];
-                    item.replace(/\s*\((.*?)\)/g, (match, p1) => {
-                        effects.push(p1);
-                        return '';
-                    });
-                    effects.forEach(e => {
-                        // Nur Nicht-Stat-Effekte als Fähigkeiten zählen
-                        if (!e.match(/^[+-]\d+\s*(STR|DEX|INT|CON)|(STR|DEX|INT|CON)\s*[+-]\d+$/i)) {
-                            itemAbilities.push({ effect: e, source: item.replace(/\s*\(.*?\)/g, '').trim() });
-                        }
-                    });
-                });
+                const itemAbilities = PartyManager.getAbilityEntries(c).filter(entry => entry.type === 'item');
                 if (itemAbilities.length === 0) return '';
-                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-teal-700/50 pb-1 mb-2 text-teal-400 uppercase tracking-wider"><i class="fas fa-shield-alt mr-1"></i>Item-Faehigkeiten</h4>' + itemAbilities.map(ia => {
-                    let safeEffect = ia.effect.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                    return `<div data-action="use-ability" data-char-id="${c.id}" data-ability="${safeEffect}" data-item-ability="true" class="mb-2 p-1.5 bg-teal-900/30 hover:bg-teal-800/50 border border-teal-700/40 hover:border-teal-500 rounded text-center text-[9px] cursor-pointer shadow-sm transition-all shadow-[0_0_10px_rgba(20,184,166,0.15)] hover:shadow-[0_0_15px_rgba(20,184,166,0.3)] group"><span class="text-teal-400 font-bold block mb-0.5 group-hover:animate-pulse"><i class="fas fa-gem"></i> ${ia.source}:</span>${ia.effect}</div>`;
+                return '<div class="mb-1"><h4 class="text-[9px] font-bold border-b border-teal-700/50 pb-1 mb-2 text-teal-400 uppercase tracking-wider"><i class="fas fa-shield-alt mr-1"></i>Item-Faehigkeiten</h4>' + itemAbilities.map(entry => {
+                    const safeEffect = entry.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const safeSource = String(entry.source || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const cdRemaining = State.abilityCooldowns[entry.cooldownKey] || 0;
+                    const onCooldown = cdRemaining > 0;
+                    const cdBarHtml = onCooldown
+                        ? `<div class="mt-1 flex items-center gap-1.5"><div class="flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700/50"><div class="bg-gradient-to-r from-orange-600 to-amber-500 h-full rounded-full transition-all" style="width: ${Math.min(100, cdRemaining * 20)}%"></div></div><span class="text-[8px] text-orange-400 font-mono font-bold whitespace-nowrap">${cdRemaining} Rdn</span></div>`
+                        : '';
+                    return `<div ${onCooldown ? '' : `data-action="use-ability" data-char-id="${c.id}" data-ability="${safeEffect}" data-item-ability="true" data-ability-source="${safeSource}"`} class="mb-2 p-1.5 ${onCooldown ? 'bg-slate-800/60 border-slate-600/50 opacity-60 cursor-not-allowed' : 'bg-teal-900/30 hover:bg-teal-800/50 border-teal-700/40 hover:border-teal-500 cursor-pointer'} border rounded text-center text-[9px] shadow-sm transition-all ${onCooldown ? '' : 'shadow-[0_0_10px_rgba(20,184,166,0.15)] hover:shadow-[0_0_15px_rgba(20,184,166,0.3)]'} group"><span class="${onCooldown ? 'text-slate-500' : 'text-teal-400'} font-bold block mb-0.5 ${onCooldown ? '' : 'group-hover:animate-pulse'}"><i class="fas fa-gem"></i> ${entry.source || 'Item'}:</span>${entry.name}${cdBarHtml}</div>`;
                 }).join('') + '</div>';
             })()}
-            
             ${(c.talents && c.talents.length > 0) ? `<div class="mb-3"><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-emerald-400 uppercase">Spezialisierung</h4><div class="flex flex-wrap gap-1">${c.talents.map(t => `<span class="bg-emerald-900/30 border border-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded text-[10px]"><i class="fas fa-leaf mr-1 opacity-70"></i>${t}</span>`).join('')}</div></div>` : ''}
-            
             ${(c.pendingTalentPoints > 0 && TALENT_TREES[c.class]) ? `<div class="mb-3 p-2 border border-emerald-500/50 rounded bg-emerald-950/30 shadow-inner"><div class="text-[10px] text-emerald-400 font-bold mb-2 uppercase tracking-wider"><i class="fas fa-star animate-pulse mr-1"></i> Talent waehlbar!</div><div class="flex gap-1.5">` +
                 Object.keys(TALENT_TREES[c.class]).map(lvlReq => {
                     if (c.level >= parseInt(lvlReq) && TALENT_TREES[c.class][lvlReq].some(t => !c.talents.includes(t))) {
@@ -1256,7 +1242,7 @@ export const UI = {
                 </div>
                 <div class="hero-detail-header-meta">
                     <h3 class="cinzel text-red-300 text-sm tracking-wide">${enemy.name}</h3>
-                    <p class="text-[10px] text-slate-200/90">Monster • ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
+                    <p class="text-[10px] text-slate-200/90">Monster â€¢ ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
                     <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-red-700 to-red-400 h-full" style="width: ${Math.max(0, Math.min(100, (enemy.hp / enemy.maxHp) * 100))}%"></div></div>
                     <p class="text-[9px] text-slate-300/80 mt-1">${Math.max(0, enemy.hp)}/${enemy.maxHp} HP</p>
                 </div>
