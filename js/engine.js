@@ -319,13 +319,24 @@ export const Engine = {
             return false;
         }
 
-        UI.addChatLog('System', result.message);
+        const isLootAction = action === 'ASSIGN_LOOT' || action === 'COLLECT_ALL_LOOT';
+        if (Network.isHost() && Network.isConnected()) {
+            if (isLootAction) {
+                Network.broadcastChat('Beute', result.message, { senderType: 'loot' });
+            } else {
+                UI.addChatLog('System', result.message);
+                Network.broadcastSystemChat('System', result.message);
+            }
+            Network.broadcastState();
+        } else {
+            if (isLootAction) {
+                UI.addChatLog('Beute', result.message, { senderType: 'loot' });
+            } else {
+                UI.addChatLog('System', result.message);
+            }
+        }
         UI.updateAll();
         if (showDetailsId) UI.showDetails(showDetailsId);
-        if (Network.isHost() && Network.isConnected()) {
-            Network.broadcastSystemChat('System', result.message);
-            Network.broadcastState();
-        }
         return true;
     },
 
@@ -954,7 +965,20 @@ export const Engine = {
 
         State.pendingRolls = [];
         UI.updateActionBox();
-        UI.addChatLog('🎲 System', resText);
+
+        // Show individual roll results as character speech bubbles
+        rollsCopy.forEach(r => {
+            if (!r.rolled) return;
+            const successStr = r.dc > 0 ? (r.result >= r.dc ? ' ✅ Erfolg' : ' ❌ Fehlschlag') : '';
+            const modStr = r.mod !== 0 ? ` + ${r.mod}` : '';
+            const statLabel = r.stat || r.diceType || 'W20';
+            const rollText = `🎲 **${statLabel}-Probe** _(${r.desc})_: ${r.rawRoll}${modStr} = **${r.result}**${r.dc > 0 ? ` _(SG ${r.dc})_${successStr}` : ''}`;
+            if (Network.isHost() && Network.isConnected()) {
+                Network.broadcastChat(r.name, rollText);
+            } else {
+                UI.addChatLog(r.name, rollText);
+            }
+        });
         if (Network.isConnected()) {
             const allPlayers = new Set(rollsCopy.map(r => {
                 const c = State.party.find(p => p.name === r.name);

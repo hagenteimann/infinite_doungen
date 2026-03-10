@@ -33,6 +33,10 @@ vi.mock('../js/sanitize.js', () => ({
     sanitize: vi.fn(h => h),
     sanitizeStrict: vi.fn(h => h),
 }));
+vi.mock('../js/features.js', () => ({
+    Weather: { apply: vi.fn() },
+    WEATHER_TYPES: [],
+}));
 
 const { Network } = await import('../js/network.js');
 const { UI } = await import('../js/ui.js');
@@ -603,10 +607,8 @@ describe('skipPlayer', () => {
         Network.combatActions = {};
         Network.skipPlayer('Player1');
         expect(Network.combatActions['Player1'].action).toContain('uebersprungen');
-        expect(UI.addChatLog).toHaveBeenCalledWith(
-            'System',
-            expect.stringContaining('Player1')
-        );
+        const sysMsg = (State.systemMessages || []).find(m => m.text && m.text.includes('Player1'));
+        expect(sysMsg).toBeDefined();
     });
 });
 

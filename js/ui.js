@@ -839,7 +839,7 @@ export const UI = {
         const incoming = typeof s === 'object' && s !== null ? s : null;
         const sender = repairDisplayText(incoming ? (incoming.sender || 'Unbekannt') : (s || ''));
         const textValue = repairDisplayText(incoming ? (incoming.text || '') : (t || ''));
-        const entryType = incoming?.senderType || (sender === 'DM' || sender.includes('Orakel') || sender.includes('Schicksal') ? 'dm' : ((sender.includes('System') || sender.includes('Wetter')) ? 'system' : 'player'));
+        const entryType = incoming?.senderType || options.senderType || (sender === 'DM' || sender.includes('Orakel') || sender.includes('Schicksal') ? 'dm' : ((sender.includes('System') || sender.includes('Wetter')) ? 'system' : 'player'));
         const entry = {
             id: incoming?.id || options.id || Utils.generateId(entryType === 'system' ? 'sys' : 'msg'),
             sender,
@@ -873,6 +873,8 @@ export const UI = {
         if (entry.senderType === 'dm') {
             const ttsBtn = '<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>';
             row.innerHTML = sanitize('<div class="dm-message-card chat-bubble chat-bubble-dm"><div class="chat-meta-row"><span class="chat-sender chat-sender-dm">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span>' + ttsBtn + '</div><div class="tts-text dm-copy text-sm md:text-base leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, true) + '</div></div>');
+        } else if (entry.senderType === 'loot') {
+            row.innerHTML = sanitize('<div class="chat-bubble chat-bubble-loot" style="border:1px solid rgba(234,179,8,0.5);background:rgba(120,80,0,0.18);border-radius:0.5rem;padding:0.75rem"><div class="chat-meta-row"><span class="chat-sender" style="color:#fbbf24">💰 ' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span></div><div class="tts-text text-sm leading-relaxed" style="color:#fef08a">' + this._formatChatHtml(entry.text, false) + '</div></div>');
         } else {
             const mine = window.App?.Network?.playerName && entry.sender === window.App.Network.playerName ? ' chat-bubble-self' : '';
             row.innerHTML = sanitize('<div class="chat-bubble chat-bubble-player' + mine + '"><div class="chat-meta-row"><span class="chat-sender">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span></div><div class="tts-text text-sm leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, false) + '</div></div>');

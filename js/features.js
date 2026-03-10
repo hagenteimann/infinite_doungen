@@ -1,4 +1,4 @@
-import { State } from './state.js';
+import { State, dispatch } from './state.js';
 import { UI } from './ui.js';
 
 /* ============================================================
@@ -17,9 +17,9 @@ export const WEATHER_TYPES = [
 
 export const Weather = {
 _interval: null,
-apply: function (weatherId) {
+apply: function (weatherId, options = {}) {
     const wt = WEATHER_TYPES.find(w => w.id === weatherId) || WEATHER_TYPES[0];
-    State.weather = { current: wt.id, name: wt.name, icon: wt.icon, dcMod: wt.dcMod };
+    dispatch({ type: 'SET_WEATHER', weather: { current: wt.id, name: wt.name, icon: wt.icon, dcMod: wt.dcMod } });
     document.body.style.background = wt.bodyBg;
 
     // Update HUD badge
@@ -78,7 +78,7 @@ apply: function (weatherId) {
         }
     }
 
-    if (wt.dcMod > 0) {
+    if (!options.skipChat && wt.dcMod > 0) {
         UI.addChatLog('🌦️ Wetter', `Das Wetter hat sich geändert: **${wt.name}** ${wt.icon}\n${wt.descHint}\n⚠️ Alle Proben erhalten **+${wt.dcMod} DC** durch die Witterung.`);
     }
 },

@@ -7,6 +7,7 @@ import { PartyManager } from './party.js';
 import { Utils } from './utils.js';
 import { validateHeroData } from './sanitize.js';
 import { API } from './api.js';
+import { Weather } from './features.js';
 
 const ROOM_PREFIX = 'infdung-';
 const CONNECT_TIMEOUT_MS = 10000;
@@ -581,7 +582,8 @@ export const Network = {
         const msgs = State.chatMessages;
         const lastCreatedAt = msgs && msgs.length > 0 ? (msgs[msgs.length - 1].createdAt || 0) : 0;
         const createdAt = Math.max(Date.now(), lastCreatedAt + 1);
-        this._recordChatEntry({ id: Utils.generateId('msg'), sender, text, senderType: sender === 'DM' ? 'dm' : 'player', isAiControlled: false, createdAt, relatedPlayer: meta.relatedPlayer || '', relatedCharacter: meta.relatedCharacter || '' }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
+        const senderType = meta.senderType || (sender === 'DM' ? 'dm' : 'player');
+        this._recordChatEntry({ id: Utils.generateId('msg'), sender, text, senderType, isAiControlled: false, createdAt, relatedPlayer: meta.relatedPlayer || '', relatedCharacter: meta.relatedCharacter || '' }, sender === 'DM' ? 'DM_MESSAGE' : 'PLAYER_CHAT');
     },
 
     broadcastSystemChat(sender, text) {
@@ -638,7 +640,6 @@ export const Network = {
         const entries = Object.entries(this.combatActions);
         if (entries.length === 0) return;
         const actions = entries.map(([, d]) => `${d.charName}: ${d.action}`).join('\n');
-        UI.addChatLog('System', `**Kampfrunde gestartet!** ${entries.length} Aktionen werden ausgefuehrt...`);
         this.broadcastSystemChat('System', `**Kampfrunde gestartet!** ${entries.length} Aktionen werden ausgefuehrt...`);
         this.combatActions = {};
         this._mySubmittedAction = null;
@@ -652,7 +653,6 @@ export const Network = {
         if (!this.isHost() || this.combatActions[playerName]) return;
         this.combatActions[playerName] = { action: 'wartet ab (uebersprungen)', charName: playerName };
         const skippedLabel = this.getDisplayPlayerName(playerName);
-        UI.addChatLog('System', `**${skippedLabel}** wurde uebersprungen.`);
         this.broadcastSystemChat('System', `**${skippedLabel}** wurde uebersprungen.`);
         this._broadcastCombatStatus();
     },
@@ -742,10 +742,7 @@ export const Network = {
                 if (!char || char.hp <= 0) continue;
                 const action = this._generateAutoAction(char);
                 this.combatActions[playerName] = { action, charName: char.name };
-                this.connections.forEach(c => {
-                    this._sendTo(c, { type: 'PLAYER_CHAT', sender: char.name, text: action });
-                });
-                UI.addChatLog(char.name, action);
+                this.broadcastChat(char.name, action, { relatedPlayer: playerName, relatedCharacter: char.name });
                 submitted = true;
             }
             if (submitted) { this._broadcastCombatStatus(); this._queueCombatExecution(); }
@@ -1205,12 +1202,16 @@ export const Network = {
             case 'ITEM_ACTION': {
                 const result = this._applyInventoryAction(msg.action, msg.payload || {}, msg.playerName);
                 if (result.ok) {
-                    this._recordSystemEntry({ id: Utils.generateId('sys'), sender: 'System', text: result.message, tone: 'neutral', createdAt: Date.now() });
                     if (msg.action === 'ASSIGN_LOOT' || msg.action === 'COLLECT_ALL_LOOT') {
+                        const msgs = State.chatMessages;
+                        const lastCreatedAt = msgs && msgs.length > 0 ? (msgs[msgs.length - 1].createdAt || 0) : 0;
+                        this._recordChatEntry({ id: Utils.generateId('msg'), sender: 'Beute', text: result.message, senderType: 'loot', isAiControlled: false, createdAt: Math.max(Date.now(), lastCreatedAt + 1), relatedPlayer: '', relatedCharacter: '' }, 'PLAYER_CHAT');
                         const char = State.party.find(p => p.id === (msg.payload || {}).charId);
                         if (char) {
                             this._pushTransientEvent({ type: 'loot_gain', sender: char.name, targetPlayer: char.name, payload: { icon: 'fa-gem', text: msg.action === 'COLLECT_ALL_LOOT' ? char.name + ' sammelt die gesamte Beute ein.' : char.name + ' erhaelt Beute.' }, expiresAt: Date.now() + 7000 });
                         }
+                    } else {
+                        this._recordSystemEntry({ id: Utils.generateId('sys'), sender: 'System', text: result.message, tone: 'neutral', createdAt: Date.now() });
                     }
                     UI.updateAll();
                     this.broadcastState();
@@ -1325,7 +1326,10 @@ export const Network = {
         if (incoming.fatigue !== undefined) State.fatigue = incoming.fatigue;
         if (incoming.abilityCooldowns !== undefined) State.abilityCooldowns = incoming.abilityCooldowns;
         if (incoming.isBossFight !== undefined) State.isBossFight = incoming.isBossFight;
-        if (incoming.weather !== undefined) State.weather = incoming.weather;
+        if (incoming.weather !== undefined) {
+            State.weather = incoming.weather;
+            Weather.apply(incoming.weather.current, { skipChat: true });
+        }
         if (incoming.momentum !== undefined) State.momentum = incoming.momentum;
         if (incoming.pendingRolls !== undefined) {
             const incomingRolls = Array.isArray(incoming.pendingRolls) ? incoming.pendingRolls : [];

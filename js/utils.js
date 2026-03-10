@@ -43,12 +43,18 @@ export const Utils = {
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '');
-        return normalized === 'goldmuenze' || normalized === 'goldmunze' || normalized === 'goldcoin' || normalized === 'gold';
+            .replace(/[^a-z0-9 ]+/g, '')
+            .trim();
+        return /^(\d+\s+)?(goldmunzen?|goldmuenze|goldcoin|gold)$/.test(normalized);
     },
     getGoldAmount: function (inventory) {
         if (!Array.isArray(inventory)) return 0;
-        return inventory.reduce((sum, item) => sum + (this.isGoldItem(item) ? 1 : 0), 0);
+        return inventory.reduce((sum, item) => {
+            if (!this.isGoldItem(item)) return sum;
+            const normalized = String(item || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const match = normalized.match(/^(\d+)/);
+            return sum + (match ? parseInt(match[1], 10) : 1);
+        }, 0);
     },
     getPartyGold: function (party) {
         if (!Array.isArray(party)) return 0;
@@ -56,7 +62,12 @@ export const Utils = {
     },
     addGoldToInventory: function (inventory, amount) {
         if (!Array.isArray(inventory) || !amount || amount < 1) return 0;
-        for (let i = 0; i < amount; i++) inventory.push(this.GOLD_ITEM_NAME);
+        const existing = this.getGoldAmount(inventory);
+        for (let i = inventory.length - 1; i >= 0; i--) {
+            if (this.isGoldItem(inventory[i])) inventory.splice(i, 1);
+        }
+        const total = existing + amount;
+        inventory.push(`${total} Goldmünzen`);
         return amount;
     },
     distributeGold: function (party, amount) {
@@ -208,7 +219,15 @@ export const Utils = {
             let newInv = [];
             c.inventory.forEach(item => {
                 const { amt, name } = this.parseItemQuantity(item);
-                for (let i = 0; i < amt; i++) newInv.push(name);
+                if (amt > 1 && this.isGoldItem(name)) {
+                    const existingGold = this.getGoldAmount(newInv);
+                    for (let j = newInv.length - 1; j >= 0; j--) {
+                        if (this.isGoldItem(newInv[j])) newInv.splice(j, 1);
+                    }
+                    newInv.push(`${existingGold + amt} Goldmünzen`);
+                } else {
+                    for (let i = 0; i < amt; i++) newInv.push(name);
+                }
             });
             c.inventory = newInv;
         } else {
