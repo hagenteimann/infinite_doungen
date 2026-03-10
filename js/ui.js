@@ -1,4 +1,4 @@
-import { State } from './state.js';
+import { State, dispatch } from './state.js';
 import { PRESETS, TALENT_TREES, EQUIPMENT_SETS } from './prompts.js';
 import { PartyManager } from './party.js';
 import { Sound } from './sound.js';
