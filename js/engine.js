@@ -705,7 +705,13 @@ export const Engine = {
         }
 
         if (Network.isInCombat()) {
-            if (!(Network.isClient() && Network.isConnected())) UI.addChatLog(actingName, action);
+            if (!(Network.isClient() && Network.isConnected())) {
+                if (Network.isHost() && Network.isConnected()) {
+                    Network.broadcastChat(actingName, action, { relatedPlayer: Network.playerName || this._getResolvedLocalPlayerName(), relatedCharacter: actingName });
+                } else {
+                    UI.addChatLog(actingName, action);
+                }
+            }
             Network.submitCombatAction(action, actingName);
             return;
         }
@@ -730,7 +736,11 @@ export const Engine = {
 
         if (State.isProcessing) return;
 
-        UI.addChatLog(actingName, action);
+        if (Network.isHost() && Network.isConnected()) {
+            Network.broadcastChat(actingName, action, { relatedPlayer: Network.playerName || this._getResolvedLocalPlayerName(), relatedCharacter: actingName });
+        } else {
+            UI.addChatLog(actingName, action);
+        }
 
         State.fatigue = Math.min(FATIGUE_MAX, State.fatigue + 1);
         UI.updateAll();
@@ -946,9 +956,18 @@ export const Engine = {
         UI.updateActionBox();
         UI.addChatLog('🎲 System', resText);
         if (Network.isConnected()) {
-            const firstChar = rollsCopy[0] ? State.party.find(p => p.name === rollsCopy[0].name) : null;
-            const rollPlayer = firstChar ? Object.entries(Network.playerCharMap).find(([, cid]) => cid === firstChar.id)?.[0] : null;
-            Network._currentActionPlayerName = rollPlayer || Network.playerName || '';
+            const allPlayers = new Set(rollsCopy.map(r => {
+                const c = State.party.find(p => p.name === r.name);
+                return c ? Object.entries(Network.playerCharMap).find(([, cid]) => cid === c.id)?.[0] : null;
+            }).filter(Boolean));
+            
+            if (allPlayers.size > 1) {
+                Network._currentActionPlayerName = 'Gruppe';
+                State.actingChar = 'party';
+            } else {
+                Network._currentActionPlayerName = [...allPlayers][0] || Network.playerName || '';
+                if (rollsCopy.length > 0) State.actingChar = rollsCopy[0].name;
+            }
         }
         this.interactWithAI(`[Wuerfelergebnisse]\n${resText}\nBitte beschreibe basierend darauf die Konsequenzen.`);
     },

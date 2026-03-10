@@ -643,6 +643,8 @@ export const Network = {
         this.combatActions = {};
         this._mySubmittedAction = null;
         this._broadcastCombatStatus();
+        this._currentActionPlayerName = 'Gruppe';
+        State.actingChar = 'party';
         Engine.interactWithAI(`Kampfrunde – Alle Aktionen der Gruppe:\n${actions}\n\nFuehre alle Aktionen gleichzeitig aus. Beschreibe Proben, Ergebnisse, Schaden.`);
     },
 
