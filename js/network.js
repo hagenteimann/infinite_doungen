@@ -38,6 +38,7 @@ export const Network = {
     _unsubscribe: null,
     _connectTimer: null,
     _lastError: '',
+    _currentActionPlayerName: null,
     turnOrder: [],
     currentTurnIndex: 0,
     combatActions: {},
@@ -477,6 +478,11 @@ export const Network = {
         this._setConnState('idle');
         const turnEl = document.getElementById('mp-turn-indicator');
         if (turnEl) turnEl.classList.add('hidden');
+    },
+
+    sendStatUpgrade(charId, stat) {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], { type: 'STAT_UPGRADE', charId, stat });
     },
 
     sendPlayerAction(action, actingChar, messageId = null, createdAt = Date.now()) {
@@ -1121,7 +1127,13 @@ export const Network = {
                 Sound.play('turn');
                 this._recordChatEntry({ id: msg.messageId || this._nextId('msg'), sender: msg.actingChar || name, text: msg.action, senderType: 'player', isAiControlled: this.getPlayerControlMode(name) === 'ai', createdAt: msg.createdAt || Date.now(), relatedPlayer: msg.playerName || name, relatedCharacter: msg.actingChar || '' }, 'PLAYER_CHAT');
                 State.actingChar = msg.actingChar || 'party';
+                this._currentActionPlayerName = msg.playerName || name;
                 Engine.interactWithAI(msg.action);
+                break;
+            }
+            case 'STAT_UPGRADE': {
+                dispatch({ type: 'UPGRADE_STAT', charId: msg.charId, stat: msg.stat });
+                this._markDirty();
                 break;
             }
             case 'COMBAT_ACTION': {

@@ -101,7 +101,11 @@ export const Engine = {
         }, null, { persist: true });
     },
     _getActiveDmContext() {
-        const activePlayer = Network.isConnected() ? (Network.turnOrder?.[Network.currentTurnIndex] || '') : '';
+        // Use the stored action player name (set when a player action arrives) over the turn index,
+        // because currentTurnIndex may already have been advanced before the context is read.
+        const activePlayer = Network.isConnected()
+            ? (Network._currentActionPlayerName || Network.turnOrder?.[Network.currentTurnIndex] || '')
+            : '';
         const actingValue = String(State.actingChar || '').trim();
         const actingName = actingValue && actingValue !== 'party' ? actingValue : '';
         const fallbackPlayer = this._getResolvedLocalPlayerName();
@@ -585,6 +589,7 @@ State.isProcessing = true; UI.showLoader(true);
                     }
                 }
             }
+            Network._currentActionPlayerName = null;
             State.isProcessing = false;
             UI.showLoader(false);
             UI.updateAll();
@@ -697,6 +702,8 @@ State.isProcessing = true; UI.showLoader(true);
         State.fatigue = Math.min(FATIGUE_MAX, State.fatigue + 1);
         UI.updateAll();
 
+        // Track who is acting so _getActiveDmContext() uses the correct player.
+        if (Network.isConnected()) Network._currentActionPlayerName = Network.playerName || this._getResolvedLocalPlayerName();
         this.interactWithAI(action);
     },
 
@@ -1369,7 +1376,14 @@ State.isProcessing = true; UI.showLoader(true);
             UI.hideDetails();
         }
     },
-    upgradeStat: function (cid, key) { const c = State.party.find(p => p.id === cid); if (c && c.statPoints > 0) { c.attributes[key]++; c.statPoints--; UI.showDetails(cid); UI.updateAll(); } },
+    upgradeStat: function (cid, key) {
+        const c = State.party.find(p => p.id === cid);
+        if (!c || c.statPoints <= 0) return;
+        dispatch({ type: 'UPGRADE_STAT', charId: cid, stat: key });
+        if (Network.isClient() && Network.isConnected()) Network.sendStatUpgrade(cid, key);
+        UI.showDetails(cid);
+        UI.updateAll();
+    },
     removeCharacter: function (id) { const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); } },
     exportHero: function (id) { const c = State.party.find(p => p.id === id); if (!c) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(c)], { type: 'application/json' })); a.download = `Hero_${c.name}.json`; document.body.appendChild(a); a.click(); },
     bulkExportHeroes: async function () {

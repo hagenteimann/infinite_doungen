@@ -166,6 +166,14 @@ export function dispatch(action) {
             State.fate = action.value;
             break;
         }
+        case 'UPGRADE_STAT': {
+            const char = State.party.find(c => c.id === action.charId);
+            if (char && char.statPoints > 0) {
+                char.attributes[action.stat]++;
+                char.statPoints--;
+            }
+            break;
+        }
         case 'BULK_UPDATE': {
             Object.assign(State, action.updates);
             break;

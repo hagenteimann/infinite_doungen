@@ -127,6 +127,8 @@ export const initDOM = () => {
         'journal-content', 'stats-content', 'system-content', 'quick-actions-container', 'sound-toggle',
         'music-toggle', 'music-modal', 'music-track-label', 'music-volume-slider', 'music-volume-value', 'music-power-btn',
         'tab-content-party', 'tab-content-dice', 'tab-content-system', 'tab-content-journal', 'tab-content-stats',
+        'tab-party', 'tab-dice', 'tab-system', 'tab-journal', 'tab-stats',
+        'topbar-thinking-status', 'topbar-thinking-text',
         'enemy-lightbox', 'enemy-lightbox-image', 'enemy-lightbox-title'
     ];
     ids.forEach(id => {

@@ -291,6 +291,28 @@ describe('dispatch: RESTORE_SNAPSHOT', () => {
     });
 });
 
+describe('dispatch: UPGRADE_STAT', () => {
+    it('increments the stat and decrements statPoints', () => {
+        const c = makeChar({ statPoints: 2, attributes: { STR: 10, DEX: 10, INT: 10, CON: 10 } });
+        State.party.push(c);
+        dispatch({ type: 'UPGRADE_STAT', charId: 'hero-1', stat: 'STR' });
+        expect(c.attributes.STR).toBe(11);
+        expect(c.statPoints).toBe(1);
+    });
+
+    it('does nothing when statPoints is 0', () => {
+        const c = makeChar({ statPoints: 0, attributes: { STR: 10, DEX: 10, INT: 10, CON: 10 } });
+        State.party.push(c);
+        dispatch({ type: 'UPGRADE_STAT', charId: 'hero-1', stat: 'STR' });
+        expect(c.attributes.STR).toBe(10);
+        expect(c.statPoints).toBe(0);
+    });
+
+    it('ignores unknown charId', () => {
+        dispatch({ type: 'UPGRADE_STAT', charId: 'nope', stat: 'STR' });
+    });
+});
+
 describe('dispatch: BULK_UPDATE', () => {
     it('applies multiple properties at once', () => {
         dispatch({ type: 'BULK_UPDATE', updates: { gold: 99, fate: 5, fatigue: 3 } });
