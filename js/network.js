@@ -24,7 +24,7 @@ const SYNC_KEYS = [
     'party', 'activeEnemies', 'defeatedEnemies', 'lootDrops', 'gold', 'dungeonLevel',
     'lastStoryPart', 'gameStarted', 'combatEnded', 'activeMerchant',
     'journal', 'sessionStats', 'fate', 'fatigue', 'abilityCooldowns',
-    'isBossFight', 'weather', 'momentum', 'chatHistory',
+    'isBossFight', 'weather', 'momentum', 'chatHistory', 'isProcessing',
     'pendingRolls', 'recentRolls', 'pendingAbilityLearning', 'quickplayEnabled',
     'routeChoices', 'craftingIngredients', 'activeCrafterId',
     'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'afkSince',
@@ -1393,6 +1393,7 @@ export const Network = {
             case 'DICE_ANIMATION':
                 UI.showNetworkDiceAnimation(msg.payload || {});
                 break;
+            case 'TRANSIENT_EVENT':
                 if (msg.event?.id && this._seenEventIds.has(msg.event.id)) break;
                 this._pushTransientEvent(msg.event || {}, { broadcast: false });
                 break;

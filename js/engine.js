@@ -596,6 +596,10 @@ export const Engine = {
                 saveData._autoSaveTime = new Date().toISOString();
                 localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(saveData));
             } catch (e) { console.warn('Auto-save failed:', e); }
+            State.isProcessing = false;
+            UI.showLoader(false);
+            UI.updateAll();
+
             if (Network.isHost() && Network.isConnected()) {
                 Network.broadcastState();
                 Network.autoRollPending();
@@ -609,9 +613,6 @@ export const Engine = {
                 }
             }
             Network._currentActionPlayerName = null;
-            State.isProcessing = false;
-            UI.showLoader(false);
-            UI.updateAll();
         }
     },
 
