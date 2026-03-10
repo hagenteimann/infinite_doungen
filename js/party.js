@@ -69,18 +69,23 @@ function showLevelUpAnimation(char) {
 function buildLevelUpPortraitPrompts(char) {
     const basePrompt = String(char.imagePrompt || ('Fantasy portrait, American shot, waist-up, highly detailed, ' + (char.class || 'Abenteurer'))).replace(/\s+/g, ' ').trim();
     const level = Number(char.level || 1);
-    const aura = level >= 12
-        ? 'legendary champion aura, ornate enchanted armor, intense magical glow, battle-scarred but noble'
-        : level >= 8
-            ? 'seasoned epic adventurer, refined armor details, stronger mystical glow, confident heroic presence'
+
+    // Identity consistency: emphasize that it must be EXACTLY the same person
+    const identityStrict = 'EXACTLY same character identity, same facial features, same hairstyle, same eye color, same race, same gender';
+    const framingStrict = 'same American shot framing, same waist-up composition, cinematic lighting';
+
+    const enhancement = level >= 15
+        ? 'ASCENDED DIVINE CHAMPION: translucent glowing aura, celestial energy, god-tier ornate artifacts, blindingly epic and powerful'
+        : level >= 10
+            ? 'LEGENDARY HERO: majestic glowing aura, extremely ornate masterwork gear, glowing runes on armor, imposing presence'
             : level >= 5
-                ? 'more heroic adventurer, richer fantasy armor, subtle magical aura, sharper cinematic lighting'
-                : 'slightly more experienced adventurer, a touch more confident, refined fantasy details';
-    const consistency = 'same character, same face, same hairstyle, same identity, same framing';
+                ? 'ELITE ADVENTURER: subtle magical glow, high-quality detailed fantasy armor, heroic posture, veterancy details'
+                : 'UPGRADED ADVENTURER: slightly better refined equipment, more confident stance, subtle cinematic enhancements';
+
     return [
-        `${basePrompt}, ${consistency}, ${aura}, level ${level}, fantasy portrait, American shot, waist-up, highly detailed`,
-        `${basePrompt}, ${consistency}, ${aura}, heroic fantasy portrait`,
-        `${char.class || 'Abenteurer'}, ${consistency}, ${aura}, fantasy portrait`,
+        `${basePrompt}, ${identityStrict}, ${framingStrict}, ${enhancement}, level ${level}, fantasy portrait, American shot, waist-up, highly detailed`,
+        `${basePrompt}, ${identityStrict}, ${enhancement}, heroic fantasy`,
+        `${char.class || 'Abenteurer'}, ${identityStrict}, ${enhancement}`,
     ].map(p => p.replace(/\s+/g, ' ').trim());
 }
 
@@ -233,7 +238,8 @@ export const PartyManager = {
             const portrait = await API.generateImageWithFallbacks(prompts, { provider: 'gemini', apiKey: geminiKey, silent: true });
             if (portrait) {
                 char.portrait = portrait;
-                char.imagePrompt = prompts[0];
+                // We DON'T update char.imagePrompt here because we want to keep the BASE identity pure.
+                // The base identity is what ensure consistency for future level-ups.
                 UI.addChatLog('System', `✨ **${char.name}** sieht mit Level ${char.level} noch eindrucksvoller aus.`);
             }
         } catch (e) {
