@@ -233,12 +233,26 @@ export const UI = {
         };
     },
     toggleViews: function (s) { DOM.lobbyView.classList.toggle('hidden', s); DOM.actionArea.classList.toggle('hidden', !s); },
-    showLoader: function (s, t = 'Laedt...') {
-        const text = repairDisplayText(t || 'Laedt...');
+    showLoader: function (s) {
         if (DOM.loadingSpinner) DOM.loadingSpinner.classList.add('hidden');
-        if (DOM.loadingText) DOM.loadingText.innerText = text;
-        if (DOM.topbarThinkingStatus) DOM.topbarThinkingStatus.classList.toggle('hidden', !s);
-        if (DOM.topbarThinkingText) DOM.topbarThinkingText.innerText = text;
+        const existing = DOM.storyLog?.querySelector('#dm-typing-indicator');
+        if (existing) existing.remove();
+        if (!s || !DOM.storyLog) return;
+        const row = document.createElement('article');
+        row.id = 'dm-typing-indicator';
+        row.className = 'chat-row chat-row-dm';
+        row.innerHTML = sanitize(`
+            <div class="dm-message-card chat-bubble chat-bubble-dm">
+                <div class="chat-meta-row">
+                    <span class="chat-sender chat-sender-dm">DM</span>
+                </div>
+                <div class="dm-typing-bubble">
+                    <span class="dm-typing-orb"></span>
+                </div>
+            </div>
+        `);
+        DOM.storyLog.appendChild(row);
+        this.scrollChatToBottom();
     },
     selectOption: function (t) {
         this.clearSuggestions();
