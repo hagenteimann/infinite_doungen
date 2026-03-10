@@ -18,13 +18,34 @@ import {
     FATE_BOSS_THRESHOLD, FATE_DARK_THRESHOLD, FATE_UNREST_THRESHOLD,
 } from './constants.js';
 
+const SYSTEM_NOTICE = {
+    abilityReady: '\u2705 F\u00E4higkeiten wieder bereit:',
+    specialisationLearned: '\u{1F31F}',
+    oracle: '\u2728 Orakel',
+    warning: '\u26A0\uFE0F',
+    fate: '\u2728',
+    joining: '\u23F3',
+    enemyStatus: '\u2694\uFE0F **Feindstatus:**',
+    settingsSaved: '\u2699\uFE0F API-Einstellungen gespeichert!',
+    abilityLearned: '\u2728',
+    abilityDeclined: '\u{1F4AD}',
+    exportDone: '\u{1F4BE}',
+};
+
+function getDifficultyInstruction(difficulty) {
+    if (difficulty === 'Einfach') return 'Gegner-Schaden 1-2, Proben-DC ~10, Belohnungen: Normales Loot';
+    if (difficulty === 'Normal') return 'Gegner-Schaden 3-5, Proben-DC ~12, Belohnungen: Gutes Loot';
+    if (difficulty === 'Schwer') return 'Gegner-Schaden 6-8, Proben-DC ~14, Belohnungen: Sehr gutes magisches Loot';
+    return 'Gegner-Schaden 10-15, Proben-DC ~18, Belohnungen: Episches legend\u00E4res Loot';
+}
+
 export const Engine = {
     _isRollingAll: false,
     _pendingRollSubmissionQueued: false,
 
     _requireHost(actionName) {
         if (Network.isClient() && Network.isConnected()) {
-            UI.addChatLog('System', `**${actionName}** ist nur f??r den Host verf??gbar.`);
+            UI.addChatLog('System', `**${actionName}** ist nur f\u00FCr den Host verf\u00FCgbar.`);
             return true;
         }
         return false;
@@ -467,7 +488,7 @@ State.isProcessing = true; UI.showLoader(true);
             }
         }
         if (readyAbilities.length > 0) {
-            UI.addChatLog("System", `\u2705 F\u00E4higkeiten wieder bereit: ${readyAbilities.join(', ')}`);
+            UI.addChatLog('System', `${SYSTEM_NOTICE.abilityReady} ${readyAbilities.join(', ')}`);
         }
 
         State.isBossFight = (State.fate || 0) >= FATE_BOSS_THRESHOLD && State.activeEnemies.length > 0;
@@ -484,7 +505,7 @@ State.isProcessing = true; UI.showLoader(true);
         }).join(' | ');
 
         const diff = DOM.gameDifficulty.value; const rate = DOM.enemyRate.value;
-        const dInstr = diff === "Einfach" ? "Gegner-Schaden 1-2, Proben-DC ~10, Belohnungen: Normales Loot" : diff === "Normal" ? "Gegner-Schaden 3-5, Proben-DC ~12, Belohnungen: Gutes Loot" : diff === "Schwer" ? "Gegner-Schaden 6-8, Proben-DC ~14, Belohnungen: Sehr gutes magisches Loot" : "Gegner-Schaden 10-15, Proben-DC ~18, Belohnungen: Episches legendäres Loot";
+        const dInstr = getDifficultyInstruction(diff);
         const qpAddendum = State.quickplayEnabled
             ? " QUICKPLAY AKTIV: Antworten extrem kurz (1-2 Sätze). Du darfst auch Angriffsproben für Spieler vorschlagen."
             : " NORMALER MODUS \u2013 ANGRIFF-REGEL (ABSOLUT): Du darfst NIEMALS selbst eine Angriffs-Probe f\u00FCr einen Spieler fordern oder vorgeben wie dieser angreift. NUR Ausweichen/Blocken-Proben f\u00FCr Spieler sind erlaubt. Warte zwingend, bis der Spieler explizit schreibt dass er angreift (z.B. 'Ich greife an'). Erst dann und nur dann eine Probe fordern.";
@@ -626,7 +647,7 @@ State.isProcessing = true; UI.showLoader(true);
         char.talents.push(talentName);
         char.pendingTalentPoints--;
         Sound.play('levelup');
-        UI.addChatLog("System", `\u{1F31F} **${char.name}** hat die Spezialisierung **${talentName}** erlernt!`);
+        UI.addChatLog('System', `${SYSTEM_NOTICE.specialisationLearned} **${char.name}** hat die Spezialisierung **${talentName}** erlernt!`);
         UI.showDetails(charId);
         UI.updateAll();
     },
@@ -947,8 +968,8 @@ State.isProcessing = true; UI.showLoader(true);
         try {
             const ctx = State.lastStoryPart ? `\n\nAktueller Spielkontext: "${State.lastStoryPart.substring(0, 400)}"` : '';
             const ans = await API.generateText(q + ctx, "Du bist ein mystisches Orakel in einer Fantasy-Welt. Beantworte Fragen in 1-2 S\u00E4tzen \u2013 geheimnisvoll, poetisch, aber spielrelevant. Keine Mechanik-Tags.");
-            UI.addChatLog("\u2728 Orakel", ans);
-        } catch (e) { UI.addChatLog('System', `\u26A0\uFE0F Orakel-Fehler: ${e.message}`); } finally { UI.showLoader(false); }
+            UI.addChatLog(SYSTEM_NOTICE.oracle, ans);
+        } catch (e) { UI.addChatLog('System', `${SYSTEM_NOTICE.warning} Orakel-Fehler: ${e.message}`); } finally { UI.showLoader(false); }
     },
     generatePlotTwist: async function () {
         if (this._requireHost('Plot-Twist')) return;
@@ -962,8 +983,8 @@ State.isProcessing = true; UI.showLoader(true);
             State.chatHistory.push({ role: 'assistant', content: twistText.substring(0, 400) });
             if (State.chatHistory.length > 8) State.chatHistory.shift();
             TagParser.process(twistText);
-            UI.addChatLog("\u2728 Schicksal", twistText);
-        } catch (e) { UI.addChatLog('System', `\u26A0\uFE0F Plot-Twist Fehler: ${e.message}`); } finally { UI.showLoader(false); }
+            UI.addChatLog(`${SYSTEM_NOTICE.fate} Schicksal`, twistText);
+        } catch (e) { UI.addChatLog('System', `${SYSTEM_NOTICE.warning} Plot-Twist Fehler: ${e.message}`); } finally { UI.showLoader(false); }
     },
 
     generatePortraitForPrompts: async function (prompts) {
@@ -1047,17 +1068,17 @@ State.isProcessing = true; UI.showLoader(true);
             ]);
 
             State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name: npcName, class: npcClass, hp: 20, maxHp: 20, portrait: pUrl, imagePrompt: imgPrompt, inventory: [], isNPC: true }));
-            UI.addChatLog("System", `\u2728 NPC **${npcName}** schlie\u00DFt sich der Gruppe an!`);
+            UI.addChatLog('System', `${SYSTEM_NOTICE.fate} NPC **${npcName}** schlie\u00DFt sich der Gruppe an!`);
             UI.updateAll();
         } catch (e) {
-            UI.addChatLog("System", `\u26A0\uFE0F NPC konnte nicht generiert werden (${e.message}). Bitte erneut versuchen.`);
+            UI.addChatLog('System', `${SYSTEM_NOTICE.warning} NPC konnte nicht generiert werden (${e.message}). Bitte erneut versuchen.`);
         } finally {
             UI.showLoader(false);
         }
     },
 
     spawnNPCFromTag: async function (name, cls, app) {
-        UI.addChatLog("System", `\u23F3 **${name}** tritt der Gruppe bei...`);
+        UI.addChatLog('System', `${SYSTEM_NOTICE.joining} **${name}** tritt der Gruppe bei...`);
         try {
             let imgPrompt = `Fantasy portrait, face only, highly detailed, ${cls}, ${app}`.replace(/\n/g, ' ');
             let p = await API.generateImageWithFallbacks([
@@ -1065,17 +1086,17 @@ State.isProcessing = true; UI.showLoader(true);
                 `Fantasy portrait, face only, highly detailed, ${cls}`
             ]);
             State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name, class: cls, hp: 20, maxHp: 20, portrait: p, inventory: [], isNPC: true }));
-            UI.addChatLog("System", `\u2728 **${name}** schlie\u00DFt sich der Gruppe an!`);
+            UI.addChatLog('System', `${SYSTEM_NOTICE.fate} **${name}** schlie\u00DFt sich der Gruppe an!`);
             UI.updateAll();
         } catch (e) { console.error('NPC spawn failed:', e); }
     },
 
     checkEnemies: function () {
         if (State.activeEnemies.length === 0) {
-            UI.addChatLog("System", "\u2694\uFE0F **Feindstatus:** Aktuell sind keine lebenden Feinde in Sicht.");
+            UI.addChatLog('System', `${SYSTEM_NOTICE.enemyStatus} Aktuell sind keine lebenden Feinde in Sicht.`);
             return;
         }
-        let statusText = "\u2694\uFE0F **Feindstatus:**\\n";
+        let statusText = `${SYSTEM_NOTICE.enemyStatus}\n`;
         State.activeEnemies.forEach(e => {
             const healthPercent = (e.hp / e.maxHp) * 100;
             let healthDesc = "Gesund";
@@ -1214,7 +1235,7 @@ State.isProcessing = true; UI.showLoader(true);
     suggestCrafting: async function () {
         if (this._requireHost('KI-Vorschlag')) return;
         if (State.craftingIngredients.length === 0) {
-            UI.addChatLog("System", "\u26A0\uFE0F Bitte w\u00E4hle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.");
+            UI.addChatLog('System', `${SYSTEM_NOTICE.warning} Bitte w\u00E4hle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.`);
             return;
         }
         const btn = document.getElementById('btn-craft-suggest');
@@ -1241,7 +1262,7 @@ State.isProcessing = true; UI.showLoader(true);
             if (elCon) elCon.value = data.con > 0 ? data.con : "";
 
         } catch (e) {
-            UI.addChatLog("System", `\u26A0\uFE0F KI konnte keinen Vorschlag generieren: ${e.message}`);
+            UI.addChatLog('System', `${SYSTEM_NOTICE.warning} KI konnte keinen Vorschlag generieren: ${e.message}`);
         } finally {
             if (btn) { btn.innerHTML = '<i class="fas fa-magic mr-1"></i>Vorschlag'; btn.disabled = false; }
         }
@@ -1296,7 +1317,7 @@ State.isProcessing = true; UI.showLoader(true);
         if (c && c.abilities[idx]) {
             const oldAb = c.abilities[idx];
             c.abilities[idx] = State.pendingAbilityLearning.newAbility;
-            UI.addChatLog("System", `\u2728 **${c.name}** hat die alte F\u00E4higkeit **${oldAb}** vergessen und daf\u00FCr **${State.pendingAbilityLearning.newAbility}** erlernt!`);
+            UI.addChatLog('System', `${SYSTEM_NOTICE.abilityLearned} **${c.name}** hat die alte F\u00E4higkeit **${oldAb}** vergessen und daf\u00FCr **${State.pendingAbilityLearning.newAbility}** erlernt!`);
         }
         State.pendingAbilityLearning = null;
         document.getElementById('ability-replace-modal').classList.add('hidden');
@@ -1306,7 +1327,7 @@ State.isProcessing = true; UI.showLoader(true);
         if (!State.pendingAbilityLearning) return;
         const c = State.party.find(p => p.id === State.pendingAbilityLearning.charId);
         if (c) {
-            UI.addChatLog("System", `\u{1F4AD} **${c.name}** hat entschieden, **${State.pendingAbilityLearning.newAbility}** doch nicht zu erlernen.`);
+            UI.addChatLog('System', `${SYSTEM_NOTICE.abilityDeclined} **${c.name}** hat entschieden, **${State.pendingAbilityLearning.newAbility}** doch nicht zu erlernen.`);
         }
         State.pendingAbilityLearning = null;
         document.getElementById('ability-replace-modal').classList.add('hidden');
@@ -1323,7 +1344,7 @@ State.isProcessing = true; UI.showLoader(true);
         localStorage.setItem('api_model_or_image', document.getElementById('api-model-or-image').value.trim());
 
         document.getElementById('api-settings-modal').classList.add('hidden');
-        UI.addChatLog("System", "\u2699\uFE0F API-Einstellungen gespeichert!");
+        UI.addChatLog('System', SYSTEM_NOTICE.settingsSaved);
     },
     savePrompt: function () {
         const inputEl = document.getElementById('new-prompt-input');
@@ -1398,7 +1419,7 @@ State.isProcessing = true; UI.showLoader(true);
     bulkExportHeroes: async function () {
         const heroes = State.party.filter(p => !p.isSummon);
         if (heroes.length === 0) {
-            UI.addChatLog("System", "\u26A0\uFE0F Keine Helden zum Exportieren vorhanden.");
+            UI.addChatLog('System', `${SYSTEM_NOTICE.warning} Keine Helden zum Exportieren vorhanden.`);
             return;
         }
         const now = new Date();
@@ -1415,7 +1436,7 @@ State.isProcessing = true; UI.showLoader(true);
             document.body.removeChild(a);
             await new Promise(r => setTimeout(r, 250));
         }
-        UI.addChatLog("System", `\u{1F4BE} **${heroes.length} Helden** wurden erfolgreich exportiert (Sammel-Download).`);
+        UI.addChatLog('System', `${SYSTEM_NOTICE.exportDone} **${heroes.length} Helden** wurden erfolgreich exportiert (Sammel-Download).`);
     },
     downloadSave: function () { const now = new Date(); const pad = n => n.toString().padStart(2, '0'); const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(State)], { type: 'application/json' })); a.download = `InfiniteDungeon_${ts}.json`; document.body.appendChild(a); a.click(); },
     importSave: function (e) {
