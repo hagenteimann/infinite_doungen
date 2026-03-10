@@ -77,6 +77,42 @@ export const Utils = {
         if (!normalized) return false;
         return /^(?:(?:STR|DEX|INT|CON)\s*[+-]\s*\d+|[+-]\s*\d+\s*(?:STR|DEX|INT|CON))$/i.test(normalized);
     },
+    _getLootItemBonusSpec: function (itemName) {
+        const normalized = this._normalizeItemText(itemName).toLowerCase();
+        if (!normalized) return '';
+        const keywordGroups = [
+            { pattern: /(stab|zauberstab|fokus|orb|buch|grimoire|kristall)/i, stat: 'INT' },
+            { pattern: /(bogen|dolch|messer|leder|robe|mantel|umhang)/i, stat: 'DEX' },
+            { pattern: /(ruestung|rüstung|schild|helm|panzer|harnisch|brustplatte)/i, stat: 'CON' },
+            { pattern: /(schwert|axt|hammer|keule|speer|streitkolben|klinge)/i, stat: 'STR' },
+            { pattern: /(ring|amulett|talisman|reif|kette)/i, stat: 'INT' },
+        ];
+        const match = keywordGroups.find(entry => entry.pattern.test(normalized));
+        if (!match) return '';
+        const tierTwo = /\b(episch|legendär|mythisch|uralt|erz|runen|arkane|arcan|meisterlich)\b/i.test(normalized);
+        return '(' + match.stat + ' +' + (tierTwo ? 2 : 1) + ')';
+    },
+    _getLootItemMagicEffect: function (itemName) {
+        const normalized = this._normalizeItemText(itemName).toLowerCase();
+        if (!normalized) return '';
+        const effectGroups = [
+            { pattern: /(runen|rune|arkane|arcan|zauber|mystisch)/i, effect: 'Verstärkt arkane Macht' },
+            { pattern: /(flammen|feuer|glut|inferno)/i, effect: 'Entfacht einen kleinen Feuerfunken beim Treffer' },
+            { pattern: /(frost|winter|gletscher|frostfeuer)/i, effect: 'Kühlt die Luft und verlangsamt kurz' },
+            { pattern: /(schatten|nacht|dunkel)/i, effect: 'Hüllt den Träger kurz in Schatten' },
+            { pattern: /(heilig|licht|sonnen|engel)/i, effect: 'Spendet einen heiligen Lichtimpuls' },
+            { pattern: /(gift|venom|tox)/i, effect: 'Hinterlässt einen schwachen Giftstachel' },
+        ];
+        const match = effectGroups.find(entry => entry.pattern.test(normalized));
+        return match ? '(' + match.effect + ')' : '';
+    },
+    enrichLootItemName: function (itemName) {
+        const parts = this.getItemEffectParts(itemName);
+        if (!parts.raw || parts.effects.length > 0 || this.isGoldItem(parts.raw)) return parts.raw;
+        const spec = this._getLootItemBonusSpec(parts.baseName);
+        const magicEffect = this._getLootItemMagicEffect(parts.baseName);
+        return [parts.baseName, spec, magicEffect].filter(Boolean).join(' ').trim() || parts.raw;
+    },
     getItemEffectParts: function (itemName) {
         const original = this._normalizeItemText(itemName);
         const effects = [];

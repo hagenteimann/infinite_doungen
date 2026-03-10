@@ -910,21 +910,31 @@ State.isProcessing = true; UI.showLoader(true);
 
         State.pendingRolls = [];
         UI.updateActionBox();
-        UI.addChatLog('ðŸŽ² System', resText);
+        UI.addChatLog('🎲 System', resText);
+        if (Network.isConnected()) {
+            const firstChar = rollsCopy[0] ? State.party.find(p => p.name === rollsCopy[0].name) : null;
+            const rollPlayer = firstChar ? Object.entries(Network.playerCharMap).find(([, cid]) => cid === firstChar.id)?.[0] : null;
+            Network._currentActionPlayerName = rollPlayer || Network.playerName || '';
+        }
         this.interactWithAI(`[Wuerfelergebnisse]\n${resText}\nBitte beschreibe basierend darauf die Konsequenzen.`);
     },
     submitManualDiceRoll: function () {
-        if (this._requireHost('WÃ¼rfeln')) return;
+        if (this._requireHost('Würfeln')) return;
         const r = DOM.diceResult.innerText;
         const name = DOM.diceRollerName.innerText;
         DOM.diceModal.classList.add('hidden');
+        if (Network.isConnected()) {
+            const rollChar = State.party.find(p => p.name === name);
+            const rollPlayer = rollChar ? Object.entries(Network.playerCharMap).find(([, cid]) => cid === rollChar.id)?.[0] : null;
+            Network._currentActionPlayerName = rollPlayer || Network.playerName || '';
+        }
         const pendingAction = DOM.playerInput.value.trim();
         if (pendingAction) {
-            UI.addChatLog(name, `${pendingAction} [ðŸŽ² ${r}]`);
+            UI.addChatLog(name, `${pendingAction} [🎲 ${r}]`);
             DOM.playerInput.value = "";
-            this.interactWithAI(`${pendingAction}. [${name} wuerfelt eine ${r}]`);
+            this.interactWithAI(`${pendingAction}. [${name} würfelt eine ${r}]`);
         } else {
-            this.interactWithAI(`[${name} wuerfelt frei eine ${r}]`);
+            this.interactWithAI(`[${name} würfelt frei eine ${r}]`);
         }
     },
 

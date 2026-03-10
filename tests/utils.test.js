@@ -47,6 +47,23 @@ describe('Utils.parseItemQuantity', () => {
     });
 });
 
+describe('Utils.enrichLootItemName', () => {
+    it('adds fallback stat to plain equipment loot', () => {
+        expect(Utils.enrichLootItemName('Eisenschwert')).toBe('Eisenschwert (STR +1)');
+        expect(Utils.enrichLootItemName('Ledermantel')).toBe('Ledermantel (DEX +1)');
+        expect(Utils.enrichLootItemName('Stahlhelm')).toBe('Stahlhelm (CON +1)');
+    });
+
+    it('keeps existing specs unchanged', () => {
+        expect(Utils.enrichLootItemName('Runenschwert (STR +2)')).toBe('Runenschwert (STR +2)');
+    });
+
+    it('does not modify non-equipment loot', () => {
+        expect(Utils.enrichLootItemName('Heiltrank')).toBe('Heiltrank');
+        expect(Utils.enrichLootItemName('Goldmuenze')).toBe('Goldmuenze');
+    });
+});
+
 describe('Utils.sanitizeCharacter', () => {
     it('fills defaults for empty character', () => {
         const c = Utils.sanitizeCharacter({ name: 'Test' });

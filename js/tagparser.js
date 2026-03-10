@@ -43,13 +43,13 @@ export const TagParser = {
             else {
                 let e = Utils.findTarget(State.activeEnemies, evt.target);
                 if (e) CombatManager.damage(e, evt.amount || 0);
-                else UI.addChatLog("System", `?? Mechanik verworfen: Ziel '${evt.target}' für Schaden nicht gefunden.`);
+                else UI.addChatLog("System", `?? Mechanik verworfen: Ziel '${evt.target}' fï¿½r Schaden nicht gefunden.`);
             }
         }
         else if (type === 'HEILUNG') {
             let c = Utils.findTarget(State.party, evt.target);
             if (c) PartyManager.heal(c, evt.amount || 0);
-            else UI.addChatLog("System", `?? Mechanik verworfen: Ziel '${evt.target}' für Heilung nicht gefunden.`);
+            else UI.addChatLog("System", `?? Mechanik verworfen: Ziel '${evt.target}' fï¿½r Heilung nicht gefunden.`);
         }
         else if (type === 'GEGNER') {
             if (evt.hp > 0) {
@@ -72,7 +72,7 @@ export const TagParser = {
             if (Array.isArray(evt.items)) {
                 evt.items.filter(a => a).forEach(itemStr => {
                     const { amt, name } = Utils.parseItemQuantity(itemStr);
-                    for (let i = 0; i < amt; i++) items.push(name);
+                    for (let i = 0; i < amt; i++) items.push(Utils.enrichLootItemName(name));
                 });
             }
             if (items.length > 0) dispatch({ type: 'ADD_LOOT', items });
@@ -105,7 +105,7 @@ export const TagParser = {
             }
         }
         else if (type === 'NEUER_NPC') {
-            Engine.spawnNPCFromTag(evt.name || 'Unbekannt', evt.class || 'Bürger', evt.appearance || 'Begleiter');
+            Engine.spawnNPCFromTag(evt.name || 'Unbekannt', evt.class || 'Bï¿½rger', evt.appearance || 'Begleiter');
         }
         else if (type === 'TAUSCH') {
             let c = Utils.findTarget(State.party, evt.char);
@@ -118,7 +118,7 @@ export const TagParser = {
         }
         else if (type === 'GOLD') {
             if (evt.amount > 0) {
-                dispatch({ type: 'ADD_LOOT', items: [`${evt.amount} Goldmünzen`] });
+                dispatch({ type: 'ADD_LOOT', items: [`${evt.amount} Goldmï¿½nzen`] });
             }
         }
         else if (type === 'COOLDOWN') {
@@ -129,7 +129,7 @@ export const TagParser = {
         }
         else if (type === 'FLUCHT_ERFOLG') {
             if (State.isBossFight) {
-                UI.addChatLog("System", `?? **Flucht unmöglich!** Der Boss blockiert jeden Fluchtversuch!`);
+                UI.addChatLog("System", `?? **Flucht unmï¿½glich!** Der Boss blockiert jeden Fluchtversuch!`);
             } else {
                 UI.addChatLog("System", `?? **Flucht erfolgreich!** Die Gruppe entkommt dem Kampf!`);
                 State.activeEnemies = [];
@@ -146,9 +146,9 @@ export const TagParser = {
                 if (roll >= dc) {
                     c.hp = 1;
                     Sound.play('heal');
-                    UI.addChatLog("System", `?? **TODESRETTUNG – ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} ? ? **Überlebt!** Stabilisiert mit 1 HP.`);
+                    UI.addChatLog("System", `?? **TODESRETTUNG ï¿½ ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} ? ? **ï¿½berlebt!** Stabilisiert mit 1 HP.`);
                 } else {
-                    UI.addChatLog("System", `?? **TODESRETTUNG – ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} ? ? **Fehlgeschlagen!** Letzter Versuch zur Rettung!`);
+                    UI.addChatLog("System", `?? **TODESRETTUNG ï¿½ ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} ? ? **Fehlgeschlagen!** Letzter Versuch zur Rettung!`);
                 }
             }
         }
@@ -181,7 +181,7 @@ export const TagParser = {
         const fatigueDcMod = State.fatigue >= 10 ? Math.floor((State.fatigue - 7) / 3) : 0;
         const finalDc = dc + weatherDcMod + fatigueDcMod;
         const dcNote = (weatherDcMod > 0 || fatigueDcMod > 0)
-            ? ` [DC ${dc}${weatherDcMod > 0 ? ` +${weatherDcMod} ${State.weather.name}` : ''}${fatigueDcMod > 0 ? ` +${fatigueDcMod} Erschöpfung` : ''}]`
+            ? ` [DC ${dc}${weatherDcMod > 0 ? ` +${weatherDcMod} ${State.weather.name}` : ''}${fatigueDcMod > 0 ? ` +${fatigueDcMod} Erschï¿½pfung` : ''}]`
             : '';
             
         State.pendingRolls.push({ 

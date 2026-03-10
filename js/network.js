@@ -1655,12 +1655,12 @@ export const Network = {
             el.className = 'relative px-3 py-2 bg-black/40 border border-red-900/50 rounded-lg backdrop-blur-sm shadow-[0_0_15px_rgba(239,68,68,0.15)]';
             this._renderCombatRoundPanel(el);
             const submitted = !!this._mySubmittedAction;
+            this._setQuickActionsEnabled(false);
             playerInput.disabled = submitted || State.isProcessing;
             sendBtn.disabled = submitted || State.isProcessing;
             playerInput.placeholder = submitted
                 ? 'Aktion eingereicht – warte auf andere...'
                 : 'Deine Kampfaktion eingeben...';
-            this._setQuickActionsEnabled(false);
             return;
         }
 

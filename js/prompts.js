@@ -90,7 +90,10 @@ WIRTSCHAFT & BEUTE:
    HÄNDLER: Event "HAENDLER".
    TAUSCHEN/KAUFEN: Event "TAUSCH".
    CRAFTEN/VERZAUBERN: Fordere PROBE für Crafting.
-   Bei Erfolg: Event "VERBRAUCHT", Event "BEUTE". Effekte an Items in runden Klammern z.B. (STR +2) (Beschwört Schleim).
+   Bei Erfolg: Event "VERBRAUCHT", Event "BEUTE". Effekte an Items IMMER in runden Klammern, z.B. (STR +2) (Beschwört Schleim).
+   WICHTIG: Ausrüstung wie Schwert, Bogen, Stab, Ring, Amulett, Rüstung, Schild oder Robe MUSS fast immer mindestens EINEN Stat-Bonus haben.
+   Magische oder seltene Ausrüstung soll ZUSÄTZLICH einen kleinen Spezialeffekt in einer zweiten Klammer haben, z.B. (INT +2) (Leuchtet bei Gefahr) oder (DEX +1) (Schritte sind fast lautlos).
+   Vermeide nackte Ausrüstungsnamen ohne Specs. Normale Verbrauchsitems wie Heiltrank oder Nahrung brauchen keine Attributswerte.
 
 STAT-PUNKTE & ATTRIBUTE:
 10. Berücksichtige Attribute und Item-Boni bei der DC-Festlegung. Das Würfelbonus-System nutzt den VOLLEN Attributswert als Modifier (z.B. STR 14 = +14 Bonus). Setze DCs entsprechend höher.

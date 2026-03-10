@@ -148,11 +148,11 @@ export const API = {
         }
         throw new Error(lastError);
     },
-    generateImageWithFallbacks: async function (prompts) {
-        if (State.imageQuotaExceeded) return "";
+    generateImageWithFallbacks: async function (prompts, options = {}) {
+        const provider = options.provider || this.getProvider();
+        if (State.imageQuotaExceeded && provider === 'gemini') return "";
 
-        const provider = this.getProvider();
-        const apiKey = this.getKey(provider);
+        const apiKey = options.apiKey || this.getKey(provider);
         if (!apiKey) return "";
 
         let pUrl = "";
@@ -214,7 +214,7 @@ export const API = {
                 console.error(`Image Exception (${provider}):`, e);
             }
         }
-        if (!pUrl && !State.imageQuotaExceeded && provider === "gemini") {
+        if (!pUrl && !State.imageQuotaExceeded && provider === "gemini" && !options.silent) {
             UI.addChatLog("System", `⚠️ **Bildgenerierung fehlgeschlagen:** Das Bild konnte nicht erstellt werden.`);
         }
         return "";

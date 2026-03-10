@@ -3,6 +3,7 @@ import { EQUIPMENT_SETS, TALENT_TREES } from './prompts.js';
 import { Sound } from './sound.js';
 import { UI } from './ui.js';
 import { Utils } from './utils.js';
+import { API } from './api.js';
 import {
     BASE_HP, HP_PER_LEVEL, CON_HP_MULTIPLIER, CON_BASELINE,
     XP_BASE, XP_SCALING_EXPONENT, STAT_POINTS_PER_LEVEL,
@@ -63,6 +64,24 @@ function showLevelUpAnimation(char) {
             setTimeout(() => levelSpan.classList.remove('level-up-bounce'), 400);
         }
     }, 100);
+}
+
+function buildLevelUpPortraitPrompts(char) {
+    const basePrompt = String(char.imagePrompt || ('Fantasy portrait, face only, highly detailed, ' + (char.class || 'Abenteurer'))).replace(/\s+/g, ' ').trim();
+    const level = Number(char.level || 1);
+    const aura = level >= 12
+        ? 'legendary champion aura, ornate enchanted armor, intense magical glow, battle-scarred but noble'
+        : level >= 8
+            ? 'seasoned epic adventurer, refined armor details, stronger mystical glow, confident heroic presence'
+            : level >= 5
+                ? 'more heroic adventurer, richer fantasy armor, subtle magical aura, sharper cinematic lighting'
+                : 'slightly more experienced adventurer, a touch more confident, refined fantasy details';
+    const consistency = 'same character, same face, same hairstyle, same identity, same framing';
+    return [
+        `${basePrompt}, ${consistency}, ${aura}, level ${level}, fantasy portrait, face only, highly detailed`,
+        `${basePrompt}, ${consistency}, ${aura}, heroic fantasy portrait`,
+        `${char.class || 'Abenteurer'}, ${consistency}, ${aura}, fantasy portrait`,
+    ].map(p => p.replace(/\s+/g, ' ').trim());
 }
 
 export const PartyManager = {
@@ -196,6 +215,32 @@ export const PartyManager = {
             const bonusStatMsg = bonusStat ? ` **${bonusStat} +1** (Klassen-Bonus)` : '';
             UI.addChatLog("System", `🌟 **${char.name}** hat Level ${char.level} erreicht!${bonusStatMsg}`);
             showLevelUpAnimation(char);
+            if (!char.isNPC && !char.isSummon && API.getKey('gemini')) {
+                char._levelUpPortraitReady = true;
+                UI.updateAll();
+            }
+        }
+    },
+    refreshLevelUpPortrait: async function (char) {
+        if (!char || char.isNPC || char.isSummon || char._portraitRegenPending) return;
+        char._levelUpPortraitReady = false;
+        char._portraitRegenPending = true;
+        UI.updateAll();
+        try {
+            const geminiKey = API.getKey('gemini');
+            if (!geminiKey) return;
+            const prompts = buildLevelUpPortraitPrompts(char);
+            const portrait = await API.generateImageWithFallbacks(prompts, { provider: 'gemini', apiKey: geminiKey, silent: true });
+            if (portrait) {
+                char.portrait = portrait;
+                char.imagePrompt = prompts[0];
+                UI.addChatLog('System', `✨ **${char.name}** sieht mit Level ${char.level} noch eindrucksvoller aus.`);
+            }
+        } catch (e) {
+            console.warn('Level-up portrait refresh failed:', e);
+        } finally {
+            char._portraitRegenPending = false;
+            UI.updateAll();
         }
     },
     consumeItem: function (char, itemName, amount = 1) {

@@ -2,6 +2,7 @@ import { TTS, DOM, UI } from './ui.js';
 import { Engine } from './engine.js';
 import { Network } from './network.js';
 import { State } from './state.js';
+import { PartyManager } from './party.js';
 
 export function initEvents() {
     document.addEventListener('click', (e) => {
@@ -96,6 +97,10 @@ export function initEvents() {
             'export-hero': () => Engine.exportHero(actionEl.dataset.charId),
             'learn-talent': () => Engine.learnTalent(actionEl.dataset.charId, actionEl.dataset.talent),
             'use-ability': () => Engine.useAbility(actionEl.dataset.charId, actionEl.dataset.ability, actionEl.dataset.itemAbility === 'true', actionEl.dataset.abilitySource || ''),
+            'refresh-levelup-portrait': () => {
+                const char = State.party.find(p => p.id === actionEl.dataset.charId);
+                if (char) PartyManager.refreshLevelUpPortrait(char);
+            },
             'roll-specific': () => Engine.rollSpecific(actionEl.dataset.rollId),
             'roll-all': () => Engine.rollAllPending(),
             'submit-rolls': () => Engine.submitPendingRolls(),
