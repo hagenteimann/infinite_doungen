@@ -1,4 +1,4 @@
-﻿import { State } from './state.js';
+import { State } from './state.js';
 import { PRESETS, TALENT_TREES, EQUIPMENT_SETS } from './prompts.js';
 import { PartyManager } from './party.js';
 import { Sound } from './sound.js';
@@ -956,9 +956,9 @@ export const UI = {
 
         let sessionChip = '';
         if (isConnected && isHost) {
-            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-crown"></i> Host &nbsp;Â·&nbsp; Code: <span class="pg2-room-code">${roomCode}</span></div>`;
+            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-crown"></i> Host &nbsp;·&nbsp; Code: <span class="pg2-room-code">${roomCode}</span></div>`;
         } else if (isConnected) {
-            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-link"></i> Verbunden &nbsp;Â·&nbsp; Raum: <span class="pg2-room-code">${roomCode}</span></div>`;
+            sessionChip = `<div class="pg2-room-chip"><i class="fas fa-link"></i> Verbunden &nbsp;·&nbsp; Raum: <span class="pg2-room-code">${roomCode}</span></div>`;
         } else {
             sessionChip = `<div class="pg2-room-chip pg2-room-chip-solo"><i class="fas fa-user"></i> Solo-Sitzung</div>`;
         }
@@ -980,7 +980,7 @@ export const UI = {
             </div>` : `
             <div class="pg2-hero-empty">
                 <i class="fas fa-user-plus pg2-hero-empty-icon"></i>
-                <p>Kein Held gewÃ¤hlt</p>
+                <p>Kein Held gewählt</p>
                 <p class="pg2-hero-empty-hint">Lade einen Save oder erstelle einen neuen Helden.</p>
             </div>`;
 
@@ -1294,7 +1294,7 @@ export const UI = {
                 </div>
                 <div class="hero-detail-header-meta">
                     <h3 class="cinzel text-red-300 text-sm tracking-wide">${enemy.name}</h3>
-                    <p class="text-[10px] text-slate-200/90">Monster â€¢ ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
+                    <p class="text-[10px] text-slate-200/90">Monster ⬢ ${enemy.hp <= 0 ? 'Besiegt' : 'Aktiv'}</p>
                     <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-red-700 to-red-400 h-full" style="width: ${Math.max(0, Math.min(100, (enemy.hp / enemy.maxHp) * 100))}%"></div></div>
                     <p class="text-[9px] text-slate-300/80 mt-1">${Math.max(0, enemy.hp)}/${enemy.maxHp} HP</p>
                 </div>

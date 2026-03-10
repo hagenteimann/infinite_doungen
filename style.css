@@ -149,7 +149,7 @@
             border-radius: 10px;
         }
 
-        /* WÃƒÂ¼rfel Animation */
+        /* WÒ¼rfel Animation */
         .dice-rolling {
             animation: rollPulse 0.1s infinite alternate;
         }
@@ -260,7 +260,7 @@
             }
         }
 
-        /* Hover-Effekte fÃ¼r Buttons und Optionen (Smoother) */
+        /* Hover-Effekte für Buttons und Optionen (Smoother) */
         .suggestion-option {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -329,7 +329,7 @@
             }
         }
 
-        /* Hover-Effekte fÃ¼r Buttons und Optionen (Smoother) */
+        /* Hover-Effekte für Buttons und Optionen (Smoother) */
         .suggestion-option {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid rgba(255, 255, 255, 0.05);

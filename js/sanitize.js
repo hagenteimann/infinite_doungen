@@ -30,8 +30,8 @@ const TRUSTED = {
   ],
 };
 
-const MOJIBAKE_PATTERN = /(?:Ã.|Â.|â€|–|â€”|â„¢|â€¦|ï¸|ðŸ|Ãƒ|Ã‚|�)/;
-const MOJIBAKE_SCORE = /(?:Ã|Â|â€|–|â€”|â„¢|â€¦|ï¸|ðŸ|Ãƒ|Ã‚|�)/g;
+const MOJIBAKE_PATTERN = /(?:[\u00C2\u00C3][\u0080-\u00BF]|[\u00E2\u00F0][\u0080-\u00BF]{1,3}|\uFFFD)/;
+const MOJIBAKE_SCORE = /(?:[\u00C2\u00C3]|[\u00E2\u00F0]|\uFFFD)/g;
 
 function scoreMojibake(value) {
   return (String(value || '').match(MOJIBAKE_SCORE) || []).length;

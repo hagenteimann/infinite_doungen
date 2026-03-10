@@ -1,4 +1,4 @@
-﻿import { CONFIG, PRESETS, TALENT_TREES } from './prompts.js';
+import { CONFIG, PRESETS, TALENT_TREES } from './prompts.js';
 import { State, dispatch } from './state.js';
 import { TTS, DOM, UIBuilders, UI } from './ui.js';
 import { Weather } from './features.js';
@@ -431,8 +431,8 @@ export const Engine = {
         try {
             const partyNames = State.party.filter(p => !p.isSummon).map(p => p.name).join(', ');
             const summary = await API.generateText(
-                `Fasse diese Szene in 1-2 SÃ¤tzen als Tagebucheintrag zusammen (Vergangenheit, dramatisch, kurz): "${State.lastStoryPart.substring(0, 500)}"`,
-                "Du bist ein Chronist. Antworte NUR mit dem Tagebucheintrag, ohne AnfÃ¼hrungszeichen oder PrÃ¤ambel. Deutsch, max 2 SÃ¤tze."
+                `Fasse diese Szene in 1-2 Sätzen als Tagebucheintrag zusammen (Vergangenheit, dramatisch, kurz): "${State.lastStoryPart.substring(0, 500)}"`,
+                "Du bist ein Chronist. Antworte NUR mit dem Tagebucheintrag, ohne Anführungszeichen oder Präambel. Deutsch, max 2 Sätze."
             );
             const entry = { text: summary, timestamp: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), party: partyNames };
             State.journal.unshift(entry);
@@ -467,7 +467,7 @@ State.isProcessing = true; UI.showLoader(true);
             }
         }
         if (readyAbilities.length > 0) {
-            UI.addChatLog("System", `âœ… FÃ¤higkeiten wieder bereit: ${readyAbilities.join(', ')}`);
+            UI.addChatLog("System", `\u2705 F\u00E4higkeiten wieder bereit: ${readyAbilities.join(', ')}`);
         }
 
         State.isBossFight = (State.fate || 0) >= FATE_BOSS_THRESHOLD && State.activeEnemies.length > 0;
@@ -480,37 +480,37 @@ State.isProcessing = true; UI.showLoader(true);
             const effMax = PartyManager.getEffectiveMaxHp(p);
             const specEffects = PartyManager.getItemSpecialEffects(p);
             const specStr = specEffects.length > 0 ? `, Item-Effekte: [${specEffects.join(', ')}]` : '';
-            return `${p.name} (Lvl ${p.level} ${p.class}, HP: ${p.hp}/${effMax}, Stats (inkl. Item-Boni): STR ${eff.STR} DEX ${eff.DEX} INT ${eff.INT} CON ${eff.CON}, Inv: [${p.inventory.join(', ')}], AusgerÃ¼stet: [${(p.equipment || []).join(', ')}]${specStr})`;
+            return `${p.name} (Lvl ${p.level} ${p.class}, HP: ${p.hp}/${effMax}, Stats (inkl. Item-Boni): STR ${eff.STR} DEX ${eff.DEX} INT ${eff.INT} CON ${eff.CON}, Inv: [${p.inventory.join(', ')}], Ausgerüstet: [${(p.equipment || []).join(', ')}]${specStr})`;
         }).join(' | ');
 
         const diff = DOM.gameDifficulty.value; const rate = DOM.enemyRate.value;
-        const dInstr = diff === "Einfach" ? "Gegner-Schaden 1-2, Proben-DC ~10, Belohnungen: Normales Loot" : diff === "Normal" ? "Gegner-Schaden 3-5, Proben-DC ~12, Belohnungen: Gutes Loot" : diff === "Schwer" ? "Gegner-Schaden 6-8, Proben-DC ~14, Belohnungen: Sehr gutes magisches Loot" : "Gegner-Schaden 10-15, Proben-DC ~18, Belohnungen: Episches legendÃ¤res Loot";
+        const dInstr = diff === "Einfach" ? "Gegner-Schaden 1-2, Proben-DC ~10, Belohnungen: Normales Loot" : diff === "Normal" ? "Gegner-Schaden 3-5, Proben-DC ~12, Belohnungen: Gutes Loot" : diff === "Schwer" ? "Gegner-Schaden 6-8, Proben-DC ~14, Belohnungen: Sehr gutes magisches Loot" : "Gegner-Schaden 10-15, Proben-DC ~18, Belohnungen: Episches legendäres Loot";
         const qpAddendum = State.quickplayEnabled
-            ? " QUICKPLAY AKTIV: Antworten extrem kurz (1-2 SÃ¤tze). Du darfst auch Angriffsproben fÃ¼r Spieler vorschlagen."
-            : " NORMALER MODUS â€“ ANGRIFF-REGEL (ABSOLUT): Du darfst NIEMALS selbst eine Angriffs-Probe fÃ¼r einen Spieler fordern oder vorgeben wie dieser angreift. NUR Ausweichen/Blocken-Proben fÃ¼r Spieler sind erlaubt. Warte zwingend, bis der Spieler explizit schreibt dass er angreift (z.B. 'Ich greife an'). Erst dann und nur dann eine Probe fordern.";
+            ? " QUICKPLAY AKTIV: Antworten extrem kurz (1-2 Sätze). Du darfst auch Angriffsproben für Spieler vorschlagen."
+            : " NORMALER MODUS \u2013 ANGRIFF-REGEL (ABSOLUT): Du darfst NIEMALS selbst eine Angriffs-Probe f\u00FCr einen Spieler fordern oder vorgeben wie dieser angreift. NUR Ausweichen/Blocken-Proben f\u00FCr Spieler sind erlaubt. Warte zwingend, bis der Spieler explizit schreibt dass er angreift (z.B. 'Ich greife an'). Erst dann und nur dann eine Probe fordern.";
 
         let dungeonContext = "";
         const fate = State.fate || 0;
         if (fate >= FATE_BOSS_THRESHOLD) {
-            dungeonContext = ` [WICHTIGE DM-ANWEISUNG: Ein mÃ¤chtiges Schicksal hat sich erfÃ¼llt! Initiiere JETZT SOFORT einen epischen Bosskampf. Der Boss MUSS massiven Loot fallen lassen (Beute-Tag). ErwÃ¤hne das Schicksal NICHT beim Namen.]`;
+            dungeonContext = ` [WICHTIGE DM-ANWEISUNG: Ein mächtiges Schicksal hat sich erfüllt! Initiiere JETZT SOFORT einen epischen Bosskampf. Der Boss MUSS massiven Loot fallen lassen (Beute-Tag). Erwähne das Schicksal NICHT beim Namen.]`;
         } else if (fate >= FATE_DARK_THRESHOLD) {
-            dungeonContext = ` [DM-HINWEIS: Eine dunkle Macht nÃ¤hert sich unaufhaltsam. Lass die AtmosphÃ¤re bedrohlicher werden â€“ verstÃ¶rte NPCs, unheimliche Zeichen, ein GefÃ¼hl drohenden Unheils. Kein konkreter Hinweis auf den Ursprung.]`;
+            dungeonContext = ` [DM-HINWEIS: Eine dunkle Macht n\u00E4hert sich unaufhaltsam. Lass die Atmosph\u00E4re bedrohlicher werden \u2013 verst\u00F6rte NPCs, unheimliche Zeichen, ein Gef\u00FChl drohenden Unheils. Kein konkreter Hinweis auf den Ursprung.]`;
         } else if (fate >= FATE_UNREST_THRESHOLD) {
-            dungeonContext = ` [DM-HINWEIS: Eine leichte Unruhe liegt in der Luft. Streue subtile Vorzeichen ein â€“ ein merkwÃ¼rdiges Detail, ein GerÃ¼cht, ein diffuses Unbehagen. Halte es unterschwellig.]`;
+            dungeonContext = ` [DM-HINWEIS: Eine leichte Unruhe liegt in der Luft. Streue subtile Vorzeichen ein \u2013 ein merkw\u00FCrdiges Detail, ein Ger\u00FCcht, ein diffuses Unbehagen. Halte es unterschwellig.]`;
         }
 
         const pendingRollsCount = State.pendingRolls.filter(r => !r.rolled).length;
         const rollsAddendum = pendingRollsCount > 0
-            ? ` [WICHTIG: Es stehen ${pendingRollsCount} Probe(n) aus. Gib KEINE HandlungsvorschlÃ¤ge am Ende deiner Antwort. Der Spieler muss zuerst diese Proben wÃ¼rfeln. Warte auf deren Ergebnisse.]`
+            ? ` [WICHTIG: Es stehen ${pendingRollsCount} Probe(n) aus. Gib KEINE Handlungsvorschläge am Ende deiner Antwort. Der Spieler muss zuerst diese Proben würfeln. Warte auf deren Ergebnisse.]`
             : "";
 
         const historyCtx = State.chatHistory.slice(-5).join(' | ').substring(0, CHAT_HISTORY_CHAR_LIMIT);
         const weatherCtx = Weather.getWeatherContext();
         const momentum = State.momentum || 0;
         const momentumCtx = momentum >= 3
-            ? ` [HELDENMOMENTUM: Die Gruppe hat ${momentum} aufeinanderfolgende Erfolge! Beschreibe ihre nÃ¤chste Aktion besonders episch oder gewÃ¤hre einen kleinen narrativen Vorteil.]`
+            ? ` [HELDENMOMENTUM: Die Gruppe hat ${momentum} aufeinanderfolgende Erfolge! Beschreibe ihre nächste Aktion besonders episch oder gewähre einen kleinen narrativen Vorteil.]`
             : '';
-        const goldCtx = State.gold > 0 ? ` [Gruppenkapital: ${State.gold} GoldmÃ¼nzen]` : '';
+        const goldCtx = State.gold > 0 ? ` [Gruppenkapital: ${State.gold} Goldmünzen]` : '';
         const context = `Party: ${partyCtx}. Feinde: ${enemyCtx}. Vorherige Szenen: [${historyCtx}]. Aktuelle Szene: ${State.lastStoryPart}. Aktion (${acting}): ${actionMsg}. [Regeln: Diff=${diff} (${dInstr}), Rate=${rate}]${qpAddendum}${dungeonContext}${weatherCtx}${rollsAddendum}${momentumCtx}${goldCtx}`;
 
         try {
@@ -531,19 +531,19 @@ State.isProcessing = true; UI.showLoader(true);
             State.chatHistory.push(cleanStory.substring(0, CHAT_CONTEXT_CHAR_LIMIT));
             if (State.chatHistory.length > CHAT_HISTORY_MAX) State.chatHistory.shift();
 
-            // Optionen fÃ¼r das UI vorbereiten
+            // Optionen für das UI vorbereiten
             const suggestionClass = 'mt-1.5 suggestion-option w-full text-left rounded-xl px-3 py-2.5 cursor-pointer transition-all text-xs';
             let optionsHtml = '';
             if (Array.isArray(parsedData.options) && parsedData.options.length > 0) {
                 optionsHtml = '<div class="mt-4">' + parsedData.options.map(opt => this._renderSuggestionOption(opt, suggestionClass)).join('') + '</div>';
             }
 
-            // Neues HTML fÃ¼r den Chat zusammensetzen
+            // Neues HTML für den Chat zusammensetzen
             let cleanText = cleanStory + optionsHtml;
 
-            // Events an den TagParser/EventProcessor Ã¼bergeben
+            // Events an den TagParser/EventProcessor übergeben
             if (Array.isArray(parsedData.events)) {
-                // Wir Ã¼bergeben das Array als String, damit die bestehende Catch-Logik in block 3 umgebaut werden kann
+                // Wir übergeben das Array als String, damit die bestehende Catch-Logik in block 3 umgebaut werden kann
                 TagParser.process(JSON.stringify(parsedData.events));
             }
 
@@ -598,7 +598,7 @@ State.isProcessing = true; UI.showLoader(true);
     chooseRoute: function (route) {
         DOM.actionBoxContainer.innerHTML = ''; DOM.actionBoxContainer.classList.add('hidden');
         UI.updateAll();
-        this.submitPlayerAction(`wÃ¤hlt den Weg: ${route}.`);
+        this.submitPlayerAction(`wählt den Weg: ${route}.`);
     },
 
     camp: function () {
@@ -610,9 +610,9 @@ State.isProcessing = true; UI.showLoader(true);
         State.fatigue = Math.max(0, State.fatigue - reduction);
         const restored = before - State.fatigue;
 
-        let actionText = `Die Gruppe schlÃ¤gt ihr Lager auf, um sich auszuruhen.`;
-        if (hasProvisions) actionText += ` Dank der VorrÃ¤te erholen sie sich besonders gut.`;
-        if (State.fatigue > 0) actionText += ` [ErschÃ¶pfung sinkt um ${restored} auf ${State.fatigue}]`;
+        let actionText = `Die Gruppe schlägt ihr Lager auf, um sich auszuruhen.`;
+        if (hasProvisions) actionText += ` Dank der Vorräte erholen sie sich besonders gut.`;
+        if (State.fatigue > 0) actionText += ` [Erschöpfung sinkt um ${restored} auf ${State.fatigue}]`;
         else actionText += ` [Voll erholt]`;
 
         UI.updateAll();
@@ -626,7 +626,7 @@ State.isProcessing = true; UI.showLoader(true);
         char.talents.push(talentName);
         char.pendingTalentPoints--;
         Sound.play('levelup');
-        UI.addChatLog("System", `ðŸŒŸ **${char.name}** hat die Spezialisierung **${talentName}** erlernt!`);
+        UI.addChatLog("System", `\u{1F31F} **${char.name}** hat die Spezialisierung **${talentName}** erlernt!`);
         UI.showDetails(charId);
         UI.updateAll();
     },
@@ -946,24 +946,24 @@ State.isProcessing = true; UI.showLoader(true);
         UI.showLoader(true, "Orakel befragt...");
         try {
             const ctx = State.lastStoryPart ? `\n\nAktueller Spielkontext: "${State.lastStoryPart.substring(0, 400)}"` : '';
-            const ans = await API.generateText(q + ctx, "Du bist ein mystisches Orakel in einer Fantasy-Welt. Beantworte Fragen in 1-2 SÃ¤tzen â€“ geheimnisvoll, poetisch, aber spielrelevant. Keine Mechanik-Tags.");
-            UI.addChatLog("âœ¨ Orakel", ans);
-        } catch (e) { UI.addChatLog('System', `âš ï¸Â Orakel-Fehler: ${e.message}`); } finally { UI.showLoader(false); }
+            const ans = await API.generateText(q + ctx, "Du bist ein mystisches Orakel in einer Fantasy-Welt. Beantworte Fragen in 1-2 S\u00E4tzen \u2013 geheimnisvoll, poetisch, aber spielrelevant. Keine Mechanik-Tags.");
+            UI.addChatLog("\u2728 Orakel", ans);
+        } catch (e) { UI.addChatLog('System', `\u26A0\uFE0F Orakel-Fehler: ${e.message}`); } finally { UI.showLoader(false); }
     },
     generatePlotTwist: async function () {
         if (this._requireHost('Plot-Twist')) return;
         UI.showLoader(true, "Schicksal weben...");
         try {
             const twistText = await API.generateText(
-                `Die Gruppe erlebt gerade: "${State.lastStoryPart}". Erschaffe jetzt einen dramatischen, unerwarteten Wendepunkt der die Geschichte vorantreibt. Nutze Mechanik-Tags wie nÃ¶tig (Gegner, XP, Beute, etc.).`,
+                `Die Gruppe erlebt gerade: "${State.lastStoryPart}". Erschaffe jetzt einen dramatischen, unerwarteten Wendepunkt der die Geschichte vorantreibt. Nutze Mechanik-Tags wie nötig (Gegner, XP, Beute, etc.).`,
                 CONFIG.systemPrompt
             );
             State.lastStoryPart = twistText.substring(0, 600);
             State.chatHistory.push({ role: 'assistant', content: twistText.substring(0, 400) });
             if (State.chatHistory.length > 8) State.chatHistory.shift();
             TagParser.process(twistText);
-            UI.addChatLog("âœ¨ Schicksal", twistText);
-        } catch (e) { UI.addChatLog('System', `âš ï¸Â Plot-Twist Fehler: ${e.message}`); } finally { UI.showLoader(false); }
+            UI.addChatLog("\u2728 Schicksal", twistText);
+        } catch (e) { UI.addChatLog('System', `\u26A0\uFE0F Plot-Twist Fehler: ${e.message}`); } finally { UI.showLoader(false); }
     },
 
     generatePortraitForPrompts: async function (prompts) {
@@ -1030,7 +1030,7 @@ State.isProcessing = true; UI.showLoader(true);
         if (this._requireHost('NPC begegnen')) return;
         if (State.party.length === 0) return; UI.showLoader(true, "NPC wird rekrutiert...");
         try {
-            let aiText = await API.generateText(`Erstelle einen passenden NPC-Begleiter fÃ¼r diese Szene: "${State.lastStoryPart}".`, "Du bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown. Nutze ZWINGEND diese exakten Keys: {\"name\": \"Name\", \"class\": \"Klasse\", \"appearance\": \"Kurze optische Beschreibung\"}");
+            let aiText = await API.generateText(`Erstelle einen passenden NPC-Begleiter für diese Szene: "${State.lastStoryPart}".`, "Du bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown. Nutze ZWINGEND diese exakten Keys: {\"name\": \"Name\", \"class\": \"Klasse\", \"appearance\": \"Kurze optische Beschreibung\"}");
             const match = aiText.match(/\{[\s\S]*\}/);
             if (!match) throw new Error("Konnte kein JSON extrahieren.");
             const npcData = JSON.parse(match[0]);
@@ -1047,17 +1047,17 @@ State.isProcessing = true; UI.showLoader(true);
             ]);
 
             State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name: npcName, class: npcClass, hp: 20, maxHp: 20, portrait: pUrl, imagePrompt: imgPrompt, inventory: [], isNPC: true }));
-            UI.addChatLog("System", `âœ¨ NPC **${npcName}** schlieÃŸt sich der Gruppe an!`);
+            UI.addChatLog("System", `\u2728 NPC **${npcName}** schlie\u00DFt sich der Gruppe an!`);
             UI.updateAll();
         } catch (e) {
-            UI.addChatLog("System", `âš ï¸Â NPC konnte nicht generiert werden (${e.message}). Bitte erneut versuchen.`);
+            UI.addChatLog("System", `\u26A0\uFE0F NPC konnte nicht generiert werden (${e.message}). Bitte erneut versuchen.`);
         } finally {
             UI.showLoader(false);
         }
     },
 
     spawnNPCFromTag: async function (name, cls, app) {
-        UI.addChatLog("System", `ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒâ€šÃ‚Â³ **${name}** tritt der Gruppe bei...`);
+        UI.addChatLog("System", `\u23F3 **${name}** tritt der Gruppe bei...`);
         try {
             let imgPrompt = `Fantasy portrait, face only, highly detailed, ${cls}, ${app}`.replace(/\n/g, ' ');
             let p = await API.generateImageWithFallbacks([
@@ -1065,17 +1065,17 @@ State.isProcessing = true; UI.showLoader(true);
                 `Fantasy portrait, face only, highly detailed, ${cls}`
             ]);
             State.party.push(Utils.sanitizeCharacter({ id: Utils.generateId(), name, class: cls, hp: 20, maxHp: 20, portrait: p, inventory: [], isNPC: true }));
-            UI.addChatLog("System", `âœ¨ **${name}** schlieÃŸt sich der Gruppe an!`);
+            UI.addChatLog("System", `\u2728 **${name}** schlie\u00DFt sich der Gruppe an!`);
             UI.updateAll();
         } catch (e) { console.error('NPC spawn failed:', e); }
     },
 
     checkEnemies: function () {
         if (State.activeEnemies.length === 0) {
-            UI.addChatLog("System", "ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â **Feindstatus:** Aktuell sind keine lebenden Feinde in Sicht.");
+            UI.addChatLog("System", "\u2694\uFE0F **Feindstatus:** Aktuell sind keine lebenden Feinde in Sicht.");
             return;
         }
-        let statusText = "ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â **Feindstatus:**\n";
+        let statusText = "\u2694\uFE0F **Feindstatus:**\\n";
         State.activeEnemies.forEach(e => {
             const healthPercent = (e.hp / e.maxHp) * 100;
             let healthDesc = "Gesund";
@@ -1096,7 +1096,7 @@ State.isProcessing = true; UI.showLoader(true);
         this._submitInventoryAction('COLLECT_ALL_LOOT', { charId: cid }, { showDetailsId: cid });
     },
 
-    leaveMerchant: function () { State.activeMerchant = null; UI.updateAll(); UI.addChatLog("System", "Ihr wendet euch vom HÃ¤ndler ab."); },
+    leaveMerchant: function () { State.activeMerchant = null; UI.updateAll(); UI.addChatLog("System", "Ihr wendet euch vom Händler ab."); },
 
     handleItemClick: function (cid, itemName, isEquipped = false, count = 1) {
         const c = State.party.find(p => p.id === cid); if (!c) return;
@@ -1150,7 +1150,7 @@ State.isProcessing = true; UI.showLoader(true);
     },
     confirmDropItem: function () {
         const amt = parseInt(document.getElementById('item-action-amount')?.value) || 1;
-        if (!confirm(`Bist du sicher, dass du ${amt}x dieses Item unwiderruflich wegwerfen mÃ¶chtest?`)) return;
+        if (!confirm(`Bist du sicher, dass du ${amt}x dieses Item unwiderruflich wegwerfen möchtest?`)) return;
         const cid = DOM.itemActionCid.value;
         const itemName = DOM.itemActionName.value;
         this._submitInventoryAction('DROP_ITEM', { charId: cid, itemName, amount: amt }, { showDetailsId: cid, closeModal: true });
@@ -1181,7 +1181,7 @@ State.isProcessing = true; UI.showLoader(true);
         DOM.itemActionModal.classList.add('hidden');
         if (c && State.activeMerchant) {
             State.actingChar = c.name;
-            DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? KÃ¶nnen wir tauschen?"`;
+            DOM.playerInput.value = `Ich zeige ${State.activeMerchant.name} mein(e) "${itemName}" und frage: "Wie viel ist das wert? Können wir tauschen?"`;
             UI.hideDetails();
             DOM.playerInput.focus();
         }
@@ -1214,7 +1214,7 @@ State.isProcessing = true; UI.showLoader(true);
     suggestCrafting: async function () {
         if (this._requireHost('KI-Vorschlag')) return;
         if (State.craftingIngredients.length === 0) {
-            UI.addChatLog("System", "âš ï¸Â Bitte wÃ¤hle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.");
+            UI.addChatLog("System", "\u26A0\uFE0F Bitte w\u00E4hle zuerst Zutaten aus, bevor du einen Vorschlag anforderst.");
             return;
         }
         const btn = document.getElementById('btn-craft-suggest');
@@ -1223,7 +1223,7 @@ State.isProcessing = true; UI.showLoader(true);
         const materials = State.craftingIngredients.map(ing => ing.itemName).join(', ');
 
         try {
-            let aiText = await API.generateText(`Erfinde einen passenden, gut ausbalancierten Gegenstand, der logisch aus diesen Zutaten hergestellt werden kann: [${materials}]. WICHTIG: Wenn die Zutaten bereits starke Werte oder FÃ¤higkeiten haben, soll dein vorgeschlagener Gegenstand diese Werte logischerweise Ã¼bernehmen oder ganz leicht verbessern. \n\nDu bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown oder Codeblock-Tags. Nutze ZWINGEND diese exakten Keys: {"name": "Gegenstandsname", "str": Zahl, "dex": Zahl, "int": Zahl, "con": Zahl}. WÃ¤hle 1-2 passende weise Attribute aus (Wert 1-3 oder hÃ¶her falls die Zutaten es rechtfertigen), die anderen 0.`);
+            let aiText = await API.generateText(`Erfinde einen passenden, gut ausbalancierten Gegenstand, der logisch aus diesen Zutaten hergestellt werden kann: [${materials}]. WICHTIG: Wenn die Zutaten bereits starke Werte oder Fähigkeiten haben, soll dein vorgeschlagener Gegenstand diese Werte logischerweise übernehmen oder ganz leicht verbessern. \n\nDu bist ein Generator. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt ohne Markdown oder Codeblock-Tags. Nutze ZWINGEND diese exakten Keys: {"name": "Gegenstandsname", "str": Zahl, "dex": Zahl, "int": Zahl, "con": Zahl}. Wähle 1-2 passende weise Attribute aus (Wert 1-3 oder höher falls die Zutaten es rechtfertigen), die anderen 0.`);
 
             const match = aiText.match(/\{[\s\S]*\}/);
             if (!match) throw new Error("Konnte kein JSON aus Antwort extrahieren.");
@@ -1241,7 +1241,7 @@ State.isProcessing = true; UI.showLoader(true);
             if (elCon) elCon.value = data.con > 0 ? data.con : "";
 
         } catch (e) {
-            UI.addChatLog("System", `âš ï¸Â KI Konnte keinen Vorschlag generieren: ${e.message}`);
+            UI.addChatLog("System", `\u26A0\uFE0F KI konnte keinen Vorschlag generieren: ${e.message}`);
         } finally {
             if (btn) { btn.innerHTML = '<i class="fas fa-magic mr-1"></i>Vorschlag'; btn.disabled = false; }
         }
@@ -1276,7 +1276,7 @@ State.isProcessing = true; UI.showLoader(true);
         if (!crafter && State.party.length > 0) crafter = State.party[0];
         const crafterName = crafter ? crafter.name : 'Ein Gruppenmitglied';
 
-        const msg = `Ich (${crafterName}) mÃ¶chte aus den gesammelten Materialien [${materials}] auf Basis meiner FÃ¤higkeiten folgenden Gegenstand verzaubern/schmieden: "${target}".\n\nBitte fordere mich GANZ EXPLIZIT im nÃ¤chsten Schritt zu einer [Probe: ${crafterName} | Intelligenz (Crafting)] auf! Die Difficulty Class (DC) bestimmst du passend zur Schwere dieses Eingriffs. WICHTIG: Wenn die verwendeten Materialien bereits starke magische Werte oder Spezifikationen besitzen, mach die DC NICHT schwerer, da die Magie/Macht ja bereits in den Zutaten steckt und nur umgeformt wird! Entscheide ERST NACH meinem Wurf Ã¼ber Erfolg oder Misserfolg des Gegenstandes. FÃ¼ge bei Erfolg 1-2 passende ZusatzfÃ¤higkeiten passend zur Zutatenkombination (+ Stats) hinzu. (WICHTIGE DM-ANWEISUNG: Verwende ein [Verbraucht: ...] Tag AUSSCHLIESSLICH exakt fÃ¼r die genannten Zutaten hier! ZerstÃ¶re niemals andere Waffen/AusrÃ¼stung!)`;
+        const msg = `Ich (${crafterName}) möchte aus den gesammelten Materialien [${materials}] auf Basis meiner Fähigkeiten folgenden Gegenstand verzaubern/schmieden: "${target}".\n\nBitte fordere mich GANZ EXPLIZIT im nächsten Schritt zu einer [Probe: ${crafterName} | Intelligenz (Crafting)] auf! Die Difficulty Class (DC) bestimmst du passend zur Schwere dieses Eingriffs. WICHTIG: Wenn die verwendeten Materialien bereits starke magische Werte oder Spezifikationen besitzen, mach die DC NICHT schwerer, da die Magie/Macht ja bereits in den Zutaten steckt und nur umgeformt wird! Entscheide ERST NACH meinem Wurf über Erfolg oder Misserfolg des Gegenstandes. Füge bei Erfolg 1-2 passende Zusatzfähigkeiten passend zur Zutatenkombination (+ Stats) hinzu. (WICHTIGE DM-ANWEISUNG: Verwende ein [Verbraucht: ...] Tag AUSSCHLIESSLICH exakt für die genannten Zutaten hier! Zerstöre niemals andere Waffen/Ausrüstung!)`;
 
         DOM.craftingModal.classList.add('hidden');
         DOM.craftTargetItem.value = "";
@@ -1296,7 +1296,7 @@ State.isProcessing = true; UI.showLoader(true);
         if (c && c.abilities[idx]) {
             const oldAb = c.abilities[idx];
             c.abilities[idx] = State.pendingAbilityLearning.newAbility;
-            UI.addChatLog("System", `ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾ **${c.name}** hat die alte FÃ¤higkeit **${oldAb}** vergessen und dafÃ¼r **${State.pendingAbilityLearning.newAbility}** erlernt!`);
+            UI.addChatLog("System", `\u2728 **${c.name}** hat die alte F\u00E4higkeit **${oldAb}** vergessen und daf\u00FCr **${State.pendingAbilityLearning.newAbility}** erlernt!`);
         }
         State.pendingAbilityLearning = null;
         document.getElementById('ability-replace-modal').classList.add('hidden');
@@ -1306,7 +1306,7 @@ State.isProcessing = true; UI.showLoader(true);
         if (!State.pendingAbilityLearning) return;
         const c = State.party.find(p => p.id === State.pendingAbilityLearning.charId);
         if (c) {
-            UI.addChatLog("System", `ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒâ€¦â€™ **${c.name}** hat entschieden, **${State.pendingAbilityLearning.newAbility}** doch nicht zu erlernen.`);
+            UI.addChatLog("System", `\u{1F4AD} **${c.name}** hat entschieden, **${State.pendingAbilityLearning.newAbility}** doch nicht zu erlernen.`);
         }
         State.pendingAbilityLearning = null;
         document.getElementById('ability-replace-modal').classList.add('hidden');
@@ -1323,7 +1323,7 @@ State.isProcessing = true; UI.showLoader(true);
         localStorage.setItem('api_model_or_image', document.getElementById('api-model-or-image').value.trim());
 
         document.getElementById('api-settings-modal').classList.add('hidden');
-        UI.addChatLog("System", "ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€¦â€™ API-Einstellungen gespeichert!");
+        UI.addChatLog("System", "\u2699\uFE0F API-Einstellungen gespeichert!");
     },
     savePrompt: function () {
         const inputEl = document.getElementById('new-prompt-input');
@@ -1398,7 +1398,7 @@ State.isProcessing = true; UI.showLoader(true);
     bulkExportHeroes: async function () {
         const heroes = State.party.filter(p => !p.isSummon);
         if (heroes.length === 0) {
-            UI.addChatLog("System", "âš ï¸Â Keine Helden zum Exportieren vorhanden.");
+            UI.addChatLog("System", "\u26A0\uFE0F Keine Helden zum Exportieren vorhanden.");
             return;
         }
         const now = new Date();
@@ -1415,7 +1415,7 @@ State.isProcessing = true; UI.showLoader(true);
             document.body.removeChild(a);
             await new Promise(r => setTimeout(r, 250));
         }
-        UI.addChatLog("System", `ðŸ’¾ **${heroes.length} Helden** wurden erfolgreich exportiert (Sammel-Download).`);
+        UI.addChatLog("System", `\u{1F4BE} **${heroes.length} Helden** wurden erfolgreich exportiert (Sammel-Download).`);
     },
     downloadSave: function () { const now = new Date(); const pad = n => n.toString().padStart(2, '0'); const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(State)], { type: 'application/json' })); a.download = `InfiniteDungeon_${ts}.json`; document.body.appendChild(a); a.click(); },
     importSave: function (e) {
