@@ -1,4 +1,4 @@
-﻿import { State, subscribe } from './state.js';
+import { State, subscribe } from './state.js';
 import { TTS, DOM, initDOM, UI } from './ui.js';
 import { Weather, initFeatures } from './features.js';
 import { Sound } from './sound.js';
@@ -79,3 +79,31 @@ init();
 initEvents();
 initFeatures();
 
+function initBackgroundAnimation() {
+    const bgElement = document.getElementById('animated-bg');
+    if (!bgElement) return;
+
+    const images = [
+        'Chat_Background/Whisk_0d9136830190271b81c40512b02f802ddr.jpeg',
+        'Chat_Background/Whisk_1493945a2086049b80f4121b12f6aae7dr.jpeg',
+        'Chat_Background/Whisk_1aab308e30b0d95af2d44ba61788b4f6dr (1).jpeg',
+        'Chat_Background/Whisk_1aab308e30b0d95af2d44ba61788b4f6dr.jpeg',
+        'Chat_Background/Whisk_6b8285ab4922bdc9f3e4cc32601fd807dr.jpeg',
+        'Chat_Background/Whisk_7037a463a2a7a21a7a644f762e1b17c5dr.jpeg',
+        'Chat_Background/Whisk_72c21ca8790aa9b93d54513534ec10e9dr.jpeg',
+        'Chat_Background/Whisk_f1637aef1076327b1f4478d302122458dr.jpeg'
+    ];
+
+    let currentIndex = 0;
+    
+    // Set initial image
+    bgElement.style.backgroundImage = `url('${images[currentIndex]}')`;
+
+    // Rotate every 30 seconds
+    setInterval(() => {
+        currentIndex = (currentIndex + 1) % images.length;
+        bgElement.style.backgroundImage = `url('${images[currentIndex]}')`;
+    }, 30000);
+}
+
+initBackgroundAnimation();
