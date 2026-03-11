@@ -1,6 +1,20 @@
 @import "tailwindcss";
 
-        body {
+:root {
+    --ink: #e2e8f0;
+    --muted: #94a3b8;
+    --panel: rgba(9, 13, 26, 0.76);
+    --panel-strong: rgba(7, 12, 26, 0.86);
+    --accent: #a855f7;
+    --accent-strong: #7c3aed;
+    --gold: #fbbf24;
+    --emerald: #10b981;
+    --shadow-soft: 0 10px 26px rgba(2, 6, 23, 0.28);
+    --shadow-strong: 0 18px 40px rgba(2, 6, 23, 0.38);
+    --radius-lg: 1.1rem;
+    --radius-md: 0.75rem;
+}
+body {
             font-family: 'Inter', sans-serif;
             background-color: #0b0f19;
             background-image: 
@@ -14,7 +28,57 @@
             cursor: default;
         }
 
-        button, .cursor-pointer, [data-action] {
+        
+        :focus-visible {
+            outline: 2px solid rgba(168, 85, 247, 0.6);
+            outline-offset: 2px;
+        }
+
+        input:focus-visible,
+        textarea:focus-visible,
+        select:focus-visible {
+            box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+        }
+
+        input[type="text"], input[type="password"], input[type="number"], input[type="range"], textarea, select {
+            border-color: rgba(148, 163, 184, 0.28) !important;
+            background: rgba(5, 8, 16, 0.55) !important;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: rgba(148, 163, 184, 0.7);
+        }
+
+        #header-controls > button,
+        #header-controls > label,
+        #sound-menu-wrapper > button {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), var(--shadow-soft);
+            border-color: rgba(148, 163, 184, 0.18);
+        }
+
+        #header-controls > button:hover,
+        #header-controls > label:hover,
+        #sound-menu-wrapper > button:hover {
+            border-color: rgba(168, 85, 247, 0.45);
+        }
+
+        #send-btn {
+            box-shadow: 0 12px 28px rgba(88, 28, 135, 0.35);
+        }
+
+        #prompt-manager-btn {
+            box-shadow: 0 10px 22px rgba(30, 58, 138, 0.28);
+        }
+
+        
+
+        #action-area .flex.flex-wrap.items-center.gap-2\\.5 > button {
+            border-color: rgba(148, 163, 184, 0.22);
+        }
+
+        #action-area .flex.flex-wrap.items-center.gap-2\\.5 > button:hover {
+            box-shadow: 0 8px 18px rgba(2, 6, 23, 0.32);
+        }button, .cursor-pointer, [data-action] {
             cursor: pointer !important;
         }
 
@@ -58,7 +122,7 @@
         }
 
         .glow-text {
-            text-shadow: 0 0 10px rgba(147, 51, 234, 0.5);
+            text-shadow: 0 0 8px rgba(147, 51, 234, 0.45);
         }
 
         .portrait-frame {
@@ -154,7 +218,7 @@
             border-radius: 10px;
         }
 
-        /* WÒ¼rfel Animation */
+        /* Wuerfel Animation */
         .dice-rolling {
             animation: rollPulse 0.1s infinite alternate;
         }
@@ -175,7 +239,7 @@
             border-bottom: 2px solid rgba(255, 255, 255, 0.1);
             font-weight: 600;
             font-family: 'Inter', 'Space Grotesk', sans-serif;
-            letter-spacing: 0.18em;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
             color: rgba(241, 245, 249, 0.65);
             background: linear-gradient(180deg, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.4));
@@ -395,8 +459,8 @@
         }
 
         .btn-premium:hover {
-            transform: translateY(-2px) scale(1.02);
-            filter: brightness(1.1);
+            transform: translateY(-1px) scale(1.01);
+            filter: brightness(1.05);
         }
 
         .btn-premium:active {
@@ -1322,7 +1386,7 @@
 .system-feed-sender {
   font-size: 0.58rem;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   color: #94a3b8;
   font-weight: 700;
 }
@@ -1481,7 +1545,7 @@
 .chat-sender {
   font-size: 0.66rem;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   color: #fbbf24;
   font-weight: 700;
 }
@@ -1514,7 +1578,7 @@ body.session-startscreen .thinking-status-chip {
   border: 1px solid rgba(34, 211, 238, 0.35);
   padding: 0.1rem 0.4rem;
   font-size: 0.58rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   color: #67e8f9;
   background: rgba(8, 47, 73, 0.6);
 }
@@ -2430,5 +2494,229 @@ body.session-startscreen #story-log {
     border: 0;
     box-shadow: none;
 }
+
+
+
+body {
+    min-height: 100dvh;
+}
+
+#story-log,
+#party-list,
+#char-details,
+#dynamic-roll-container,
+#system-content,
+#journal-content,
+#stats-content,
+#enemy-history-container,
+#current-enemy-container,
+#loot-list,
+#merchant-items {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+@media (max-width: 900px) and (orientation: landscape), (max-height: 520px) and (orientation: landscape) {
+    body {
+        min-height: 100dvh;
+    }
+
+    header {
+        padding: 0.5rem 0.7rem !important;
+        gap: 0.6rem;
+    }
+
+    header h1 {
+        font-size: 0.95rem !important;
+        letter-spacing: 0.08em;
+        white-space: nowrap;
+    }
+
+    #header-controls {
+        max-width: min(64vw, 34rem);
+        flex-wrap: nowrap;
+        gap: 0.35rem !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 0.15rem;
+        scrollbar-width: none;
+    }
+
+    #header-controls::-webkit-scrollbar {
+        display: none;
+    }
+
+    #header-controls > button,
+    #header-controls > label,
+    #sound-menu-wrapper > button,
+    #mp-status-badge {
+        flex: 0 0 auto;
+        min-height: 2rem;
+        padding: 0.45rem 0.65rem !important;
+        font-size: 0.68rem !important;
+        white-space: nowrap;
+    }
+
+    #topbar-thinking-status {
+        top: 3rem;
+        max-width: min(88vw, 22rem);
+    }
+
+    main {
+        min-height: 0;
+    }
+
+    main > section {
+        gap: 0.5rem !important;
+        padding: 0.5rem !important;
+    }
+
+    main > aside {
+        display: flex !important;
+        width: min(42vw, 17.5rem) !important;
+        min-width: min(42vw, 17.5rem);
+        padding: 0.6rem !important;
+        gap: 0.6rem !important;
+    }
+
+    .tabs-row {
+        margin-bottom: 0.35rem !important;
+    }
+
+    .tab-btn {
+        padding: 0.45rem 0.35rem !important;
+        font-size: 0.56rem !important;
+        letter-spacing: 0.08em;
+    }
+
+    #story-log {
+        min-height: 0 !important;
+        padding: 0.75rem !important;
+        border-radius: 0.85rem;
+    }
+
+    #action-area {
+        padding: 0.55rem !important;
+        gap: 0.45rem !important;
+        border-radius: 0.85rem;
+    }
+
+    #action-box-container {
+        margin-bottom: 0.35rem !important;
+        max-height: 28vh !important;
+    }
+
+    #player-input,
+    #send-btn,
+    #prompt-manager-btn,
+    #target-mode-btn,
+    #game-difficulty,
+    #enemy-rate {
+        font-size: 0.85rem !important;
+    }
+
+    #player-input {
+        min-height: 2.35rem;
+        padding: 0.65rem 0.8rem !important;
+    }
+
+    #send-btn,
+    #prompt-manager-btn {
+        min-height: 2.35rem;
+        padding: 0.6rem 0.85rem !important;
+    }
+
+    #action-area [data-action],
+    #action-area select {
+        min-height: 2rem;
+    }
+
+    #action-area .flex.flex-wrap.items-center.gap-2\.5 {
+        gap: 0.35rem !important;
+    }
+
+    #action-area .flex.flex-wrap.items-center.gap-2\.5 > button {
+        padding: 0.45rem 0.65rem !important;
+        font-size: 0.66rem !important;
+    }
+
+    #action-area .flex.items-center.gap-2.text-\[10px\] {
+        font-size: 0.56rem !important;
+        gap: 0.25rem !important;
+        padding: 0.2rem !important;
+    }
+
+    #party-list,
+    #char-details,
+    .dice-sidebar-feed,
+    .system-sidebar-feed,
+    #journal-content,
+    #stats-content,
+    #enemy-history-container,
+    #current-enemy-container {
+        min-height: 0;
+    }
+
+    #enemy-section {
+        min-height: 8rem;
+        padding-top: 0.6rem;
+    }
+
+    #loot-drop-section,
+    #merchant-section {
+        max-height: 36vh;
+        margin-top: 0.4rem;
+        padding: 0.7rem !important;
+    }
+
+    #creator-modal,
+    #api-settings-modal,
+    #music-modal,
+    #multiplayer-modal,
+    #inventory-modal,
+    #prompt-manager-modal {
+        align-items: flex-start;
+        padding: 0.65rem !important;
+    }
+
+    #creator-modal > div,
+    #api-settings-modal > div,
+    #music-modal > div,
+    #multiplayer-modal > div,
+    #inventory-modal > div,
+    #prompt-manager-modal > div {
+        max-height: calc(100dvh - 1.3rem);
+        overflow-y: auto;
+    }
+
+    body.session-startscreen main > section {
+        padding: 0.5rem !important;
+    }
+
+    body.session-startscreen #story-log {
+        padding: 0.25rem !important;
+        overflow-y: auto;
+    }
+
+    body.session-startscreen .pg2-card,
+    body.session-startscreen .pg2-card-solo {
+        width: min(100%, 44rem);
+        padding: 1rem;
+        gap: 0.9rem;
+    }
+
+    body.session-startscreen .pg2-title {
+        font-size: clamp(1.15rem, 3.8vw, 1.8rem);
+    }
+
+    body.session-startscreen .pg2-grid {
+        gap: 0.7rem;
+    }
+}
+
+
+
+
+
 
 

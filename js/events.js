@@ -153,7 +153,7 @@ export function initEvents() {
                     const options = parts[1].split(',').map(s => s.trim()).filter(Boolean);
                     if (options.length >= 2) { Network.startVote(question, options); return; }
                 }
-                UI.addChatLog('System', 'Ungültiges Format. Nutze: Frage | Option1, Option2, Option3');
+                UI.addChatLog('System', 'Ungueltiges Format. Nutze: Frage | Option1, Option2, Option3');
             },
         };
 
@@ -166,6 +166,14 @@ export function initEvents() {
         else if (el.id === 'start-api-key-input') State.pendingApiKeyValue = el.value;
         else if (el.id === 'start-api-model-input') State.pendingApiModelText = el.value;
         else if (el.id === 'music-volume-slider') Engine.setMusicVolume(Number(el.value) / 100);
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const el = e.target;
+        if (!el) return;
+        if (el.id === 'player-input') Engine.submitPlayerAction();
+        else if (el.id === 'oracle-input') Engine.submitOracle();
     });
 
     document.addEventListener('change', (e) => {
@@ -198,4 +206,11 @@ export function initEvents() {
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') UI.closeEnemyLightbox();
 });
+
+
+
+
+
+
+
 
