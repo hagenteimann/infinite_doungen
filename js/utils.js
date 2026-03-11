@@ -270,7 +270,8 @@ export const Utils = {
             .sort((a, b) => b.score - a.score || a.normalizedLength - b.normalizedLength);
 
         return scored[0]?.item;
-    }    // Security: localStorage access wrappers (avoid crashes in private mode).
+    },
+    // Security: localStorage access wrappers (avoid crashes in private mode).
     safeStorageGet: function (key) {
         try {
             return localStorage.getItem(key);
