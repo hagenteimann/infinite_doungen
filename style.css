@@ -2785,7 +2785,8 @@ body {
     }
 }
 
-.entity-card-expanded    .entity-banner {
+.entity-card-expanded     .entity-banner {
+    background: transparent;
     margin: 0;
     border: none;
     margin: 0;
@@ -2794,7 +2795,8 @@ body {
     margin-top: 0.35rem;
 }
 
-   .entity-banner {
+    .entity-banner {
+    background: transparent;
     margin: 0;
     border: none;
     margin: 0;
@@ -2830,7 +2832,7 @@ body {
 .entity-banner-shade {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(2, 6, 23, 0) 30%, rgba(2, 6, 23, 0.62) 70%, rgba(2, 6, 23, 0.9) 100%);
+    background: linear-gradient(180deg, rgba(2, 6, 23, 0) 40%, rgba(2, 6, 23, 0.55) 78%, rgba(2, 6, 23, 0.75) 100%);
 }
 
 .entity-banner-meta {
@@ -2913,6 +2915,8 @@ body {
 #tab-content-party {
     overflow: visible !important;
 }
+
+
 
 
 
