@@ -2745,7 +2745,9 @@ body {
     transition: max-height 0.2s ease, opacity 0.16s ease;
 }
 
-.entity-card-expanded {
+ .entity-card-expanded {
+    width: calc(100% + 1rem);
+    margin-left: -0.5rem;
     max-height: 0;
     opacity: 0;
     overflow: hidden;
@@ -2755,7 +2757,9 @@ body {
 @media (hover: hover) {
     .entity-card.is-hovered { z-index: 6; }
     .entity-card.is-hovered .entity-card-expanded,
-    .entity-card:hover .entity-card-expanded {
+    .entity-card:hover  .entity-card-expanded {
+    width: calc(100% + 1rem);
+    margin-left: -0.5rem;
         max-height: 18rem;
         opacity: 1;
     }
@@ -2872,4 +2876,15 @@ body {
 
 
 
+
+
+#party-list,
+#enemy-history-container,
+#current-enemy-container {
+    overflow-x: visible;
+}
+
+#tab-content-party {
+    overflow: visible !important;
+}
 
