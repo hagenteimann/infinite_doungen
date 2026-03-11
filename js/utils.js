@@ -270,7 +270,7 @@ export const Utils = {
             .sort((a, b) => b.score - a.score || a.normalizedLength - b.normalizedLength);
 
         return scored[0]?.item;
-    }\n    // Security: localStorage access wrappers (avoid crashes in private mode).
+    }    // Security: localStorage access wrappers (avoid crashes in private mode).
     safeStorageGet: function (key) {
         try {
             return localStorage.getItem(key);
@@ -315,4 +315,5 @@ export const Utils = {
             results.push(await this.loadImage(src));
         }
         return results;
-    },\n};
+    },};
+
