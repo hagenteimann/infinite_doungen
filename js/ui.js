@@ -170,33 +170,36 @@ export const UIBuilders = {
         const hpPercent = (c.hp / effMaxHp) * 100;
         const hpGlowClass = isDead ? 'hp-glow-dead' : (hpPercent > 75 ? 'hp-glow-high' : (hpPercent > 25 ? 'hp-glow-mid' : 'hp-glow-low'));
 
-        const portraitHtml = c.portrait ? `<img src="${c.portrait}" class="w-10 h-10 rounded-lg object-cover bg-black/50 border ${hpGlowClass} shadow-sm btn-premium">` : `<div class="w-10 h-10 rounded-lg bg-black/50 flex items-center justify-center border border-white/10 text-[10px] shadow-sm btn-premium">${badge}</div>`;
-
-        const previewHtml = `
-            <div class="entity-preview entity-preview-hero">
-                <div class="entity-preview-media">
-                    ${c.portrait ? `<img src="${c.portrait}" class="entity-preview-portrait" alt="">` : `<div class="entity-preview-fallback">${badge}</div>`}
-                    <div class="entity-preview-shade"></div>
-                    <div class="entity-preview-meta">
-                        <div class="entity-preview-name ${nameColor}">${c.name}</div>
-                        <div class="entity-preview-sub">${c.class} · Lvl ${c.level}</div>
-                        <div class="entity-preview-hp">
+        const portraitThumb = c.portrait ? `<img src="${c.portrait}" class="w-10 h-10 rounded-lg object-cover bg-black/50 border ${hpGlowClass} shadow-sm btn-premium">` : `<div class="w-10 h-10 rounded-lg bg-black/50 flex items-center justify-center border border-white/10 text-[10px] shadow-sm btn-premium">${badge}</div>`;
+        const bannerPortrait = c.portrait ? `<img src="${c.portrait}" class="entity-banner-img" alt="">` : `<div class="entity-banner-fallback">${badge}</div>`;
+        const expandedHtml = `
+            <div class="entity-card-expanded">
+                <div class="entity-banner">
+                    ${bannerPortrait}
+                    <div class="entity-banner-shade"></div>
+                    <div class="entity-banner-meta">
+                        <div class="entity-banner-title ${nameColor}">${c.name}</div>
+                        <div class="entity-banner-sub">${c.class} - Lvl ${c.level}</div>
+                        <div class="entity-banner-hp">
                             <span>${c.hp}/${effMaxHp}</span>
-                            <div class="entity-preview-bar"><div class="entity-preview-bar-fill ${c.isNPC ? (c.isSummon ? 'hero-bar-summon' : 'hero-bar-npc') : 'hero-bar-player'}" style="width: ${(c.hp / effMaxHp) * 100}%"></div></div>
+                            <div class="entity-banner-bar"><div class="entity-banner-bar-fill ${c.isNPC ? (c.isSummon ? 'hero-bar-summon' : 'hero-bar-npc') : 'hero-bar-player'}" style="width: ${(c.hp / effMaxHp) * 100}%"></div></div>
                         </div>
                     </div>
                 </div>
             </div>`;
 
-        return `<div class="bg-black/30 backdrop-blur-md p-2 rounded-xl border entity-card entity-card-hero ${borderClass} flex gap-2.5 items-center cursor-pointer group transition-all btn-premium" data-action="entity-click" data-name="${c.name.replace(/"/g, '&quot;')}" data-entity-type="hero" data-entity-id="${c.id}">
-            ${portraitHtml} ${previewHtml}
-            <div class="flex-1">
-                <div class="flex justify-between text-[11px] font-bold tracking-wide"><span class="${nameColor}">${c.name} <span class="text-slate-500 text-[9px] font-normal ml-0.5">Lvl ${c.level}</span></span><span class="${isDead ? 'text-red-500' : 'text-slate-300 font-mono'}">${c.hp}/${effMaxHp}</span></div>
-                <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 border border-white/5 overflow-hidden"><div class="${c.isNPC ? (c.isSummon ? 'bg-gradient-to-r from-purple-700 to-purple-400' : 'bg-gradient-to-r from-blue-700 to-blue-400') : 'bg-gradient-to-r from-red-700 to-red-400'} h-full rounded-full transition-all duration-500" style="width: ${(c.hp / effMaxHp) * 100}%"></div></div>
+        return `<div class="bg-black/30 backdrop-blur-md p-2 rounded-xl border entity-card entity-card-hero ${borderClass} cursor-pointer group transition-all btn-premium" data-action="entity-click" data-name="${c.name.replace(/\"/g, '&quot;')}" data-entity-type="hero" data-entity-id="${c.id}">
+            <div class="entity-card-collapsed flex gap-2.5 items-center">
+                ${portraitThumb}
+                <div class="flex-1">
+                    <div class="flex justify-between text-[11px] font-bold tracking-wide"><span class="${nameColor}">${c.name} <span class="text-slate-500 text-[9px] font-normal ml-0.5">Lvl ${c.level}</span></span><span class="${isDead ? 'text-red-500' : 'text-slate-300 font-mono'}">${c.hp}/${effMaxHp}</span></div>
+                    <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 border border-white/5 overflow-hidden"><div class="${c.isNPC ? (c.isSummon ? 'bg-gradient-to-r from-purple-700 to-purple-400' : 'bg-gradient-to-r from-blue-700 to-blue-400') : 'bg-gradient-to-r from-red-700 to-red-400'} h-full rounded-full transition-all duration-500" style="width: ${(c.hp / effMaxHp) * 100}%"></div></div>
+                </div>
+                ${c._levelUpPortraitReady ? `<button data-action="refresh-levelup-portrait" data-char-id="${c.id}" class="p-1.5 text-purple-400 hover:text-purple-300 transition-colors bg-purple-900/30 rounded-lg hover:bg-purple-900/50 border border-purple-500/30 btn-premium" title="Neues Level-Portraet generieren"><i class="fas fa-image text-[10px]"></i></button>` : ''}
+                ${c._portraitRegenPending ? `<span class="p-1.5 text-purple-400/60"><i class="fas fa-spinner fa-spin text-[10px]"></i></span>` : ''}
+                <button data-action="remove-char" data-char-id="${c.id}" class="opacity-0 group-hover:opacity-100 p-1.5 text-red-500/70 hover:text-red-400 transition-colors bg-white/5 rounded-lg hover:bg-white/10 btn-premium"><i class="fas fa-trash text-[10px]"></i></button>
             </div>
-            ${c._levelUpPortraitReady ? `<button data-action="refresh-levelup-portrait" data-char-id="${c.id}" class="p-1.5 text-purple-400 hover:text-purple-300 transition-colors bg-purple-900/30 rounded-lg hover:bg-purple-900/50 border border-purple-500/30 btn-premium" title="Neues Level-Portraet generieren"><i class="fas fa-image text-[10px]"></i></button>` : ''}
-            ${c._portraitRegenPending ? `<span class="p-1.5 text-purple-400/60"><i class="fas fa-spinner fa-spin text-[10px]"></i></span>` : ''}
-            <button data-action="remove-char" data-char-id="${c.id}" class="opacity-0 group-hover:opacity-100 p-1.5 text-red-500/70 hover:text-red-400 transition-colors bg-white/5 rounded-lg hover:bg-white/10 btn-premium"><i class="fas fa-trash text-[10px]"></i></button>
+            ${expandedHtml}
         </div>`;
     },
     buildEnemyCard: function (e, isDeadFlag) {
@@ -1550,6 +1553,11 @@ export const UI = {
         }
     }
 };
+
+
+
+
+
 
 
 
