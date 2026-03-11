@@ -1709,7 +1709,7 @@ export const Network = {
             ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span>${voteBtn}`
             : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayerLabel}</b>${isAutoTurn ? ' <i class="fas fa-robot text-[9px]"></i>' : ''} ist am Zug...</span>`)
             + `<div class="text-slate-500 text-[9px] mt-1">${turnOrderHtml}</div>`
-            + (autoToggleHtml ? `<div class="flex flex-wrap gap-1 mt-1.5 justify-center">${autoToggleHtml}</div>` : '');
+            + (autoToggleHtml ? `<div class="flex flex-wrap gap-1 mt-1.5 justify-center">${autoToggleHtml}</div>` : ''));
         playerInput.disabled = !myTurn || State.isProcessing;
         sendBtn.disabled = !myTurn || State.isProcessing;
         playerInput.placeholder = State.isProcessing ? 'DM antwortet...' : (myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayerLabel}...`);
@@ -1835,6 +1835,8 @@ export const Network = {
         });
     },
 };
+
+
 
 
 
