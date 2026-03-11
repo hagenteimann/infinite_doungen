@@ -68,7 +68,10 @@ export const TagParser = {
                     for (let i = 0; i < amt; i++) items.push(Utils.enrichLootItemName(name));
                 });
             }
-            if (items.length > 0) dispatch({ type: 'ADD_LOOT', items });
+            if (items.length > 0) {
+                dispatch({ type: 'ADD_LOOT', items });
+                UI.addChatLog({ sender: 'System', senderType: 'system', text: `**Beute gefunden!**\n- ${items.join('\n- ')}` });
+            }
         }
         else if (type === 'ROUTE') {
             let routeName = evt.name;
@@ -111,7 +114,11 @@ export const TagParser = {
         }
         else if (type === 'GOLD') {
             if (evt.amount > 0) {
-                dispatch({ type: 'ADD_LOOT', items: [`${evt.amount} Goldm�nzen`] });
+                const amount = evt.amount;
+                dispatch({ type: 'ADD_LOOT', items: [`${amount} Goldmünzen`] });
+                UI.addChatLog({ sender: 'System', senderType: 'system', text: `**Beute gefunden!**\n- ${amount} Goldmünzen` });
+            }
+        });
             }
         }
         else if (type === 'COOLDOWN') {
