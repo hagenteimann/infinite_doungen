@@ -2665,7 +2665,7 @@ body {
  #current-enemy-container {
     max-height: none;
     overflow-x: visible;
-    overflow-y: visible;
+    overflow-y: auto;
         min-height: 0;
     }
 
