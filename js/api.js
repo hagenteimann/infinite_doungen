@@ -131,9 +131,7 @@ export const API = {
                     } catch (e) {
                         console.warn("JSON Parse Error. Retrying...", e);
                         if (i < API_RETRY_COUNT - 1) {
-                            prompt += "
-
-FEHLER: Deine letzte Antwort war kein gültiges JSON. Bitte antworte AUSSCHLIESSLICH im JSON-Format!";
+                            prompt += "\n\nFEHLER: Deine letzte Antwort war kein g�ltiges JSON. Bitte antworte AUSSCHLIESSLICH im JSON-Format!";
                             continue; // Retry
                         } else {
                             throw new Error("API konnte kein gültiges JSON generieren.");
