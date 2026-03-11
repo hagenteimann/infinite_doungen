@@ -6,6 +6,8 @@ import { Utils } from './utils.js';
 import { API } from './api.js';
 import { repairDisplayText, repairHtmlText, sanitize, sanitizeStrict } from './sanitize.js';
 import { DICE_ANIMATION_TICKS, DICE_ANIMATION_INTERVAL_MS, XP_BASE, XP_SCALING_EXPONENT } from './constants.js';
+import { Engine } from './engine.js';
+import { Network } from './network.js';
 
 /* ==========================================
    TTS (Text-to-Speech / Vorlese-Feature)
@@ -996,20 +998,20 @@ export const UI = {
     },
 
     _buildPregameLobbyHtml: function () {
-        const players = window.App?.Engine?.getPregameStatus?.().players || (window.App?.Network?.isConnected?.() ? (window.App.Network.turnOrder.length ? window.App.Network.turnOrder : [window.App.Network.playerName]).filter(Boolean) : [State.localPlayerName].filter(Boolean));
-        const localPlayerKey = String(State.localPlayerName || window.App?.Network?.playerName || '').trim();
+        const players = Engine.getPregameStatus().players || (Network.isConnected() ? (Network.turnOrder.length ? Network.turnOrder : [Network.playerName]).filter(Boolean) : [State.localPlayerName].filter(Boolean));
+        const localPlayerKey = String(State.localPlayerName || Network.playerName || '').trim();
         const localProfile = State.playerProfiles?.[localPlayerKey] || null;
         const localHero = localProfile?.heroId ? State.party.find(p => p.id === localProfile.heroId) : null;
-        const isConnected = window.App?.Network?.isConnected?.();
-        const isHost = window.App?.Network?.isHost?.();
-        const roomCode = repairDisplayText(window.App?.Network?.roomCode || '');
-        const canStart = window.App?.Engine?.getPregameStatus?.().ok;
+        const isConnected = Network.isConnected();
+        const isHost = Network.isHost();
+        const roomCode = repairDisplayText(Network.roomCode || '');
+        const canStart = Engine.getPregameStatus().ok;
         const isSolo = !isConnected;
 
         const rows = players.map(playerName => {
             const profile = State.playerProfiles?.[playerName] || {};
             const controlMode = profile.controlMode || State.playerControlMode?.[playerName] || 'human';
-            const displayName = repairDisplayText(window.App?.Network?.getDisplayPlayerName?.(playerName, 'Ein Held') || playerName);
+            const displayName = repairDisplayText(Network.getDisplayPlayerName(playerName, 'Ein Held') || playerName);
             const isMe = playerName === localPlayerKey;
             const initial = displayName.charAt(0).toUpperCase();
             return `<div class="pg2-player-row${isMe ? ' is-me' : ''}">

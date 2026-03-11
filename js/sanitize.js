@@ -14,8 +14,9 @@ const STRICT = {
 const TRUSTED = {
   ALLOWED_TAGS: [
     'span', 'strong', 'em', 'i', 'div', 'br', 'p', 'button',
-    'select', 'option', 'optgroup', 'label', 'h3', 'h4',
-    'ul', 'li', 'img', 'input',
+    'select', 'option', 'optgroup', 'label', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'ul', 'li', 'img', 'input', 'section', 'details', 'summary', 'article',
+    'header', 'footer', 'nav', 'main', 'aside', 'figure', 'figcaption', 'code'
   ],
   ALLOWED_ATTR: [
     'class', 'style', 'title', 'data-prompt', 'data-action',
@@ -24,9 +25,9 @@ const TRUSTED = {
     'data-close-modal', 'data-route', 'data-merchant-id',
     'data-safe-id', 'data-merchant-name', 'data-entity-type', 'data-entity-id',
     'data-name', 'data-roll-id', 'data-item-ability', 'data-ability-source', 'data-text', 'data-preset',
-    'data-tab', 'data-stat',
+    'data-tab', 'data-stat', 'data-player', 'data-room', 'data-provider', 'data-option',
     'value', 'id', 'src', 'min', 'max', 'type', 'disabled',
-    'selected', 'placeholder', 'aria-hidden',
+    'selected', 'placeholder', 'aria-hidden', 'maxlength', 'checked', 'for', 'readonly'
   ],
 };
 
