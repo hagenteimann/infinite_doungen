@@ -2720,3 +2720,123 @@ body {
 
 
 
+
+/* Entity Hover Preview (Heroes & Enemies) */
+.entity-card {
+    position: relative;
+    overflow: visible;
+}
+
+.entity-preview {
+    position: absolute;
+    left: 0.35rem;
+    top: 50%;
+    width: 16.5rem;
+    transform: translateY(-50%) scale(0.92);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 15;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+@media (hover: hover) {
+    .entity-card:hover .entity-preview {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+    }
+}
+
+.entity-preview-media {
+    position: relative;
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: linear-gradient(180deg, rgba(7, 12, 26, 0.8), rgba(5, 8, 16, 0.9));
+    box-shadow: var(--shadow-strong);
+}
+
+.entity-preview-portrait {
+    width: 100%;
+    height: 11rem;
+    object-fit: cover;
+    display: block;
+}
+
+.entity-preview-fallback {
+    width: 100%;
+    height: 11rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2, 6, 23, 0.75);
+    color: #94a3b8;
+    font-size: 1.4rem;
+}
+
+.entity-preview-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(2, 6, 23, 0) 30%, rgba(2, 6, 23, 0.72) 72%, rgba(2, 6, 23, 0.92) 100%);
+}
+
+.entity-preview-meta {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.entity-preview-name {
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    color: #f8fafc;
+}
+
+.entity-preview-sub {
+    color: var(--muted);
+    font-size: 0.68rem;
+}
+
+.entity-preview-hp {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.68rem;
+    color: #e2e8f0;
+}
+
+.entity-preview-bar {
+    flex: 1;
+    height: 0.35rem;
+    background: rgba(15, 23, 42, 0.7);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.entity-preview-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.hero-bar-player {
+    background: linear-gradient(90deg, #7f1d1d, #ef4444);
+}
+
+.hero-bar-npc {
+    background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+}
+
+.hero-bar-summon {
+    background: linear-gradient(90deg, #6d28d9, #c084fc);
+}
+
+.enemy-bar {
+    background: linear-gradient(90deg, #7f1d1d, #f87171);
+}

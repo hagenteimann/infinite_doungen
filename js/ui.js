@@ -172,8 +172,24 @@ export const UIBuilders = {
 
         const portraitHtml = c.portrait ? `<img src="${c.portrait}" class="w-10 h-10 rounded-lg object-cover bg-black/50 border ${hpGlowClass} shadow-sm btn-premium">` : `<div class="w-10 h-10 rounded-lg bg-black/50 flex items-center justify-center border border-white/10 text-[10px] shadow-sm btn-premium">${badge}</div>`;
 
-        return `<div class="bg-black/30 backdrop-blur-md p-2 rounded-xl border ${borderClass} flex gap-2.5 items-center cursor-pointer group transition-all btn-premium" data-action="entity-click" data-name="${c.name.replace(/"/g, '&quot;')}" data-entity-type="hero" data-entity-id="${c.id}">
-            ${portraitHtml}
+        const previewHtml = `
+            <div class="entity-preview entity-preview-hero">
+                <div class="entity-preview-media">
+                    ${c.portrait ? `<img src="${c.portrait}" class="entity-preview-portrait" alt="">` : `<div class="entity-preview-fallback">${badge}</div>`}
+                    <div class="entity-preview-shade"></div>
+                    <div class="entity-preview-meta">
+                        <div class="entity-preview-name ${nameColor}">${c.name}</div>
+                        <div class="entity-preview-sub">${c.class} · Lvl ${c.level}</div>
+                        <div class="entity-preview-hp">
+                            <span>${c.hp}/${effMaxHp}</span>
+                            <div class="entity-preview-bar"><div class="entity-preview-bar-fill ${c.isNPC ? (c.isSummon ? 'hero-bar-summon' : 'hero-bar-npc') : 'hero-bar-player'}" style="width: ${(c.hp / effMaxHp) * 100}%"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+        return `<div class="bg-black/30 backdrop-blur-md p-2 rounded-xl border entity-card entity-card-hero ${borderClass} flex gap-2.5 items-center cursor-pointer group transition-all btn-premium" data-action="entity-click" data-name="${c.name.replace(/"/g, '&quot;')}" data-entity-type="hero" data-entity-id="${c.id}">
+            ${portraitHtml} ${previewHtml}
             <div class="flex-1">
                 <div class="flex justify-between text-[11px] font-bold tracking-wide"><span class="${nameColor}">${c.name} <span class="text-slate-500 text-[9px] font-normal ml-0.5">Lvl ${c.level}</span></span><span class="${isDead ? 'text-red-500' : 'text-slate-300 font-mono'}">${c.hp}/${effMaxHp}</span></div>
                 <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 border border-white/5 overflow-hidden"><div class="${c.isNPC ? (c.isSummon ? 'bg-gradient-to-r from-purple-700 to-purple-400' : 'bg-gradient-to-r from-blue-700 to-blue-400') : 'bg-gradient-to-r from-red-700 to-red-400'} h-full rounded-full transition-all duration-500" style="width: ${(c.hp / effMaxHp) * 100}%"></div></div>
@@ -189,8 +205,23 @@ export const UIBuilders = {
         const hpDisplay = isDead ? 0 : e.hp;
         const hpBarWidth = isDead ? 0 : (e.hp / e.maxHp) * 100;
         const hoverClass = isDead ? '' : 'cursor-pointer hover:border-red-400/80 transition-all hover:shadow-[0_0_15px_rgba(248,113,113,0.3)] hover:bg-red-950/20';
-        return `<div class="bg-black/30 backdrop-blur-sm p-2 rounded-xl border ${isDead ? 'border-slate-800' : 'border-red-900/50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]'} flex gap-2.5 items-center fade-in btn-premium ${isDead ? 'defeated-enemy' : ''} ${hoverClass}" ${!isDead ? `data-action="entity-click" data-name="${e.name.replace(/"/g, '&quot;')}" data-entity-type="enemy" data-entity-id="${e.id}"` : ''}>
-            ${e.portrait ? `<img src="${e.portrait}" class="w-10 h-10 rounded-lg object-cover btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'}">` : `<div class="w-10 h-10 rounded-lg bg-black/60 btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'} flex items-center justify-center text-red-500/50"><i class="fas fa-skull"></i></div>`}
+        const previewHtml = `
+            <div class="entity-preview entity-preview-enemy">
+                <div class="entity-preview-media">
+                    ${e.portrait ? `<img src="${e.portrait}" class="entity-preview-portrait" alt="">` : `<div class="entity-preview-fallback"><i class="fas fa-skull"></i></div>`}
+                    <div class="entity-preview-shade"></div>
+                    <div class="entity-preview-meta">
+                        <div class="entity-preview-name">${e.name}</div>
+                        <div class="entity-preview-sub">Gegner</div>
+                        <div class="entity-preview-hp">
+                            <span>${hpDisplay}/${e.maxHp}</span>
+                            <div class="entity-preview-bar"><div class="entity-preview-bar-fill enemy-bar" style="width: ${hpBarWidth}%"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        return `<div class="bg-black/30 backdrop-blur-sm p-2 rounded-xl border entity-card entity-card-enemy ${isDead ? 'border-slate-800' : 'border-red-900/50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]'} flex gap-2.5 items-center fade-in btn-premium ${isDead ? 'defeated-enemy' : ''} ${hoverClass}" ${!isDead ? `data-action="entity-click" data-name="${e.name.replace(/"/g, '&quot;')}" data-entity-type="enemy" data-entity-id="${e.id}"` : ''}>
+            ${e.portrait ? `<img src="${e.portrait}" class="w-10 h-10 rounded-lg object-cover btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'}">` : `<div class="w-10 h-10 rounded-lg bg-black/60 btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'} flex items-center justify-center text-red-500/50"><i class="fas fa-skull"></i></div>`} ${previewHtml}
             <div class="flex-1 min-w-0">
                 <div class="flex justify-between text-[10px] truncate tracking-wide"><span class="${isDead ? 'line-through text-slate-600' : 'text-slate-200'}">${e.name}</span><span class="${isDead ? 'text-slate-600' : 'text-red-400 font-mono font-bold drop-shadow-[0_0_2px_rgba(248,113,113,0.8)]'}">${hpDisplay}/${e.maxHp}</span></div>
                 <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 overflow-hidden border border-white/5"><div class="${isDead ? 'bg-slate-700' : 'bg-gradient-to-r from-red-800 to-red-500'} h-full transition-all duration-500" style="width: ${hpBarWidth}%"></div></div>
@@ -1519,6 +1550,9 @@ export const UI = {
         }
     }
 };
+
+
+
 
 
 
