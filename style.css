@@ -2661,8 +2661,11 @@ body {
     .system-sidebar-feed,
     #journal-content,
     #stats-content,
-    #enemy-history-container,
-    #current-enemy-container {
+     #enemy-history-container,
+ #current-enemy-container {
+    max-height: none;
+    overflow-x: visible;
+    overflow-y: visible;
         min-height: 0;
     }
 
@@ -2745,7 +2748,9 @@ body {
     transition: max-height 0.2s ease, opacity 0.16s ease;
 }
 
- .entity-card-expanded {
+  .entity-card-expanded {
+    width: calc(100% + 1rem);
+    margin-left: -0.5rem;
     width: calc(100% + 1rem);
     margin-left: -0.5rem;
     max-height: 0;
@@ -2757,7 +2762,9 @@ body {
 @media (hover: hover) {
     .entity-card.is-hovered { z-index: 6; }
     .entity-card.is-hovered .entity-card-expanded,
-    .entity-card:hover  .entity-card-expanded {
+    .entity-card:hover   .entity-card-expanded {
+    width: calc(100% + 1rem);
+    margin-left: -0.5rem;
     width: calc(100% + 1rem);
     margin-left: -0.5rem;
         max-height: 18rem;
@@ -2878,13 +2885,17 @@ body {
 
 
 
-#party-list,
+ #party-list,
 #enemy-history-container,
-#current-enemy-container {
+ #current-enemy-container {
+    max-height: none;
+    overflow-x: visible;
+    overflow-y: visible;
     overflow-x: visible;
 }
 
 #tab-content-party {
     overflow: visible !important;
 }
+
 
