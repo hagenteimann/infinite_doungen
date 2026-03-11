@@ -13,7 +13,17 @@ import { DICE_ANIMATION_TICKS, DICE_ANIMATION_INTERVAL_MS, XP_BASE, XP_SCALING_E
 export const TTS = {
     synth: window.speechSynthesis,
     activeBtn: null,
-    cfg: JSON.parse(localStorage.getItem('tts_cfg') || '{"rate":0.92,"pitch":0.85,"vol":1,"voice":null}'),
+    // Security: parse stored config defensively.
+    cfg: (() => {
+        const fallback = { rate: 0.92, pitch: 0.85, vol: 1, voice: null };
+        try {
+            const raw = Utils.safeStorageGet("tts_cfg");
+            return raw ? JSON.parse(raw) : fallback;
+        } catch (e) {
+            console.warn("TTS cfg parse failed:", e);
+            return fallback;
+        }
+    })(),
 
     getVoice: function () {
         const voices = this.synth.getVoices();
@@ -84,7 +94,7 @@ export const TTS = {
         this.cfg.rate = parseFloat(document.getElementById('tts-rate').value);
         this.cfg.pitch = parseFloat(document.getElementById('tts-pitch').value);
         this.cfg.vol = parseFloat(document.getElementById('tts-vol').value);
-        localStorage.setItem('tts_cfg', JSON.stringify(this.cfg));
+        Utils.safeStorageSet('tts_cfg', JSON.stringify(this.cfg));
         document.getElementById('tts-picker-modal').classList.add('hidden');
     },
 
@@ -340,7 +350,7 @@ export const UI = {
         document.getElementById('api-key-chatgpt').value = API.getKey('chatgpt');
         document.getElementById('api-key-openrouter').value = API.getKey('openrouter');
         document.getElementById('api-key-claude').value = API.getKey('claude');
-        document.getElementById('api-model-claude').value = localStorage.getItem('api_model_claude') || 'claude-sonnet-4-6';
+        document.getElementById('api-model-claude').value = Utils.safeStorageGet('api_model_claude') || 'claude-sonnet-4-6';
         document.getElementById('api-model-or-text').value = API.getOrModelText();
         document.getElementById('api-model-or-image').value = API.getOrModelImage();
         this.updateApiSettingsView();
@@ -499,7 +509,20 @@ export const UI = {
         }
 
         const collectAllSelect = document.getElementById('collect-all-select');
-        if (collectAllSelect) collectAllSelect.innerHTML = '<option value="">Alle nehmen...</option>' + State.party.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('');
+        if (collectAllSelect) {
+            // Security: build options via textContent to avoid XSS.
+            collectAllSelect.replaceChildren();
+            const base = document.createElement('option');
+            base.value = '';
+            base.textContent = 'Alle nehmen...';
+            collectAllSelect.appendChild(base);
+            State.party.forEach((c) => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                collectAllSelect.appendChild(opt);
+            });
+        }
 
         if (State.activeMerchant) {
             DOM.merchantSection.classList.remove('hidden');
@@ -1559,6 +1582,8 @@ export const UI = {
         }
     }
 };
+
+
 
 
 

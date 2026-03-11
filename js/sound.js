@@ -1,4 +1,4 @@
-﻿import { State } from './state.js';
+import { State } from './state.js';
 
 const MUSIC_TRACKS = [
     { label: 'Lumina', src: new URL('../Musik/onetent-fantasy-music-lumina-143991.mp3', import.meta.url).href },
@@ -20,9 +20,16 @@ export const Sound = {
     },
 
     initMusic: function () {
-        const storedEnabled = localStorage.getItem('music_enabled');
-        const storedVolume = localStorage.getItem('music_volume');
-        State.musicEnabled = storedEnabled === null ? true : storedEnabled === 'true';
+        // Security: guard storage access so audio setup never crashes.
+        let storedEnabled = null;
+        let storedVolume = null;
+        try {
+            storedEnabled = localStorage.getItem("music_enabled");
+            storedVolume = localStorage.getItem("music_volume");
+        } catch (e) {
+            console.warn("Music settings read failed:", e);
+        }
+        State.musicEnabled = storedEnabled === null ? true : storedEnabled === "true";
         const parsedVolume = Number(storedVolume);
         State.musicVolume = Number.isFinite(parsedVolume) ? Math.min(1, Math.max(0, parsedVolume)) : 0.45;
         this._ensureMusicAudio();
@@ -31,7 +38,13 @@ export const Sound = {
 
     _ensureMusicAudio: function () {
         if (this.musicAudio || this.musicTracks.length === 0) return this.musicAudio;
-        const audio = new Audio(this.musicTracks[this.musicIndex].src);
+        let audio = null;
+        try {
+            audio = new Audio(this.musicTracks[this.musicIndex].src);
+        } catch (e) {
+            console.warn('Audio init failed:', e);
+            return null;
+        }
         audio.preload = 'auto';
         audio.loop = false;
         audio.volume = State.musicVolume;
@@ -44,6 +57,9 @@ export const Sound = {
             this._syncMusicState();
         });
         audio.addEventListener('pause', () => this._syncMusicState());
+        audio.addEventListener('error', () => {
+            console.warn('Audio load failed for', audio.src);
+        });
         this.musicAudio = audio;
         return audio;
     },
@@ -97,7 +113,7 @@ export const Sound = {
     toggleMusic: function (forceValue = null) {
         const next = typeof forceValue === 'boolean' ? forceValue : !State.musicEnabled;
         State.musicEnabled = next;
-        localStorage.setItem('music_enabled', String(next));
+        try { localStorage.setItem('music_enabled', String(next)); } catch (e) { console.warn('Music setting write failed:', e); }
         if (next) this.playMusic();
         else this.pauseMusic();
         this._syncMusicState();
@@ -107,7 +123,7 @@ export const Sound = {
     setMusicVolume: function (value) {
         const next = Math.min(1, Math.max(0, Number(value) || 0));
         State.musicVolume = next;
-        localStorage.setItem('music_volume', String(next));
+        try { localStorage.setItem('music_volume', String(next)); } catch (e) { console.warn('Music volume write failed:', e); }
         if (this.musicAudio) this.musicAudio.volume = next;
         this._syncMusicState();
         return next;
@@ -272,3 +288,5 @@ export const Sound = {
         } catch (e) { console.warn('Sound playback failed:', e); }
     }
 };
+
+

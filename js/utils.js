@@ -270,6 +270,49 @@ export const Utils = {
             .sort((a, b) => b.score - a.score || a.normalizedLength - b.normalizedLength);
 
         return scored[0]?.item;
-    }
-};
-
+    }\n    // Security: localStorage access wrappers (avoid crashes in private mode).
+    safeStorageGet: function (key) {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            console.warn('Storage get failed:', key, e);
+            return null;
+        }
+    },
+    safeStorageSet: function (key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            console.warn('Storage set failed:', key, e);
+        }
+    },
+    safeStorageRemove: function (key) {
+        try {
+            localStorage.removeItem(key);
+        } catch (e) {
+            console.warn('Storage remove failed:', key, e);
+        }
+    },
+    // Security: central image loader with error handling (sprite sheets later).
+    loadImage: function (src) {
+        return new Promise((resolve) => {
+            try {
+                const img = new Image();
+                img.onload = () => resolve({ ok: true, img });
+                img.onerror = () => resolve({ ok: false, img: null });
+                img.src = src;
+            } catch (e) {
+                console.warn('Image load failed:', e);
+                resolve({ ok: false, img: null });
+            }
+        });
+    },
+    preloadImages: async function (sources) {
+        if (!Array.isArray(sources)) return [];
+        const results = [];
+        for (const src of sources) {
+            // Keep behavior non-blocking; just warm the cache.
+            results.push(await this.loadImage(src));
+        }
+        return results;
+    },\n};

@@ -5,7 +5,7 @@ import { Engine } from './engine.js';
 import { Sound } from './sound.js';
 import { PartyManager } from './party.js';
 import { Utils } from './utils.js';
-import { validateHeroData } from './sanitize.js';
+import { validateHeroData, sanitize } from './sanitize.js';
 import { API } from './api.js';
 import { Weather } from './features.js';
 
@@ -225,7 +225,7 @@ export const Network = {
         const opts = { config: { iceServers: [...DEFAULT_ICE_SERVERS] } };
 
         try {
-            const turnJson = localStorage.getItem(LS_KEY_TURN);
+            const turnJson = Utils.safeStorageGet(LS_KEY_TURN);
             if (turnJson) {
                 const custom = JSON.parse(turnJson);
                 if (Array.isArray(custom) && custom.length > 0) {
@@ -235,7 +235,7 @@ export const Network = {
         } catch (e) { console.warn('Failed to parse TURN config:', e); }
 
         try {
-            const serverJson = localStorage.getItem(LS_KEY_SERVER);
+            const serverJson = Utils.safeStorageGet(LS_KEY_SERVER);
             if (serverJson) {
                 const srv = JSON.parse(serverJson);
                 if (srv.host) {
@@ -367,72 +367,6 @@ export const Network = {
 
         this._unsubscribe = subscribe(() => {
             this._markDirty();
-        });
-    },
-
-    join(roomCode, playerName) {
-        const error = this.validatePlayerName(playerName);
-        if (error) {
-            UI.addChatLog('System', error);
-            return false;
-        }
-        if (this.peer) this.disconnect();
-        this.playerName = String(playerName || '').trim();
-        this.roomCode = String(roomCode || '').trim().toUpperCase();
-        this.role = 'client';
-        State._mpRole = 'client';
-        this._setConnState('connecting');
-        this._startConnectTimeout();
-
-        const config = this._getPeerConfig();
-        this.peer = new Peer(undefined, config);
-
-        this.peer.on('open', () => {
-            const peerId = ROOM_PREFIX + this.roomCode;
-            const conn = this.peer.connect(peerId, {
-                metadata: { name: this.playerName },
-            });
-
-            conn.on('open', () => {
-                this._clearConnectTimeout();
-                this.connections = [conn];
-                this._setConnState('connected');
-                this._ensurePlayerProfile(this.playerName, { isReady: false, controlMode: this.getPlayerControlMode(this.playerName) });
-                UI.addChatLog('System', `Verbunden mit Raum **${this.roomCode}**.`);
-            });
-
-            conn.on('data', (msg) => this._handleHostMessage(msg));
-
-            conn.on('close', () => {
-                UI.addChatLog('System', 'Verbindung zum Host verloren.');
-                this.connections = [];
-                this._setConnState('error', 'Verbindung zum Host verloren.');
-            });
-
-            conn.on('error', (err) => {
-                console.error('Connection error:', err);
-                this._setConnState('error', err.message);
-                UI.addChatLog('System', `Verbindungsfehler: ${err.message}`);
-            });
-        });
-
-        this.peer.on('error', (err) => {
-            this._clearConnectTimeout();
-            if (err.type === 'peer-unavailable') {
-                this._setConnState('error', `Raum ${this.roomCode} nicht gefunden.`);
-                UI.addChatLog('System', `Raum **${this.roomCode}** nicht gefunden. Ist der Host online?`);
-            } else {
-                console.error('Peer error:', err);
-                this._setConnState('error', err.message);
-                UI.addChatLog('System', `Verbindungsfehler: ${err.message}`);
-            }
-            this.disconnect();
-        });
-
-        this.peer.on('disconnected', () => {
-            if (this.connState === 'connected') {
-                this._setConnState('error', 'Verbindung zum Signaling-Server verloren.');
-            }
         });
     },
 
@@ -1022,25 +956,25 @@ export const Network = {
 
         const host = hostEl?.value.trim();
         if (host) {
-            localStorage.setItem(LS_KEY_SERVER, JSON.stringify({
+            Utils.safeStorageSet(LS_KEY_SERVER, JSON.stringify({
                 host,
                 port: portEl?.value.trim() || '9000',
                 path: pathEl?.value.trim() || '/',
                 secure: secureEl?.checked !== false,
             }));
         } else {
-            localStorage.removeItem(LS_KEY_SERVER);
+            Utils.safeStorageRemove(LS_KEY_SERVER);
         }
 
         const turnUrl = turnUrlEl?.value.trim();
         if (turnUrl) {
-            localStorage.setItem(LS_KEY_TURN, JSON.stringify([{
+            Utils.safeStorageSet(LS_KEY_TURN, JSON.stringify([{
                 urls: turnUrl,
                 username: turnUserEl?.value.trim() || '',
                 credential: turnPassEl?.value.trim() || '',
             }]));
         } else {
-            localStorage.removeItem(LS_KEY_TURN);
+            Utils.safeStorageRemove(LS_KEY_TURN);
         }
 
         UI.addChatLog('System', 'Multiplayer-Konfiguration gespeichert.');
@@ -1514,18 +1448,29 @@ export const Network = {
                 badge.classList.remove('hidden');
                 const count = this.connections.length;
                 const roleLabel = this.isHost() ? 'Host' : 'Client';
-                badge.innerHTML = `<i class="fas fa-wifi text-green-400"></i> ${roleLabel} (${count})`;
+                // Security: render badge text via text nodes to avoid XSS.
+                badge.replaceChildren();
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-wifi text-green-400';
+                badge.appendChild(icon);
+                badge.appendChild(document.createTextNode(` ${roleLabel} (${count})`));
                 badge.title = this.isHost()
                     ? `Raum: ${this.roomCode} | ${count} Spieler verbunden`
                     : `Verbunden mit Raum ${this.roomCode}`;
             } else if (this.connState === 'connecting') {
                 badge.classList.remove('hidden');
-                badge.innerHTML = `<i class="fas fa-spinner fa-spin text-amber-400"></i> Verbinde...`;
+                // Security: render badge text via text nodes to avoid XSS.
+                badge.replaceChildren();
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-spinner fa-spin text-amber-400';
+                badge.appendChild(icon);
+                badge.appendChild(document.createTextNode(' Verbinde...'));
                 badge.title = 'Verbindung wird hergestellt...';
             } else {
                 badge.classList.add('hidden');
             }
         }
+
 
         if (modal && !modal.classList.contains('hidden')) {
             this._renderModalContent();
@@ -1545,7 +1490,7 @@ export const Network = {
         if (!content) return;
 
         if (this.connState === 'connecting') {
-            content.innerHTML = `
+            content.innerHTML = sanitize(`
                 <div class="flex flex-col items-center gap-3 py-6">
                     <i class="fas fa-spinner fa-spin text-cyan-400 text-3xl"></i>
                     <p class="text-slate-300 text-sm">Verbinde mit Signaling-Server...</p>
@@ -1553,12 +1498,12 @@ export const Network = {
                     <button data-action="mp-disconnect" class="mt-2 bg-slate-700/80 hover:bg-slate-600 text-white py-1.5 px-4 rounded-lg text-xs font-bold transition-all border border-slate-500/40">
                         Abbrechen
                     </button>
-                </div>`;
+                </div>`);
             return;
         }
 
         if (this.connState === 'error') {
-            content.innerHTML = `
+            content.innerHTML = sanitize(`
                 <div class="space-y-4">
                     <div class="bg-red-900/30 border border-red-500/40 rounded-lg p-3">
                         <p class="text-red-300 text-sm font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Verbindungsfehler</p>
@@ -1572,7 +1517,7 @@ export const Network = {
                             Zurück
                         </button>
                     </div>
-                </div>`;
+                </div>`);
             return;
         }
 
@@ -1587,7 +1532,7 @@ export const Network = {
                 }).join('')
                 : '';
 
-            content.innerHTML = `
+            content.innerHTML = sanitize(`
                 <div class="space-y-4">
                     <div class="bg-green-900/30 border border-green-500/40 rounded-lg p-3">
                         <p class="text-green-300 text-sm font-bold"><i class="fas fa-check-circle mr-1"></i> Verbunden als ${roleLabel}</p>
@@ -1599,18 +1544,18 @@ export const Network = {
                     <button data-action="mp-disconnect" class="w-full bg-red-700/80 hover:bg-red-600 text-white py-2 rounded-lg text-xs font-bold transition-all border border-red-500/40">
                         <i class="fas fa-sign-out-alt mr-1"></i> Trennen
                     </button>
-                </div>`;
+                </div>`);
             return;
         }
 
         const savedServer = (() => {
-            try { return JSON.parse(localStorage.getItem(LS_KEY_SERVER)) || {}; } catch (_) { return {}; }
+            try { return JSON.parse(Utils.safeStorageGet(LS_KEY_SERVER)) || {}; } catch (_) { return {}; }
         })();
         const savedTurn = (() => {
-            try { const t = JSON.parse(localStorage.getItem(LS_KEY_TURN)); return (t && t[0]) || {}; } catch (_) { return {}; }
+            try { const t = JSON.parse(Utils.safeStorageGet(LS_KEY_TURN)); return (t && t[0]) || {}; } catch (_) { return {}; }
         })();
 
-        content.innerHTML = `
+        content.innerHTML = sanitize(`
             <div class="space-y-4">
                 <div>
                     <label class="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">Dein Name</label>
@@ -1664,7 +1609,7 @@ export const Network = {
                         </button>
                     </div>
                 </details>
-            </div>`;
+            </div>`);
     },
 
     _syncBtnHtml: '<button data-action="mp-request-sync" class="absolute top-1 right-1.5 text-[9px] text-slate-600 hover:text-cyan-400 transition-colors" title="Sync erzwingen"><i class="fas fa-sync-alt"></i></button>',
@@ -1724,12 +1669,12 @@ export const Network = {
             if (this.isClient()) {
                 const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
                 const hasOwnRolls = myChar && State.pendingRolls.some(r => !r.rolled && r.name === myChar.name);
-                el.innerHTML = (hasOwnRolls
+                el.innerHTML = sanitize((hasOwnRolls
                     ? '<i class="fas fa-dice-d20 text-green-400 mr-1.5 animate-pulse"></i> <span class="text-green-300 font-bold">Deine Proben wuerfeln!</span>'
                     : '<i class="fas fa-dice-d20 text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300">Warte auf Probenergebnisse...</span>')
-                    + this._syncBtnHtml;
+                    + this._syncBtnHtml);
             } else {
-                el.innerHTML = '<i class="fas fa-dice-d20 text-indigo-400 mr-1.5 animate-pulse"></i> <span class="text-indigo-300 font-bold">Proben ausstehend...</span>' + this._syncBtnHtml;
+                el.innerHTML = sanitize('<i class="fas fa-dice-d20 text-indigo-400 mr-1.5 animate-pulse"></i> <span class="text-indigo-300 font-bold">Proben ausstehend...</span>' + this._syncBtnHtml);
             }
             playerInput.disabled = true;
             sendBtn.disabled = true;
@@ -1760,7 +1705,7 @@ export const Network = {
             const displayName = this.getDisplayPlayerName(p);
             return `<button data-action="mp-toggle-control" data-player="${p}" class="text-[9px] px-1.5 py-0.5 rounded ${isAuto ? 'bg-cyan-900/40 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800/60 text-slate-500 border border-slate-600/30'} hover:text-cyan-300 transition-all" title="${displayName}: KI ${isAuto ? 'aus' : 'an'}"><i class="fas fa-robot mr-0.5"></i>${displayName}</button>`;
         }).join(' ') : '';
-        el.innerHTML = this._syncBtnHtml + (myTurn
+        el.innerHTML = sanitize(this._syncBtnHtml + (myTurn
             ? `<i class="fas fa-arrow-right text-green-400 mr-1.5"></i> <span class="text-green-300 font-bold">Dein Zug!</span>${voteBtn}`
             : `<i class="fas fa-hourglass-half text-amber-400 mr-1.5 animate-pulse"></i> <span class="text-amber-300"><b>${currentPlayerLabel}</b>${isAutoTurn ? ' <i class="fas fa-robot text-[9px]"></i>' : ''} ist am Zug...</span>`)
             + `<div class="text-slate-500 text-[9px] mt-1">${turnOrderHtml}</div>`
@@ -1806,7 +1751,7 @@ export const Network = {
             ? `<button data-action="mp-execute-round" class="mt-2 w-full ${canExecute ? 'bg-red-700 hover:bg-red-600 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'} text-white py-1.5 rounded-lg text-[10px] font-bold border transition-all" ${canExecute ? '' : 'disabled'}><i class="fas fa-fist-raised mr-1"></i> Runde ausfuehren (${submittedCount}/${totalPlayers})</button>`
             : '';
 
-        el.innerHTML = `${this._syncBtnHtml}<div class="text-left space-y-1.5">
+        el.innerHTML = sanitize(`${this._syncBtnHtml}<div class="text-left space-y-1.5">
             <div class="flex items-center gap-2 mb-1">
                 <i class="fas fa-khanda text-red-400"></i>
                 <span class="text-red-300 font-bold text-[11px] uppercase tracking-wider">Kampfrunde</span>
@@ -1814,7 +1759,7 @@ export const Network = {
             </div>
             <div class="space-y-1 pl-1">${playersHtml}</div>
             ${executeBtn}
-        </div>`;
+        </div>`);
     },
 
     _renderVotePanel(el) {
@@ -1845,7 +1790,7 @@ export const Network = {
             }).join('')}</div>`
             : '';
 
-        el.innerHTML = `<div class="text-left space-y-1.5">
+        el.innerHTML = sanitize(`<div class="text-left space-y-1.5">
             <div class="flex items-center gap-2 mb-1">
                 <i class="fas fa-poll text-purple-400"></i>
                 <span class="text-purple-300 font-bold text-[11px] uppercase tracking-wider">Abstimmung</span>
@@ -1854,7 +1799,7 @@ export const Network = {
             <p class="text-slate-200 text-[11px] font-medium">${vote.question}</p>
             <div class="space-y-1">${optionsHtml}</div>
             ${resolveBtn}
-        </div>`;
+        </div>`);
     },
 
     _showClientRollView() {
@@ -1890,6 +1835,14 @@ export const Network = {
         });
     },
 };
+
+
+
+
+
+
+
+
 
 
 

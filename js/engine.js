@@ -225,9 +225,9 @@ export const Engine = {
         State.selectedApiProvider = provider;
         State.pendingApiKeyValue = key;
         State.pendingApiModelText = modelText;
-        localStorage.setItem('api_provider', provider);
-        localStorage.setItem('api_key_' + provider, key);
-        if (provider === 'openrouter') localStorage.setItem('api_model_or_text', modelText || 'arcee-ai/trinity-large-preview:free');
+        Utils.safeStorageSet('api_provider', provider);
+        Utils.safeStorageSet('api_key_' + provider, key);
+        if (provider === 'openrouter') Utils.safeStorageSet('api_model_or_text', modelText || 'arcee-ai/trinity-large-preview:free');
 
         const mode = State.pendingApiMode;
         if (mode === 'host') {
@@ -404,8 +404,8 @@ export const Engine = {
         const detailHtml = meta.detail ? `<span class="suggestion-detail">${meta.detail}</span>` : '';
         return `<div class="${suggestionClass}" data-prompt="${safeValue}"><span class="suggestion-icon" aria-hidden="true">${meta.icon}</span><span class="suggestion-copy"><span class="suggestion-title">${meta.title}</span>${detailHtml}</span></div>`;
     },
-    setCustomApiKey: function () { DOM.customKeyInput.value = localStorage.getItem("custom_gemini_key") || ""; DOM.apiKeyModal.classList.remove('hidden'); setTimeout(() => DOM.customKeyInput.focus(), 100); },
-    saveApiKey: function () { localStorage.setItem("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "API-Key wurde gespeichert."); },
+    setCustomApiKey: function () { DOM.customKeyInput.value = Utils.safeStorageGet("custom_gemini_key") || ""; DOM.apiKeyModal.classList.remove('hidden'); setTimeout(() => DOM.customKeyInput.focus(), 100); },
+    saveApiKey: function () { Utils.safeStorageSet("custom_gemini_key", DOM.customKeyInput.value.trim()); DOM.apiKeyModal.classList.add('hidden'); UI.addChatLog("System", "API-Key wurde gespeichert."); },
     startGame: function () {
         if (this._requireHost('Abenteuer starten')) return;
         const status = this.getPregameStatus();
@@ -605,7 +605,7 @@ export const Engine = {
             try {
                 const saveData = JSON.parse(JSON.stringify(State));
                 saveData._autoSaveTime = new Date().toISOString();
-                localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(saveData));
+                Utils.safeStorageSet(AUTO_SAVE_KEY, JSON.stringify(saveData));
             } catch (e) { console.warn('Auto-save failed:', e); }
             State.isProcessing = false;
             UI.showLoader(false);
@@ -1211,12 +1211,25 @@ export const Engine = {
 
             const others = State.party.filter(p => p.id !== cid && !p.isSummon);
             if (others.length > 0) {
-                DOM.itemActionTarget.innerHTML = others.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+                // Security: build options via textContent to avoid XSS.
+                DOM.itemActionTarget.replaceChildren();
+                others.forEach((o) => {
+                    const opt = document.createElement('option');
+                    opt.value = o.id;
+                    opt.textContent = o.name;
+                    DOM.itemActionTarget.appendChild(opt);
+                });
                 DOM.itemActionTarget.disabled = false;
             } else {
-                DOM.itemActionTarget.innerHTML = `<option value="">Niemand da</option>`;
+                // Security: build options via textContent to avoid XSS.
+                DOM.itemActionTarget.replaceChildren();
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'Niemand da';
+                DOM.itemActionTarget.appendChild(opt);
                 DOM.itemActionTarget.disabled = true;
             }
+
 
             if (State.activeMerchant && DOM.btnOfferItem) {
                 DOM.btnOfferItem.classList.remove('hidden');
@@ -1402,14 +1415,14 @@ export const Engine = {
     },
     saveApiSettings: function () {
         const provider = document.getElementById('api-provider-select').value;
-        localStorage.setItem('api_provider', provider);
-        localStorage.setItem('api_key_gemini', document.getElementById('api-key-gemini').value.trim());
-        localStorage.setItem('api_key_chatgpt', document.getElementById('api-key-chatgpt').value.trim());
-        localStorage.setItem('api_key_openrouter', document.getElementById('api-key-openrouter').value.trim());
-        localStorage.setItem('api_key_claude', document.getElementById('api-key-claude').value.trim());
-        localStorage.setItem('api_model_claude', document.getElementById('api-model-claude').value.trim() || 'claude-sonnet-4-6');
-        localStorage.setItem('api_model_or_text', document.getElementById('api-model-or-text').value.trim() || 'arcee-ai/trinity-large-preview:free');
-        localStorage.setItem('api_model_or_image', document.getElementById('api-model-or-image').value.trim());
+        Utils.safeStorageSet('api_provider', provider);
+        Utils.safeStorageSet('api_key_gemini', document.getElementById('api-key-gemini').value.trim());
+        Utils.safeStorageSet('api_key_chatgpt', document.getElementById('api-key-chatgpt').value.trim());
+        Utils.safeStorageSet('api_key_openrouter', document.getElementById('api-key-openrouter').value.trim());
+        Utils.safeStorageSet('api_key_claude', document.getElementById('api-key-claude').value.trim());
+        Utils.safeStorageSet('api_model_claude', document.getElementById('api-model-claude').value.trim() || 'claude-sonnet-4-6');
+        Utils.safeStorageSet('api_model_or_text', document.getElementById('api-model-or-text').value.trim() || 'arcee-ai/trinity-large-preview:free');
+        Utils.safeStorageSet('api_model_or_image', document.getElementById('api-model-or-image').value.trim());
 
         document.getElementById('api-settings-modal').classList.add('hidden');
         UI.addChatLog('System', SYSTEM_NOTICE.settingsSaved);
@@ -1560,6 +1573,9 @@ export const Engine = {
         e.target.value = "";
     }
 };
+
+
+
 
 
 

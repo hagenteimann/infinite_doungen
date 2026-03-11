@@ -1,21 +1,22 @@
 import { CONFIG } from './prompts.js';
 import { State } from './state.js';
+import { Utils } from './utils.js';
 import { UI } from './ui.js';
 import { API_RETRY_COUNT, CLAUDE_MAX_TOKENS } from './constants.js';
 
 export const API = {
     getProvider: function () {
-        return localStorage.getItem("api_provider") || "gemini";
+        return Utils.safeStorageGet("api_provider") || "gemini";
     },
     getKey: function (providerStr) {
         const prov = providerStr || this.getProvider();
-        return localStorage.getItem(`api_key_${prov}`) || "";
+        return Utils.safeStorageGet(`api_key_${prov}`) || "";
     },
     getOrModelText: function () {
-        return localStorage.getItem("api_model_or_text") || "arcee-ai/trinity-large-preview:free";
+        return Utils.safeStorageGet("api_model_or_text") || "arcee-ai/trinity-large-preview:free";
     },
     getOrModelImage: function () {
-        return localStorage.getItem("api_model_or_image") || "";
+        return Utils.safeStorageGet("api_model_or_image") || "";
     },
 
     generateText: async function (prompt, systemInstruction = CONFIG.systemPrompt) {
@@ -95,7 +96,7 @@ export const API = {
                     responseText = data.choices[0].message.content;
                 }
                 else if (provider === "claude") {
-                    const model = localStorage.getItem('api_model_claude') || 'claude-sonnet-4-6';
+                    const model = Utils.safeStorageGet('api_model_claude') || 'claude-sonnet-4-6';
                     const payload = {
                         model: model,
                         max_tokens: CLAUDE_MAX_TOKENS,
@@ -130,7 +131,9 @@ export const API = {
                     } catch (e) {
                         console.warn("JSON Parse Error. Retrying...", e);
                         if (i < API_RETRY_COUNT - 1) {
-                            prompt += "\n\nFEHLER: Deine letzte Antwort war kein gültiges JSON. Bitte antworte AUSSCHLIESSLICH im JSON-Format!";
+                            prompt += "
+
+FEHLER: Deine letzte Antwort war kein gültiges JSON. Bitte antworte AUSSCHLIESSLICH im JSON-Format!";
                             continue; // Retry
                         } else {
                             throw new Error("API konnte kein gültiges JSON generieren.");
@@ -220,4 +223,9 @@ export const API = {
         return "";
     }
 };
+
+
+
+
+
 

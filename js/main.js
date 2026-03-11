@@ -16,7 +16,13 @@ const init = () => {
 
     initDOM();
 
-    const autoSave = localStorage.getItem(AUTO_SAVE_KEY);
+    // Security: localStorage can throw (private mode), so guard access.
+    let autoSave = null;
+    try {
+        autoSave = localStorage.getItem(AUTO_SAVE_KEY);
+    } catch (e) {
+        console.warn('Auto-save read failed:', e);
+    }
     if (autoSave) {
         try {
             let saved = JSON.parse(autoSave);
@@ -57,10 +63,11 @@ const init = () => {
     document.addEventListener('keydown', () => { Sound.handleUserGesture(); }, { once: true });
 };
 
-window.App = { Engine, UI, Utils, API, State, Weather, Network };
-window.TTS = TTS;
-
 if (import.meta.env?.DEV) {
+    // Security: avoid exposing game state on window in production.
+    window.App = { Engine, UI, Utils, API, State, Weather, Network };
+    window.TTS = TTS;
+
     subscribe((_state, action) => {
         console.debug('[State]', action.type, action);
     });
@@ -96,6 +103,8 @@ function initBackgroundAnimation() {
 
     let currentIndex = 0;
     
+    // Security/robustness: preload images so broken assets do not crash the loop.
+    try { Utils.preloadImages(images); } catch (e) { console.warn('Background preload failed:', e); }
     // Set initial image
     bgElement.style.backgroundImage = `url('${images[currentIndex]}')`;
 
@@ -107,3 +116,5 @@ function initBackgroundAnimation() {
 }
 
 initBackgroundAnimation();
+
+
