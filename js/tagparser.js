@@ -116,6 +116,15 @@ export const TagParser = {
             if (evt.amount > 0) {
                 const amount = evt.amount;
                 dispatch({ type: 'ADD_LOOT', items: [`${amount} Goldmünzen`] });
+                if (window.App && window.App.Network) {
+                    window.App.Network.broadcastSystemChat('System', `**Beute gefunden!**\n- ${amount} Goldmünzen`);
+                }
+                if (window.App && window.App.Network) {\n- ${amount} Goldmünzen`);
+                }
+                    window.App.Network.broadcastSystemChat('System', `**Beute gefunden!**\\n- ${items.join('\\n- ')}`);\n- ${amount} Goldmünzen`);
+                }
+                }\n- ${amount} Goldmünzen`);
+                }
                 UI.addChatLog({ sender: 'System', senderType: 'system', text: `**Beute gefunden!**\n- ${amount} Goldmünzen` });
             }
         }
