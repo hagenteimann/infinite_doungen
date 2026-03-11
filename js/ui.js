@@ -195,8 +195,7 @@ export const UIBuilders = {
                     <div class="flex justify-between text-[11px] font-bold tracking-wide"><span class="${nameColor}">${c.name} <span class="text-slate-500 text-[9px] font-normal ml-0.5">Lvl ${c.level}</span></span><span class="${isDead ? 'text-red-500' : 'text-slate-300 font-mono'}">${c.hp}/${effMaxHp}</span></div>
                     <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 border border-white/5 overflow-hidden"><div class="${c.isNPC ? (c.isSummon ? 'bg-gradient-to-r from-purple-700 to-purple-400' : 'bg-gradient-to-r from-blue-700 to-blue-400') : 'bg-gradient-to-r from-red-700 to-red-400'} h-full rounded-full transition-all duration-500" style="width: ${(c.hp / effMaxHp) * 100}%"></div></div>
                 </div>
-                ${c._levelUpPortraitReady ? `<button data-action="refresh-levelup-portrait" data-char-id="${c.id}" class="p-1.5 text-purple-400 hover:text-purple-300 transition-colors bg-purple-900/30 rounded-lg hover:bg-purple-900/50 border border-purple-500/30 btn-premium" title="Neues Level-Portraet generieren"><i class="fas fa-image text-[10px]"></i></button>` : ''}
-                ${c._portraitRegenPending ? `<span class="p-1.5 text-purple-400/60"><i class="fas fa-spinner fa-spin text-[10px]"></i></span>` : ''}
+                
                 <button data-action="remove-char" data-char-id="${c.id}" class="opacity-0 group-hover:opacity-100 p-1.5 text-red-500/70 hover:text-red-400 transition-colors bg-white/5 rounded-lg hover:bg-white/10 btn-premium"><i class="fas fa-trash text-[10px]"></i></button>
             </div>
             ${expandedHtml}
@@ -1160,7 +1159,11 @@ export const UI = {
                     ${portraitSrc ? `<img src="${portraitSrc}" class="hero-detail-header-bg" aria-hidden="true"><img src="${portraitSrc}" class="hero-detail-header-portrait">` : `<div class="hero-detail-fallback-icon">${portraitFallback}</div>`}
                     <div class="hero-detail-header-shade"></div>
                 </div>
-                <div class="hero-detail-header-meta">
+                <div class="hero-detail-header-meta relative">
+                    <div class="absolute top-0 right-0 flex gap-2">
+                        ${c._levelUpPortraitReady ? `<button data-action="refresh-levelup-portrait" data-char-id="${c.id}" class="p-1.5 text-purple-400 hover:text-purple-300 transition-colors bg-purple-900/40 rounded-lg hover:bg-purple-900/70 border border-purple-500/40 btn-premium shadow-md" title="Neues Level-Portät generieren"><i class="fas fa-image text-[12px]"></i></button>` : ''}
+                        ${c._portraitRegenPending ? `<span class="p-1.5 text-purple-400/80 bg-purple-900/30 rounded-lg border border-purple-500/20"><i class="fas fa-spinner fa-spin text-[12px]"></i></span>` : ''}
+                    </div>
                     <h3 class="cinzel text-amber-300 text-sm tracking-wide">${c.name} ${sumBadge}</h3>
                     <p class="text-[10px] text-slate-200/90">${c.class} | Lvl ${c.level}</p>
                     <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-purple-500 to-indigo-400 h-full" style="width: ${Math.min(100, (c.xp / xpNeeded) * 100)}%"></div></div>
