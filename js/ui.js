@@ -905,14 +905,14 @@ export const UI = {
 
         const row = document.createElement('article');
         row.dataset.chatId = entry.id;
-        row.className = 'tts-msg chat-message-glide chat-row ' + (entry.senderType === 'dm' ? 'chat-row-dm' : 'chat-row-player');
+        row.className = 'tts-msg chat-message-glide chat-row ' + ((entry.senderType === 'dm' || entry.senderType === 'loot') ? 'chat-row-dm' : 'chat-row-player');
         row.dataset.createdAt = String(entry.createdAt || Date.now());
         const speaker = entry.isAiControlled ? entry.sender + ' <span class="chat-ai-badge">AI</span>' : entry.sender;
         if (entry.senderType === 'dm') {
             const ttsBtn = '<button class="tts-btn" title="Vorlesen" data-action="tts-speak"><i class="fas fa-volume-up"></i></button>';
             row.innerHTML = sanitize('<div class="dm-message-card chat-bubble chat-bubble-dm"><div class="chat-meta-row"><span class="chat-sender chat-sender-dm">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span>' + ttsBtn + '</div><div class="tts-text dm-copy text-sm md:text-base leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, true) + '</div></div>');
         } else if (entry.senderType === 'loot') {
-            row.innerHTML = sanitize('<div class="chat-bubble chat-bubble-loot" style="border:1px solid rgba(234,179,8,0.5);background:rgba(120,80,0,0.18);border-radius:0.5rem;padding:0.75rem"><div class="chat-meta-row"><span class="chat-sender" style="color:#fbbf24">💰 ' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span></div><div class="tts-text text-sm leading-relaxed" style="color:#fef08a">' + this._formatChatHtml(entry.text, false) + '</div></div>');
+            row.innerHTML = sanitize('<div class="dm-message-card chat-bubble chat-bubble-loot" style="border: 1px solid rgba(192, 132, 252, 0.4); background: linear-gradient(135deg, rgba(88, 28, 135, 0.45), rgba(76, 29, 149, 0.65)); border-radius: 0.8rem; padding: 1rem; box-shadow: 0 8px 24px rgba(126, 34, 206, 0.25);"><div class="chat-meta-row" style="margin-bottom: 0.5rem;"><span class="chat-sender" style="color:#e879f9; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem;"><i class="fas fa-gem" style="margin-right: 0.4rem; color:#f0abfc; text-shadow: 0 0 8px rgba(240,171,252,0.8);"></i>' + speaker + '</span><span class="chat-time" style="color:rgba(232,121,249,0.5)">' + entry.timestamp + '</span></div><div class="tts-text text-sm leading-relaxed" style="color:#fdf4ff; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">' + this._formatChatHtml(entry.text, false) + '</div></div>');
         } else {
             const mine = window.App?.Network?.playerName && entry.sender === window.App.Network.playerName ? ' chat-bubble-self' : '';
             row.innerHTML = sanitize('<div class="chat-bubble chat-bubble-player' + mine + '"><div class="chat-meta-row"><span class="chat-sender">' + speaker + '</span><span class="chat-time">' + entry.timestamp + '</span></div><div class="tts-text text-sm leading-relaxed text-slate-200">' + this._formatChatHtml(entry.text, false) + '</div></div>');
