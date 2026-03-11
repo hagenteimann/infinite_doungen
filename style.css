@@ -2912,8 +2912,10 @@ body {
 }
 
 #tab-content-party {
-    overflow: hidden !important;
+    overflow: visible;
 }
+
+
 
 
 
