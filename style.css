@@ -2880,15 +2880,13 @@ body {
 
  #party-list,
 #enemy-history-container,
- #current-enemy-container {
-    max-height: none;
+#current-enemy-container {
     overflow-x: visible;
-    overflow-y: visible;
-    overflow-x: visible;
+    overflow-y: auto;
 }
 
 #tab-content-party {
-    overflow: visible !important;
+    overflow: hidden !important;
 }
 
 
@@ -2941,3 +2939,4 @@ body {
     inset: 0;
     background: linear-gradient(180deg, rgba(2, 6, 23, 0) 40%, rgba(2, 6, 23, 0.55) 78%, rgba(2, 6, 23, 0.75) 100%);
 }
+
