@@ -2748,7 +2748,9 @@ body {
     transition: max-height 0.2s ease, opacity 0.16s ease;
 }
 
-  .entity-card-expanded {
+   .entity-card-expanded {
+    padding: 0;
+    margin: 0 -0.5rem;
     width: calc(100% + 1rem);
     margin-left: -0.5rem;
     width: calc(100% + 1rem);
@@ -2762,7 +2764,9 @@ body {
 @media (hover: hover) {
     .entity-card.is-hovered { z-index: 6; }
     .entity-card.is-hovered .entity-card-expanded,
-    .entity-card:hover   .entity-card-expanded {
+    .entity-card:hover    .entity-card-expanded {
+    padding: 0;
+    margin: 0 -0.5rem;
     width: calc(100% + 1rem);
     margin-left: -0.5rem;
     width: calc(100% + 1rem);
@@ -2779,11 +2783,13 @@ body {
     }
 }
 
-.entity-card-expanded .entity-banner {
+.entity-card-expanded  .entity-banner {
+    border: none;
     margin-top: 0.35rem;
 }
 
-.entity-banner {
+ .entity-banner {
+    border: none;
     position: relative;
     border-radius: 0.9rem;
     overflow: hidden;
@@ -2897,5 +2903,6 @@ body {
 #tab-content-party {
     overflow: visible !important;
 }
+
 
 
