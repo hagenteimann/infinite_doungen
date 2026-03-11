@@ -370,6 +370,81 @@ export const Network = {
         });
     },
 
+    join(roomCode, playerName) {
+        const error = this.validatePlayerName(playerName);
+        if (error) {
+            UI.addChatLog('System', error);
+            return false;
+        }
+        if (this.peer) this.disconnect();
+        this.playerName = String(playerName || '').trim();
+        this.roomCode = String(roomCode || '').trim().toUpperCase();
+        this.role = 'client';
+        State._mpRole = 'client';
+        this._setConnState('connecting');
+        this._startConnectTimeout();
+
+        const config = this._getPeerConfig();
+        this.peer = new Peer(undefined, config);
+
+        this.peer.on('open', () => {
+            const peerId = ROOM_PREFIX + this.roomCode;
+            const conn = this.peer.connect(peerId, {
+                metadata: { name: this.playerName },
+                reliable: true
+            });
+
+            conn.on('open', () => {
+                this._clearConnectTimeout();
+                this._setConnState('connected');
+                this.connections = [conn];
+                this.turnOrder = [];
+                this.currentTurnIndex = 0;
+                State.playerControlMode = { [this.playerName]: 'human' };
+                this._ensurePlayerProfile(this.playerName, { isReady: false, controlMode: 'human' });
+                this._startHeartbeat();
+                this._recordSystemEntry({ id: Utils.generateId('sys'), sender: 'System', text: `Mit Raum **${this.roomCode}** verbunden als **${this.playerName}**.`, tone: 'neutral', createdAt: Date.now() }, false);
+                UI.updateAll();
+            });
+
+            conn.on('data', (msg) => this._handleHostMessage(msg));
+
+            conn.on('close', () => {
+                this._recordSystemEntry({ id: Utils.generateId('sys'), sender: 'System', text: `Verbindung zum Host verloren.`, tone: 'neutral', createdAt: Date.now() }, false);
+                this.disconnect();
+            });
+
+            conn.on('error', (err) => {
+                console.error('Connection error:', err);
+                this._setConnState('error', 'Verbindungsfehler zum Host.');
+                this.disconnect();
+            });
+        });
+
+        this.peer.on('error', (err) => {
+            this._clearConnectTimeout();
+            if (err.type === 'peer-unavailable') {
+                this._setConnState('error', `Raum ${this.roomCode} nicht gefunden.`);
+                UI.addChatLog('System', `Raum **${this.roomCode}** nicht gefunden. Ist der Host online?`);
+            } else {
+                console.error('Peer error:', err);
+                this._setConnState('error', err.message);
+                UI.addChatLog('System', `Verbindungsfehler: ${err.message}`);
+            }
+            this.disconnect();
+        });
+
+        this.peer.on('disconnected', () => {
+            if (this.connState === 'connected') {
+                this._setConnState('error', 'Verbindung zum Signaling-Server verloren.');
+            }
+        });
+
+        this._unsubscribe = subscribe(() => {
+            // Clients do not emit FULL_SYNC
+        });
+    },
+
     disconnect() {
         this._stopHeartbeat();
         if (this._syncDebounceTimer) {
