@@ -2785,9 +2785,28 @@ body {
     }
 }
 
-.entity-card-expanded .entity-banner {\n    position: relative;\n    width: 100%;\n    aspect-ratio: 3 / 1;\n    overflow: hidden;\n    border: 1px solid rgba(148, 163, 184, 0.2);\n    border-radius: 0.9rem;\n    background: transparent;\n}\n
+.entity-card-expanded .entity-banner {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 1;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 0.9rem;
+    background: transparent;
+}
 
-.entity-banner-fallback {\n    width: 100%;\n    height: 100%;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    background: rgba(2, 6, 23, 0.75);\n    color: #94a3b8;\n    font-size: 1.4rem;\n}\n
+
+.entity-banner-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2, 6, 23, 0.75);
+    color: #94a3b8;
+    font-size: 1.4rem;
+}
+
 
 .entity-banner-shade {
     position: absolute;
@@ -2883,18 +2902,54 @@ body {
 
 
 /* Banner Base (override) */
-.entity-card-expanded .entity-banner {\n    position: relative;\n    width: 100%;\n    aspect-ratio: 3 / 1;\n    overflow: hidden;\n    border: 1px solid rgba(148, 163, 184, 0.2);\n    border-radius: 0.9rem;\n    background: transparent;\n}\n
+.entity-card-expanded .entity-banner {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 1;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 0.9rem;
+    background: transparent;
+}
 
-.entity-banner {\n    position: relative;\n    width: 100%;\n    aspect-ratio: 3 / 1;\n    overflow: hidden;\n    border: 1px solid rgba(148, 163, 184, 0.2);\n    border-radius: 0.9rem;\n    background: transparent;\n}\n
 
-.entity-banner-img {\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n    object-position: center 10%;\n    display: block;\n}\n
+.entity-banner {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 1;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 0.9rem;
+    background: transparent;
+}
 
-.entity-banner-fallback {\n    width: 100%;\n    height: 100%;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    background: rgba(2, 6, 23, 0.75);\n    color: #94a3b8;\n    font-size: 1.4rem;\n}\n
+
+.entity-banner-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 10%;
+    display: block;
+}
+
+
+.entity-banner-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2, 6, 23, 0.75);
+    color: #94a3b8;
+    font-size: 1.4rem;
+}
+
 
 .entity-banner-shade {
     position: absolute;
     inset: 0;
     background: linear-gradient(180deg, rgba(2, 6, 23, 0) 40%, rgba(2, 6, 23, 0.55) 78%, rgba(2, 6, 23, 0.75) 100%);
 }
+
 
 
