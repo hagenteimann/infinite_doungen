@@ -2913,7 +2913,9 @@ body {
 }
 
 #tab-content-party {
-    overflow: visible;
+    min-height: 0;
+    overflow-x: visible;
+    overflow-y: hidden;
 }
 
 
