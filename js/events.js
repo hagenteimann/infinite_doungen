@@ -176,6 +176,23 @@ export function initEvents() {
         else if (el.id === 'oracle-input') Engine.submitOracle();
     });
 
+    document.addEventListener('pointerover', (e) => {
+        const card = e.target.closest('.entity-card');
+        if (!card) return;
+        if (card._hoverOutTimer) { clearTimeout(card._hoverOutTimer); card._hoverOutTimer = null; }
+        card.classList.add('is-hovered');
+    });
+
+    document.addEventListener('pointerout', (e) => {
+        const card = e.target.closest('.entity-card');
+        if (!card) return;
+        if (card.contains(e.relatedTarget)) return;
+        card._hoverOutTimer = setTimeout(() => {
+            card.classList.remove('is-hovered');
+            card._hoverOutTimer = null;
+        }, 120);
+    });
+
     document.addEventListener('change', (e) => {
         const el = e.target;
         if (el.id === 'import-save') Engine.importSave(e);
@@ -206,6 +223,12 @@ export function initEvents() {
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') UI.closeEnemyLightbox();
 });
+
+
+
+
+
+
 
 
 
