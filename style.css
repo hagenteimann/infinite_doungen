@@ -72,13 +72,15 @@ body {
 
         
 
-        #action-area .flex.flex-wrap.items-center.gap-2\\.5 > button {
+        #action-area .flex.flex-wrap.items-center.gap-2\.5 > button {
             border-color: rgba(148, 163, 184, 0.22);
         }
 
-        #action-area .flex.flex-wrap.items-center.gap-2\\.5 > button:hover {
+        #action-area .flex.flex-wrap.items-center.gap-2\.5 > button:hover {
             box-shadow: 0 8px 18px rgba(2, 6, 23, 0.32);
-        }button, .cursor-pointer, [data-action] {
+        }
+        
+        button, .cursor-pointer, [data-action] {
             cursor: pointer !important;
         }
 
