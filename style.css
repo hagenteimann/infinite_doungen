@@ -2759,7 +2759,6 @@ body {
     max-height: 4.8rem;
     opacity: 1;
     transition: max-height 0.2s ease, opacity 0.16s ease, padding 0.2s ease, margin 0.2s ease;
-    transition-delay: 0.15s;
 }
 
 .entity-card-expanded {
@@ -2770,7 +2769,6 @@ body {
     opacity: 0;
     overflow: hidden;
     transition: max-height 0.22s ease, opacity 0.16s ease;
-    transition-delay: 0.15s;
 }
 
 @media (hover: hover) {
