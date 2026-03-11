@@ -118,7 +118,8 @@ export const TagParser = {
                 dispatch({ type: 'ADD_LOOT', items: [`${amount} Goldmünzen`] });
                 UI.addChatLog({ sender: 'System', senderType: 'system', text: `**Beute gefunden!**\n- ${amount} Goldmünzen` });
             }
-        }\n        else if (type === 'COOLDOWN') {
+        }
+        else if (type === 'COOLDOWN') {
             const safeCharName = evt.char.replace(/[^a-zA-Z0-9]/g, '');
             const safeAbilityName = evt.ability.replace(/[^a-zA-Z0-9]/g, '');
             const cdKey = `${safeCharName}_${safeAbilityName}`;
