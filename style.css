@@ -2791,13 +2791,14 @@ body {
 
 .entity-card-expanded .entity-banner {
     position: relative;
-    width: 100%;
     aspect-ratio: 3 / 1;
     overflow: hidden;
     border: 1px solid rgba(251, 191, 36, 0.45);
-    border-radius: 0.75rem;
     background: transparent;
     box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.18), 0 12px 24px rgba(2, 6, 23, 0.45);
+    width: calc(100% - 4px);
+    margin: 2px;
+    border-radius: 0.65rem;
 }
 
 .entity-banner {
