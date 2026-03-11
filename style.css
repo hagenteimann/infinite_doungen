@@ -2742,6 +2742,17 @@ body {
     padding: 0;
 }
 
+.entity-card {
+    border-radius: 0.75rem;
+}
+
+.entity-card.is-hovered,
+.entity-card:hover {
+    border-color: transparent;
+    box-shadow: none;
+}
+
+
 .entity-card-collapsed {
     padding: 0.5rem;
     pointer-events: none;
@@ -2783,9 +2794,10 @@ body {
     width: 100%;
     aspect-ratio: 3 / 1;
     overflow: hidden;
-    border: 0;
+    border: 1px solid rgba(251, 191, 36, 0.45);
     border-radius: 0.75rem;
     background: transparent;
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.18), 0 12px 24px rgba(2, 6, 23, 0.45);
 }
 
 .entity-banner {
@@ -2902,6 +2914,7 @@ body {
 #tab-content-party {
     overflow: hidden !important;
 }
+
 
 
 
