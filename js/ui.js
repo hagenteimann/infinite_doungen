@@ -208,27 +208,31 @@ export const UIBuilders = {
         const hpDisplay = isDead ? 0 : e.hp;
         const hpBarWidth = isDead ? 0 : (e.hp / e.maxHp) * 100;
         const hoverClass = isDead ? '' : 'cursor-pointer hover:border-red-400/80 transition-all hover:shadow-[0_0_15px_rgba(248,113,113,0.3)] hover:bg-red-950/20';
-        const previewHtml = `
-            <div class="entity-preview entity-preview-enemy">
-                <div class="entity-preview-media">
-                    ${e.portrait ? `<img src="${e.portrait}" class="entity-preview-portrait" alt="">` : `<div class="entity-preview-fallback"><i class="fas fa-skull"></i></div>`}
-                    <div class="entity-preview-shade"></div>
-                    <div class="entity-preview-meta">
-                        <div class="entity-preview-name">${e.name}</div>
-                        <div class="entity-preview-sub">Gegner</div>
-                        <div class="entity-preview-hp">
+        const bannerPortrait = e.portrait ? `<img src="${e.portrait}" class="entity-banner-img" alt="">` : `<div class="entity-banner-fallback"><i class="fas fa-skull"></i></div>`;
+        const expandedHtml = `
+            <div class="entity-card-expanded">
+                <div class="entity-banner">
+                    ${bannerPortrait}
+                    <div class="entity-banner-shade"></div>
+                    <div class="entity-banner-meta">
+                        <div class="entity-banner-title">${e.name}</div>
+                        <div class="entity-banner-sub">Gegner</div>
+                        <div class="entity-banner-hp">
                             <span>${hpDisplay}/${e.maxHp}</span>
-                            <div class="entity-preview-bar"><div class="entity-preview-bar-fill enemy-bar" style="width: ${hpBarWidth}%"></div></div>
+                            <div class="entity-banner-bar"><div class="entity-banner-bar-fill enemy-bar" style="width: ${hpBarWidth}%"></div></div>
                         </div>
                     </div>
                 </div>
             </div>`;
-        return `<div class="bg-black/30 backdrop-blur-sm p-2 rounded-xl border entity-card entity-card-enemy ${isDead ? 'border-slate-800' : 'border-red-900/50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]'} flex gap-2.5 items-center fade-in btn-premium ${isDead ? 'defeated-enemy' : ''} ${hoverClass}" ${!isDead ? `data-action="entity-click" data-name="${e.name.replace(/"/g, '&quot;')}" data-entity-type="enemy" data-entity-id="${e.id}"` : ''}>
-            ${e.portrait ? `<img src="${e.portrait}" class="w-10 h-10 rounded-lg object-cover btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'}">` : `<div class="w-10 h-10 rounded-lg bg-black/60 btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'} flex items-center justify-center text-red-500/50"><i class="fas fa-skull"></i></div>`} ${previewHtml}
-            <div class="flex-1 min-w-0">
-                <div class="flex justify-between text-[10px] truncate tracking-wide"><span class="${isDead ? 'line-through text-slate-600' : 'text-slate-200'}">${e.name}</span><span class="${isDead ? 'text-slate-600' : 'text-red-400 font-mono font-bold drop-shadow-[0_0_2px_rgba(248,113,113,0.8)]'}">${hpDisplay}/${e.maxHp}</span></div>
-                <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 overflow-hidden border border-white/5"><div class="${isDead ? 'bg-slate-700' : 'bg-gradient-to-r from-red-800 to-red-500'} h-full transition-all duration-500" style="width: ${hpBarWidth}%"></div></div>
+        return `<div class="bg-black/30 backdrop-blur-sm p-2 rounded-xl border entity-card entity-card-enemy ${isDead ? 'border-slate-800' : 'border-red-900/50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]'} fade-in btn-premium ${isDead ? 'defeated-enemy' : ''} ${hoverClass}" ${!isDead ? `data-action="entity-click" data-name="${e.name.replace(/\"/g, '&quot;')}" data-entity-type="enemy" data-entity-id="${e.id}"` : ''}>
+            <div class="entity-card-collapsed flex gap-2.5 items-center">
+                ${e.portrait ? `<img src="${e.portrait}" class="w-10 h-10 rounded-lg object-cover btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'}">` : `<div class="w-10 h-10 rounded-lg bg-black/60 btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'} flex items-center justify-center text-red-500/50"><i class="fas fa-skull"></i></div>`}
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between text-[10px] truncate tracking-wide"><span class="${isDead ? 'line-through text-slate-600' : 'text-slate-200'}">${e.name}</span><span class="${isDead ? 'text-slate-600' : 'text-red-400 font-mono font-bold drop-shadow-[0_0_2px_rgba(248,113,113,0.8)]'}">${hpDisplay}/${e.maxHp}</span></div>
+                    <div class="w-full bg-black/60 h-1.5 rounded-full mt-1.5 overflow-hidden border border-white/5"><div class="${isDead ? 'bg-slate-700' : 'bg-gradient-to-r from-red-800 to-red-500'} h-full transition-all duration-500" style="width: ${hpBarWidth}%"></div></div>
+                </div>
             </div>
+            ${expandedHtml}
         </div>`;
     }
 };
@@ -1553,6 +1557,8 @@ export const UI = {
         }
     }
 };
+
+
 
 
 
