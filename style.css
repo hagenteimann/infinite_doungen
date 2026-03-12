@@ -222,17 +222,70 @@ body {
 
         /* Wuerfel Animation */
         .dice-rolling {
-            animation: rollPulse 0.1s infinite alternate;
+            animation: diceSpin 0.15s infinite linear;
+            perspective: 1000px;
         }
 
-        @keyframes rollPulse {
-            from {
-                transform: scale(1) translateY(0);
-            }
+        .dice-result-landed {
+            animation: diceImpact 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
 
-            to {
-                transform: scale(1.05) translateY(-5px);
-            }
+        .dice-container-shake {
+            animation: containerShake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        .dice-crit-glow {
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 40px rgba(251, 191, 36, 0.4);
+            animation: critPulse 1s infinite alternate;
+        }
+
+        .dice-botch-glow {
+            text-shadow: 0 0 20px rgba(220, 38, 38, 0.8);
+            filter: drop-shadow(0 0 5px black);
+            animation: botchFlicker 0.2s infinite;
+        }
+
+        @keyframes diceSpin {
+            0% { transform: rotateX(0deg) rotateY(0deg) scale(1); filter: blur(0px); }
+            50% { transform: rotateX(180deg) rotateY(90deg) scale(1.1); filter: blur(1px); }
+            100% { transform: rotateX(360deg) rotateY(360deg) scale(1); filter: blur(0px); }
+        }
+
+        @keyframes diceImpact {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1.1); opacity: 1; }
+        }
+
+        @keyframes containerShake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        @keyframes critPulse {
+            from { transform: scale(1.1); text-shadow: 0 0 20px rgba(251, 191, 36, 0.8); }
+            to { transform: scale(1.15); text-shadow: 0 0 40px rgba(251, 191, 36, 1), 0 0 60px rgba(251, 191, 36, 0.5); }
+        }
+
+        @keyframes botchFlicker {
+            0% { opacity: 1; transform: scale(1.1) rotate(0deg); }
+            50% { opacity: 0.8; transform: scale(1.08) rotate(-1deg); }
+            100% { opacity: 1; transform: scale(1.11) rotate(1deg); }
+        }
+
+        .dice-particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 150;
+            border-radius: 50%;
+            animation: particleOut 0.8s ease-out forwards;
+        }
+
+        @keyframes particleOut {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
         }
 
         /* Journal & Stats */

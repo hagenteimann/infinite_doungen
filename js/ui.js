@@ -1488,16 +1488,63 @@ export const UI = {
                 if (isCritical && success) Sound.play('crit');
                 else if (!success) Sound.play('fail');
 
+                // Apply results with impact
+                DOM.diceResult.classList.remove('dice-rolling');
+                void DOM.diceResult.offsetWidth; // Trigger reflow
+                DOM.diceResult.classList.add('dice-result-landed');
+                
+                // Container impact shake
+                DOM.diceContainer.classList.remove('dice-container-shake');
+                void DOM.diceContainer.offsetWidth;
+                DOM.diceContainer.classList.add('dice-container-shake');
+
                 let modStr = modifier !== 0 ? `<span class="text-4xl text-slate-400 mx-2">${modifier >= 0 ? '+' : ''}${modifier}</span><span class="text-7xl">=${totalResult}</span>` : '';
                 DOM.diceResult.innerHTML = `<span class="text-7xl">${finalRawRoll}</span>${modStr}`;
-                DOM.diceResult.className = `font-bold cinzel mb-6 mt-4 transition-all duration-300 scale-110 drop-shadow-[0_0_20px_rgba(255,255,255,0.5)] ${success ? 'text-green-300' : 'text-red-400'}`;
+                DOM.diceResult.className = `font-bold cinzel mb-6 mt-4 transition-all duration-300 scale-110 drop-shadow-[0_0_20px_rgba(255,255,255,0.5)] ${success ? 'text-green-300' : 'text-red-400'} ${isCritical && success ? 'dice-crit-glow' : ''} ${isBotch ? 'dice-botch-glow' : ''}`;
+
+                // Particles
+                if (success || isCritical) {
+                    this.createDiceParticles(DOM.diceResult, isCritical && success ? 'gold' : 'green');
+                }
 
                 setTimeout(() => {
                     if (closeAfter) DOM.diceModal.classList.add('hidden');
                     if (callback) callback(totalResult, success, finalRawRoll);
-                }, 1800);
+                }, 2200); // Slightly longer to appreciate the effect
             }
         }, DICE_ANIMATION_INTERVAL_MS);
+    },
+
+    createDiceParticles: function (originEl, type = 'green') {
+        const rect = originEl.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const colors = type === 'gold' ? ['#fbbf24', '#f59e0b', '#fff7ed'] : ['#22c55e', '#4ade80', '#bbf7d0'];
+        const count = type === 'gold' ? 30 : 15;
+
+        for (let i = 0; i < count; i++) {
+            const p = document.createElement('div');
+            p.className = 'dice-particle';
+            const size = 4 + Math.random() * 8;
+            p.style.width = `${size}px`;
+            p.style.height = `${size}px`;
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            p.style.background = color;
+            p.style.boxShadow = `0 0 ${size}px ${color}`;
+            
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 50 + Math.random() * 100;
+            const dx = Math.cos(angle) * dist;
+            const dy = Math.sin(angle) * dist;
+            
+            p.style.setProperty('--dx', `${dx}px`);
+            p.style.setProperty('--dy', `${dy}px`);
+            p.style.left = `${centerX}px`;
+            p.style.top = `${centerY}px`;
+            
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 1000);
+        }
     },
 
     showDiceModal: function (target, isGroup = false) {
