@@ -235,6 +235,8 @@ export function initEvents() {
             if (parseInt(numInput.value) > max) { numInput.value = max; slider.value = max; }
             else if (parseInt(numInput.value) < 1) { numInput.value = 1; slider.value = 1; }
         });
+    }
+
     // Swipe-up on action area opens mobile actions panel
     let _swipeStartY = 0;
     document.addEventListener('touchstart', e => { _swipeStartY = e.touches[0].clientY; }, { passive: true });
