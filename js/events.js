@@ -13,6 +13,10 @@ export function initEvents() {
             return;
         }
 
+        // Close settings panel when clicking outside
+        if (!e.target.closest('#settings-panel') && !e.target.closest('#settings-btn')) {
+            document.getElementById('settings-panel')?.classList.add('hidden');
+        }
         // Close sound menu when clicking outside
         if (!e.target.closest('#sound-menu-wrapper')) {
             document.getElementById('sound-menu-panel')?.classList.add('hidden');
@@ -47,7 +51,8 @@ export function initEvents() {
                 const text = actionEl.dataset.text;
                 text ? Engine.submitPlayerAction(text) : Engine.submitPlayerAction();
             },
-            'show-prompts': () => UI.showPromptManager(),
+            'toggle-settings-panel': () => document.getElementById('settings-panel')?.classList.toggle('hidden'),
+            'toggle-verbose-mode': () => Engine.toggleVerboseMode(),
 
             'camp': () => Engine.camp(),
             'ask-oracle': () => Engine.askOracle(),
@@ -76,7 +81,6 @@ export function initEvents() {
             'submit-craft': () => Engine.submitCrafting(),
             'close-craft': () => UI.closeCrafting(),
             'decline-ability': () => Engine.declineNewAbility(),
-            'save-prompt': () => Engine.savePrompt(),
             'save-api-settings': () => Engine.saveApiSettings(),
             'tts-test': () => TTS.testVoice(),
             'tts-save': () => TTS.savePicker(),
@@ -111,9 +115,6 @@ export function initEvents() {
             'add-craft-ingredient': () => Engine.addCraftingIngredient(actionEl.dataset.charId, actionEl.dataset.item),
             'remove-craft-ingredient': () => Engine.removeCraftingIngredient(parseInt(actionEl.dataset.idx)),
             'replace-ability': () => Engine.replaceAbility(parseInt(actionEl.dataset.idx)),
-            'insert-prompt': () => Engine.insertPrompt(parseInt(actionEl.dataset.idx)),
-            'play-prompt': () => Engine.playPrompt(parseInt(actionEl.dataset.idx)),
-            'delete-prompt': () => Engine.deletePrompt(parseInt(actionEl.dataset.idx)),
             'show-details': () => UI.showDetails(actionEl.dataset.charId),
             'show-multiplayer': () => Network.showModal(),
             'mp-host': () => {

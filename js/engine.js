@@ -496,18 +496,32 @@ getPregameStatus() {
         UI.updateMusicControls();
     },
 
+    _syncQuickplayBtn: function () {
+        const btn = document.getElementById('quickplay-btn');
+        if (!btn) return;
+        if (State.quickplayEnabled) {
+            btn.className = 'bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white px-3.5 py-2 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.6)] transition-all duration-300 backdrop-blur-sm tracking-wide flex items-center gap-1.5 animate-pulse';
+            btn.innerHTML = '<i class="fas fa-bolt text-yellow-300"></i> Quickplay (AN)';
+        } else {
+            btn.className = 'bg-blue-900/40 hover:bg-blue-800/60 border border-blue-700/50 hover:border-blue-400 text-blue-200 px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300 backdrop-blur-sm tracking-wide flex items-center gap-1.5';
+            btn.innerHTML = '<i class="fas fa-forward text-blue-400/70 group-hover:text-blue-400"></i> Quickplay';
+        }
+    },
+
     toggleQuickplay: function () {
         State.quickplayEnabled = !State.quickplayEnabled;
-        const btn = document.getElementById('quickplay-btn');
+        this._syncQuickplayBtn();
         if (State.quickplayEnabled) {
-            btn.className = "bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white px-3.5 py-2 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.6)] transition-all duration-300 backdrop-blur-sm tracking-wide flex items-center gap-1.5 animate-pulse";
-            btn.innerHTML = `<i class="fas fa-bolt text-yellow-300"></i> Quickplay (AN)`;
-            UI.addChatLog("System", "**Quickplay aktiviert:** Der DM wird sich nun kurz fassen, um den Spielfluss zu beschleunigen.");
+            UI.addChatLog('System', '**Quickplay aktiviert:** Der DM wird sich nun kurz fassen, um den Spielfluss zu beschleunigen.');
         } else {
-            btn.className = "bg-blue-900/40 hover:bg-blue-800/60 border border-blue-700/50 hover:border-blue-400 text-blue-200 px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300 backdrop-blur-sm tracking-wide flex items-center gap-1.5";
-            btn.innerHTML = `<i class="fas fa-forward text-blue-400/70 group-hover:text-blue-400"></i> Quickplay`;
-            UI.addChatLog("System", "**Quickplay deaktiviert:** Der DM beschreibt die Welt wieder ausfuehrlicher.");
+            UI.addChatLog('System', '**Quickplay deaktiviert:** Der DM beschreibt die Welt wieder ausfuehrlicher.');
         }
+    },
+
+    toggleVerboseMode: function () {
+        State.verboseModeEnabled = !State.verboseModeEnabled;
+        UI.updateAll();
+        UI.showToast(State.verboseModeEnabled ? 'Ausführliche Texte aktiviert.' : 'Ausführliche Texte deaktiviert.');
     },
 
     generateJournalEntry: async function () {
@@ -570,11 +584,15 @@ getPregameStatus() {
             return `${p.name} (Lvl ${p.level} ${p.class}, HP: ${p.hp}/${effMax}, Stats (inkl. Item-Boni): STR ${eff.STR} DEX ${eff.DEX} INT ${eff.INT} CON ${eff.CON}, Inv: [${p.inventory.join(', ')}], Ausgerüstet: [${(p.equipment || []).join(', ')}]${specStr})`;
         }).join(' | ');
 
-        const diff = DOM.gameDifficulty.value; const rate = DOM.enemyRate.value;
+        const diff = DOM.gameDifficulty ? DOM.gameDifficulty.value : 'Normal';
+        const rate = DOM.enemyRate ? DOM.enemyRate.value : 'Normal';
         const dInstr = getDifficultyInstruction(diff);
         const qpAddendum = State.quickplayEnabled
             ? " QUICKPLAY AKTIV: Antworten extrem kurz (1-2 Sätze). Du darfst auch Angriffsproben für Spieler vorschlagen."
             : " NORMALER MODUS \u2013 ANGRIFF-REGEL (ABSOLUT): Du darfst NIEMALS selbst eine Angriffs-Probe f\u00FCr einen Spieler fordern oder vorgeben wie dieser angreift. NUR Ausweichen/Blocken-Proben f\u00FCr Spieler sind erlaubt. Warte zwingend, bis der Spieler explizit schreibt dass er angreift (z.B. 'Ich greife an'). Erst dann und nur dann eine Probe fordern.";
+        const verboseAddendum = (!State.quickplayEnabled && State.verboseModeEnabled)
+            ? " AUSFÜHRLICHER MODUS: Beschreibe Szenen reich und detailliert (4-6 Sätze), male Atmosphäre, Gerüche, Geräusche und Emotionen aus."
+            : "";
 
         let dungeonContext = "";
         const fate = State.fate || 0;
@@ -598,7 +616,7 @@ getPregameStatus() {
             ? ` [HELDENMOMENTUM: Die Gruppe hat ${momentum} aufeinanderfolgende Erfolge! Beschreibe ihre nächste Aktion besonders episch oder gewähre einen kleinen narrativen Vorteil.]`
             : '';
         const goldCtx = State.gold > 0 ? ` [Gruppenkapital: ${State.gold} Goldmünzen]` : '';
-        const context = `Party: ${partyCtx}. Feinde: ${enemyCtx}. Vorherige Szenen: [${historyCtx}]. Aktuelle Szene: ${State.lastStoryPart}. Aktion (${acting}): ${actionMsg}. [Regeln: Diff=${diff} (${dInstr}), Rate=${rate}]${qpAddendum}${dungeonContext}${weatherCtx}${rollsAddendum}${momentumCtx}${goldCtx}`;
+        const context = `Party: ${partyCtx}. Feinde: ${enemyCtx}. Vorherige Szenen: [${historyCtx}]. Aktuelle Szene: ${State.lastStoryPart}. Aktion (${acting}): ${actionMsg}. [Regeln: Diff=${diff} (${dInstr}), Rate=${rate}]${qpAddendum}${verboseAddendum}${dungeonContext}${weatherCtx}${rollsAddendum}${momentumCtx}${goldCtx}`;
 
         try {
             const aiResponseJSON = await API.generateText(context);
@@ -1473,37 +1491,7 @@ getPregameStatus() {
         UI.addChatLog('System', SYSTEM_NOTICE.settingsSaved);
         UI.showToast("API-Einstellungen erfolgreich gespeichert!");
     },
-    savePrompt: function () {
-        const inputEl = document.getElementById('new-prompt-input');
-        const pt = inputEl.value.trim();
-        if (pt) {
-            State.savedPrompts = State.savedPrompts || [];
-            State.savedPrompts.push(pt);
-            inputEl.value = "";
-            UI.renderPromptManager();
-        }
-    },
-    insertPrompt: function (idx) {
-        const promptText = (State.savedPrompts || [])[idx];
-        if (!promptText) return;
-        document.getElementById('player-input').value = promptText;
-        document.getElementById('prompt-manager-modal').classList.add('hidden');
-        document.getElementById('player-input').focus();
-    },
-    playPrompt: function (idx) {
-        const promptText = (State.savedPrompts || [])[idx];
-        if (!promptText) return;
-        document.getElementById('player-input').value = promptText;
-        document.getElementById('prompt-manager-modal').classList.add('hidden');
-        this.submitPlayerAction();
-    },
-    deletePrompt: function (idx) {
-        if (State.savedPrompts && State.savedPrompts[idx]) {
-            State.savedPrompts.splice(idx, 1);
-            UI.renderPromptManager();
-        }
-    },
-    useAbility: function (cid, abilityName, isItemAbility = false, sourceName = '') {
+    useAbility:function (cid, abilityName, isItemAbility = false, sourceName = '') {
         const c = State.party.find(p => p.id === cid);
         const ab = abilityName || c?.ability;
         if (c && ab) {

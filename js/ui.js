@@ -366,25 +366,7 @@ export const UI = {
         document.getElementById('api-settings-claude').classList.toggle('hidden', provider !== 'claude');
     },
 
-    showPromptManager: function () {
-        const piValue = document.getElementById('player-input').value.trim();
-        if (piValue) document.getElementById('new-prompt-input').value = piValue;
-        this.renderPromptManager();
-        document.getElementById('prompt-manager-modal').classList.remove('hidden');
-    },
-    renderPromptManager: function () {
-        const listHtml = (State.savedPrompts || []).map((promptText, idx) => {
-            return `<div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/50 flex gap-2 items-center group shadow-sm">
-                <span class="text-xs text-slate-300 flex-1 truncate font-medium" title="${promptText.replace(/"/g, '&quot;')}">${promptText}</span>
-                <button title="Einfuegen" data-action="insert-prompt" data-idx="${idx}" class="text-blue-400 hover:text-blue-300 p-1.5 transition-colors"><i class="fas fa-paste"></i></button>
-                <button title="Spielen" data-action="play-prompt" data-idx="${idx}" class="text-emerald-400 hover:text-emerald-300 p-1.5 transition-colors"><i class="fas fa-play"></i></button>
-                <button title="Loeschen" data-action="delete-prompt" data-idx="${idx}" class="text-opacity-50 text-red-500 hover:text-opacity-100 p-1.5 transition-opacity"><i class="fas fa-trash"></i></button>
-            </div>`;
-        }).join('');
-        document.getElementById('prompt-list').innerHTML = sanitize(listHtml || '<p class="text-slate-500 text-xs text-center italic mt-2">Noch keine Prompts gespeichert.</p>');
-    },
-
-    switchTab: function (tab) {
+    switchTab:function (tab) {
         ['party', 'dice', 'system', 'journal', 'stats'].forEach(t => {
             const btn = DOM[`tab${t.charAt(0).toUpperCase() + t.slice(1)}`];
             const content = DOM[`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`];
@@ -487,7 +469,13 @@ export const UI = {
             if (b.id === myCharId) return 1;
             return 0;
         });
-        this._setHtmlIfChanged(DOM.partyList, sanitize(sorted.map(c => UIBuilders.buildHeroCard(c, c.id === myCharId)).join('')));
+        const lateJoinBanner = (State.gameStarted && !myCharId)
+            ? sanitize(`<div class="pg2-action-row" style="margin-bottom:0.75rem">
+                <button data-action="pregame-create-hero" class="pg2-ghost-btn pg2-ghost-btn-primary"><i class="fas fa-plus"></i> Held erstellen</button>
+                <button data-action="pregame-load-hero" class="pg2-ghost-btn"><i class="fas fa-file-import"></i> Laden</button>
+            </div>`)
+            : '';
+        this._setHtmlIfChanged(DOM.partyList, lateJoinBanner + sanitize(sorted.map(c => UIBuilders.buildHeroCard(c, c.id === myCharId)).join('')));
         const isMp = State._mpRole && myCharId;
         if (isMp) {
             const myChar = State.party.find(p => p.id === myCharId);
@@ -550,6 +538,7 @@ export const UI = {
         document.body.classList.toggle('session-startscreen', ['start', 'api_gate'].includes(State.sessionPhase || 'start'));
         document.body.classList.toggle('session-pregame', State.sessionPhase === 'pregame');
         this.updateSelfControlButton();
+        Engine._syncQuickplayBtn?.();
 
         this.updateActionBox();
         this.renderDiceFeed();
