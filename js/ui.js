@@ -1027,8 +1027,6 @@ export const UI = {
             ? `<img src="${localHero.portrait}" alt="${repairDisplayText(localHero.name)}" class="pg2-hero-portrait">`
             : `<div class="pg2-hero-avatar"><i class="fas fa-shield-halved"></i></div>`;
 
-        const isLateJoin = !!State.lateJoinPending;
-
         const heroContent = localHero ? `
             <div class="pg2-hero-card">
                 ${heroPortraitHtml}
@@ -1044,20 +1042,19 @@ export const UI = {
             <div class="pg2-hero-change-row">
                 <button type="button" data-action="pregame-create-hero" class="pg2-mini-btn"><i class="fas fa-pencil"></i> Ändern</button>
                 <button type="button" data-action="pregame-load-hero" class="pg2-mini-btn"><i class="fas fa-file-import"></i> Laden</button>
-                <button type="button" data-action="pregame-deselect-hero" class="pg2-mini-btn pg2-mini-btn-remove"><i class="fas fa-trash-alt"></i> Entfernen</button>
             </div>
-            ${!isSolo && !isLateJoin ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn${localProfile?.isReady ? ' is-ready' : ''}">${localProfile?.isReady ? '<i class="fas fa-times-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>` : ''}
+            ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn${localProfile?.isReady ? ' is-ready' : ''}">${localProfile?.isReady ? '<i class="fas fa-times-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>` : ''}
         ` : `
             <div class="pg2-hero-empty">
                 <i class="fas fa-user-plus pg2-hero-empty-icon"></i>
                 <p>Kein Held gewählt</p>
-                <p class="pg2-hero-empty-hint">${isLateJoin ? 'Wähle deinen Helden, um dem Abenteuer beizutreten.' : 'Erstelle einen neuen Helden oder lade einen Speicherstand.'}</p>
+                <p class="pg2-hero-empty-hint">Erstelle einen neuen Helden oder lade einen Speicherstand.</p>
             </div>
             <div class="pg2-action-row">
                 <button type="button" data-action="pregame-create-hero" class="pg2-ghost-btn pg2-ghost-btn-primary"><i class="fas fa-plus"></i> Erstellen</button>
                 <button type="button" data-action="pregame-load-hero" class="pg2-ghost-btn"><i class="fas fa-file-import"></i> Laden</button>
             </div>
-            ${!isSolo && !isLateJoin ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn pg2-ready-btn-locked" disabled><i class="fas fa-shield-heart"></i> Bereit melden</button>` : ''}`;
+            ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn pg2-ready-btn-locked" disabled><i class="fas fa-shield-heart"></i> Bereit melden</button>` : ''}`;
 
         return `
             <div class="entry-shell">
@@ -1080,9 +1077,7 @@ export const UI = {
                     <div class="pg2-footer">
                         ${isHost || isSolo
                 ? `<button type="button" data-action="start-game" class="pg2-start-btn${canStart ? '' : ' is-disabled'}"${canStart ? '' : ' disabled'}><i class="fas fa-dungeon"></i> Abenteuer starten</button>`
-                : isLateJoin
-                    ? `<div class="pg2-wait-note"><i class="fas fa-door-open"></i> Wähle deinen Helden oben, um dem laufenden Abenteuer beizutreten.</div>`
-                    : `<div class="pg2-wait-note"><i class="fas fa-hourglass-half"></i> Der Host startet das Abenteuer, sobald alle bereit sind.</div>`}
+                : `<div class="pg2-wait-note"><i class="fas fa-hourglass-half"></i> Der Host startet das Abenteuer, sobald alle bereit sind.</div>`}
                     </div>
                 </div>
             </div>`;

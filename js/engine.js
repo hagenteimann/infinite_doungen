@@ -280,26 +280,7 @@ export const Engine = {
         document.getElementById('import-hero')?.click();
     },
 
-    deselectHero() {
-        const name = this._getResolvedLocalPlayerName();
-        if (!name) return;
-        const heroId = State.playerProfiles?.[name]?.heroId;
-        this._syncLocalProfile({ heroId: null, heroName: null, isReady: false });
-        if (Network.isClient() && Network.isConnected()) {
-            Network.sendPregameReady(false);
-            if (heroId) Network.sendHeroRemove(heroId);
-        } else if (Network.isHost() && Network.isConnected()) {
-            if (heroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: heroId });
-            Network.setPregameReady(name, false);
-            delete Network.playerCharMap[name];
-            Network.broadcastState();
-        } else {
-            if (heroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: heroId });
-        }
-        UI.updateAll();
-    },
-
-    getPregameStatus() {
+getPregameStatus() {
         const players = Network.isConnected()
             ? (Network.turnOrder.length ? Network.turnOrder : [Network.playerName]).filter(Boolean)
             : [State.localPlayerName].filter(Boolean);
@@ -1088,11 +1069,6 @@ export const Engine = {
     },
 
     finalizeCharacter: function () {
-        if (State.gameStarted && !State.lateJoinPending) {
-            UI.showToast('Helden können während des Spiels nicht erstellt werden.');
-            UI.closeCreator();
-            return;
-        }
         const localKey = this._getResolvedLocalPlayerName();
         const name = DOM.newName.value; const cls = DOM.newClass.value;
         const preset = PRESETS[name]; const attrs = preset ? { ...preset.attributes } : { STR: 10, DEX: 10, INT: 10, CON: 10 };
@@ -1100,11 +1076,8 @@ export const Engine = {
         const startHp = PartyManager.getEffectiveMaxHp(tempChar);
         const charData = Utils.sanitizeCharacter({ ...tempChar, hp: startHp, maxHp: startHp, portrait: State.tempPortraitData, imagePrompt: State.tempImagePrompt, inventory: [DOM.startItem.value], isNPC: false });
         if (Network.isClient() && Network.isConnected()) {
-            const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
-            if (oldHeroId) Network.sendHeroRemove(oldHeroId);
             this._syncLocalProfile({ heroId: charData.id, heroName: charData.name, isReady: false });
             Network.sendCharacterCreate(charData);
-            if (State.lateJoinPending) { State.lateJoinPending = false; State.gameStarted = true; State.sessionPhase = 'in_game'; }
         } else {
             const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
             if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
@@ -1561,11 +1534,6 @@ export const Engine = {
     },
     importHero: function (e) {
         if (!e.target.files[0]) return;
-        if (State.gameStarted && !State.lateJoinPending) {
-            UI.addChatLog('System', 'Helden können während des Spiels nicht importiert werden.');
-            e.target.value = "";
-            return;
-        }
         const localKey = this._getResolvedLocalPlayerName();
         const r = new FileReader();
         r.onload = (ev) => {
@@ -1575,11 +1543,8 @@ export const Engine = {
                 h.id = Utils.generateId();
                 const hero = Utils.sanitizeCharacter(h);
                 if (Network.isClient() && Network.isConnected()) {
-                    const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
-                    if (oldHeroId) Network.sendHeroRemove(oldHeroId);
                     this._syncLocalProfile({ heroId: hero.id, heroName: hero.name, isReady: false });
                     Network.sendCharacterCreate(hero);
-                    if (State.lateJoinPending) { State.lateJoinPending = false; State.gameStarted = true; State.sessionPhase = 'in_game'; }
                 } else {
                     const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
                     if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });

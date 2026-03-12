@@ -553,11 +553,6 @@ export const Network = {
         });
     },
 
-    sendHeroRemove(heroId) {
-        if (!this.isClient() || this.connections.length === 0) return;
-        this._sendTo(this.connections[0], { type: 'HERO_REMOVE', playerName: this.playerName, heroId });
-    },
-
     requestSelfControlMode(mode) {
         if (!this.isClient() || this.connections.length === 0) return;
         this._sendTo(this.connections[0], {
@@ -1208,17 +1203,6 @@ export const Network = {
                 }
                 break;
             }
-            case 'HERO_REMOVE': {
-                const playerName = conn.metadata?.name || name;
-                const heroId = msg.heroId || State.playerProfiles?.[playerName]?.heroId;
-                if (heroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: heroId });
-                delete this.playerCharMap[playerName];
-                this._ensurePlayerProfile(playerName, { heroId: null, heroName: null, isReady: false });
-                this.setPregameReady(playerName, false);
-                this.broadcastState();
-                UI.updateAll();
-                break;
-            }
             case 'PLAYER_READY_UPDATE': {
                 this.setPregameReady(msg.playerName || name, !!msg.isReady);
                 UI.updateAll();
@@ -1347,7 +1331,7 @@ export const Network = {
         if (incoming.gold !== undefined) State.gold = incoming.gold;
         if (incoming.dungeonLevel !== undefined) State.dungeonLevel = incoming.dungeonLevel;
         if (incoming.lastStoryPart !== undefined) State.lastStoryPart = incoming.lastStoryPart;
-        if (incoming.gameStarted !== undefined && !State.lateJoinPending) State.gameStarted = incoming.gameStarted;
+        if (incoming.gameStarted !== undefined) State.gameStarted = incoming.gameStarted;
         if (incoming.combatEnded !== undefined) State.combatEnded = incoming.combatEnded;
         if (incoming.activeMerchant !== undefined) State.activeMerchant = incoming.activeMerchant;
         if (incoming.journal !== undefined) State.journal = incoming.journal;
@@ -1411,13 +1395,7 @@ export const Network = {
                 this.autoPlayers = msg.autoPlayers || {};
                 this._syncAutoPlayersFromControlModes();
                 State._mpMyCharId = this.playerCharMap[this.playerName] || null;
-                // Late join: game already started but this client has no assigned character yet
-                if (State.gameStarted && !State._mpMyCharId && !this.isHost()) {
-                    State.lateJoinPending = true;
-                    State.gameStarted = false;
-                    State.sessionPhase = 'pregame';
-                }
-                this._combatStatus = msg.combatSubmitted || {};
+this._combatStatus = msg.combatSubmitted || {};
                 this._mySubmittedAction = this._combatStatus[this.playerName] ? { submitted: true } : null;
                 this.currentVote = msg.vote || null;
                 State.isProcessing = !!msg.isProcessing;
