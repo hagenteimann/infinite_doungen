@@ -222,8 +222,7 @@ body {
 
         /* Wuerfel Animation */
         .dice-rolling {
-            animation: diceSpin 0.15s infinite linear;
-            perspective: 1000px;
+            animation: diceSpin 0.1s infinite alternate;
         }
 
         .dice-result-landed {
@@ -246,9 +245,9 @@ body {
         }
 
         @keyframes diceSpin {
-            0% { transform: rotateX(0deg) rotateY(0deg) scale(1); filter: blur(0px); }
-            50% { transform: rotateX(180deg) rotateY(90deg) scale(1.1); filter: blur(1px); }
-            100% { transform: rotateX(360deg) rotateY(360deg) scale(1); filter: blur(0px); }
+            0% { transform: scale(1) rotate(-2deg); filter: blur(0px); }
+            50% { transform: scale(1.1) rotate(2deg); filter: blur(1px); }
+            100% { transform: scale(1) rotate(-1deg); filter: blur(0.5px); }
         }
 
         @keyframes diceImpact {
