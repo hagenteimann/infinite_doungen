@@ -201,7 +201,7 @@ export const UIBuilders = {
             </div>`;
 
         return `<div class="bg-black/30 backdrop-blur-md p-2 rounded-xl border entity-card entity-card-hero ${borderClass} cursor-pointer group transition-all btn-premium relative" data-action="entity-click" data-name="${c.name.replace(/\"/g, '&quot;')}" data-entity-type="hero" data-entity-id="${c.id}">
-            <button data-action="remove-char" data-char-id="${c.id}" class="absolute -top-2 -right-2 z-30 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all bg-red-950/90 rounded-full border border-red-500/50 hover:bg-red-900 shadow-[0_0_10px_rgba(239,68,68,0.5)] flex items-center justify-center w-6 h-6"><i class="fas fa-trash text-[10px]"></i></button>
+            <button data-action="remove-char" data-char-id="${c.id}" class="absolute top-1.5 right-1.5 z-30 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all bg-red-950/90 rounded-full border border-red-500/50 hover:bg-red-900 shadow-[0_0_10px_rgba(239,68,68,0.5)] flex items-center justify-center w-6 h-6"><i class="fas fa-trash text-[10px]"></i></button>
             <div class="entity-card-collapsed flex gap-2.5 items-center">
                 ${portraitThumb}
                 <div class="flex-1">
