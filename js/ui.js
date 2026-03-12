@@ -1023,10 +1023,13 @@ export const UI = {
 
         const heroHp = localHero ? `${localHero.hp ?? localHero.maxHp ?? '?'}/${localHero.maxHp ?? '?'}` : null;
         const heroLevel = localHero?.level ?? null;
+        const heroPortraitHtml = localHero?.portrait
+            ? `<img src="${localHero.portrait}" alt="${repairDisplayText(localHero.name)}" class="pg2-hero-portrait">`
+            : `<div class="pg2-hero-avatar"><i class="fas fa-shield-halved"></i></div>`;
 
-        const heroSection = localHero ? `
+        const heroContent = localHero ? `
             <div class="pg2-hero-card">
-                <div class="pg2-hero-avatar"><i class="fas fa-shield-halved"></i></div>
+                ${heroPortraitHtml}
                 <div class="pg2-hero-info">
                     <div class="pg2-hero-name">${repairDisplayText(localHero.name)}</div>
                     <div class="pg2-hero-class">${repairDisplayText(localHero.class || 'Held')}</div>
@@ -1035,12 +1038,24 @@ export const UI = {
                         ${heroHp ? `<span><i class="fas fa-heart"></i> ${heroHp} HP</span>` : ''}
                     </div>
                 </div>
-            </div>` : `
+            </div>
+            <div class="pg2-hero-change-row">
+                <button type="button" data-action="pregame-create-hero" class="pg2-mini-btn"><i class="fas fa-pencil"></i> Ändern</button>
+                <button type="button" data-action="pregame-load-hero" class="pg2-mini-btn"><i class="fas fa-file-import"></i> Laden</button>
+                <button type="button" data-action="pregame-deselect-hero" class="pg2-mini-btn pg2-mini-btn-remove"><i class="fas fa-trash-alt"></i> Entfernen</button>
+            </div>
+            ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn${localProfile?.isReady ? ' is-ready' : ''}">${localProfile?.isReady ? '<i class="fas fa-times-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>` : ''}
+        ` : `
             <div class="pg2-hero-empty">
                 <i class="fas fa-user-plus pg2-hero-empty-icon"></i>
                 <p>Kein Held gewählt</p>
-                <p class="pg2-hero-empty-hint">Lade einen Save oder erstelle einen neuen Helden.</p>
-            </div>`;
+                <p class="pg2-hero-empty-hint">Erstelle einen neuen Helden oder lade einen Speicherstand.</p>
+            </div>
+            <div class="pg2-action-row">
+                <button type="button" data-action="pregame-create-hero" class="pg2-ghost-btn pg2-ghost-btn-primary"><i class="fas fa-plus"></i> Erstellen</button>
+                <button type="button" data-action="pregame-load-hero" class="pg2-ghost-btn"><i class="fas fa-file-import"></i> Laden</button>
+            </div>
+            ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn pg2-ready-btn-locked" disabled><i class="fas fa-shield-heart"></i> Bereit melden</button>` : ''}`;
 
         return `
             <div class="entry-shell">
@@ -1057,12 +1072,7 @@ export const UI = {
                         </section>` : ''}
                         <section class="pg2-panel">
                             <div class="pg2-panel-title"><i class="fas fa-shield-halved"></i> Dein Held</div>
-                            ${heroSection}
-                            <div class="pg2-action-row">
-                                <button type="button" data-action="pregame-load-hero" class="pg2-ghost-btn"><i class="fas fa-file-import"></i> Laden</button>
-                                <button type="button" data-action="pregame-create-hero" class="pg2-ghost-btn"><i class="fas fa-plus"></i> Erstellen</button>
-                            </div>
-                            ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn${localProfile?.isReady ? ' is-ready' : ''}">${localProfile?.isReady ? '<i class="fas fa-times-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>` : ''}
+                            ${heroContent}
                         </section>
                     </div>
                     <div class="pg2-footer">

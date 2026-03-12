@@ -35,6 +35,7 @@ export function initEvents() {
             'pregame-toggle-ready': () => Engine.togglePregameReady(),
             'pregame-load-hero': () => Engine.openHeroImport(),
             'pregame-create-hero': () => UI.showCreator(),
+            'pregame-deselect-hero': () => Engine.deselectHero(),
             'toggle-sound-menu': () => document.getElementById('sound-menu-panel')?.classList.toggle('hidden'),
             'toggle-sound': () => Engine.toggleSound(),
             'tts-open-picker': () => TTS.openPicker(),

@@ -280,6 +280,19 @@ export const Engine = {
         document.getElementById('import-hero')?.click();
     },
 
+    deselectHero() {
+        const name = this._getResolvedLocalPlayerName();
+        if (!name) return;
+        this._syncLocalProfile({ heroId: null, heroName: null, isReady: false });
+        if (Network.isClient() && Network.isConnected()) {
+            Network.sendPregameReady(false);
+        } else if (Network.isHost() && Network.isConnected()) {
+            Network.setPregameReady(name, false);
+            Network.broadcastState();
+        }
+        UI.updateAll();
+    },
+
     getPregameStatus() {
         const players = Network.isConnected()
             ? (Network.turnOrder.length ? Network.turnOrder : [Network.playerName]).filter(Boolean)
