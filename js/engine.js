@@ -1042,10 +1042,11 @@ getPregameStatus() {
         // Show individual roll results as character speech bubbles
         rollsCopy.forEach(r => {
             if (!r.rolled) return;
-            const successStr = r.dc > 0 ? (r.result >= r.dc ? ' ✅ Erfolg' : ' ❌ Fehlschlag') : '';
+            const successStr = r.dc > 0 ? (r.result >= r.dc ? ' · ✅ **Erfolg**' : ' · ❌ **Fehlschlag**') : '';
             const modStr = r.mod !== 0 ? ` + ${r.mod}` : '';
+            const modDisplay = r.mod !== 0 ? ` +${r.mod}` : '';
             const statLabel = r.stat || r.diceType || 'W20';
-            const rollText = `🎲 **${statLabel}-Probe** _(${r.desc})_: ${r.rawRoll}${modStr} = **${r.result}**${r.dc > 0 ? ` _(SG ${r.dc})_${successStr}` : ''}`;
+            const rollText = `🎲 **${statLabel}${modDisplay}** · ${r.desc}\n${r.rawRoll}${modStr} = **${r.result}**${r.dc > 0 ? ` · SG ${r.dc}${successStr}` : ''}`;
             if (Network.isHost() && Network.isConnected()) {
                 Network.broadcastChat(r.name, rollText);
             } else {

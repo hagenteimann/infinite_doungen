@@ -102,9 +102,6 @@
                             class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-indigo-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
                             <i class="fas fa-sparkles text-indigo-400/70 group-hover:text-indigo-400"></i>
                             Regel fragen</button>
-                        <button id="quickplay-btn" data-action="toggle-quickplay"
-                            class="bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white px-3.5 py-2 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.6)] transition-all duration-300 backdrop-blur-sm tracking-wide flex items-center gap-1.5 animate-pulse">
-                            <i class="fas fa-bolt text-yellow-300"></i> Quickplay (AN)</button>
                         <button id="self-control-toggle" data-action="toggle-self-control"
                             class="hidden bg-white/5 hover:bg-white/10 px-3.5 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-emerald-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
                             title="Dich selbst auf Human oder KI stellen">
@@ -686,6 +683,13 @@
             </div>
         </div>
     </div>
+    <!-- Dice Alert Overlay (centered, shown when pending rolls exist) -->
+    <div id="dice-alert" class="hidden fixed inset-0 z-[75] flex items-center justify-center pointer-events-none p-4">
+        <div id="dice-alert-content"
+            class="pointer-events-auto bg-slate-900/95 backdrop-blur-xl border-2 border-indigo-500/60 rounded-2xl shadow-[0_0_60px_rgba(99,102,241,0.45)] w-full max-w-sm p-4">
+        </div>
+    </div>
+
     <div id="toast-container" class="toast-container"></div>
     <!-- API Settings Modal -->
     <div id="api-settings-modal"

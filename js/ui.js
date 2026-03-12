@@ -559,59 +559,73 @@ export const UI = {
     },
 
     _updateActionBoxInternal: function () {
+        const diceAlert = document.getElementById('dice-alert');
+        const diceAlertContent = document.getElementById('dice-alert-content');
         if (State.pendingRolls.length > 0) {
-            DOM.actionBoxContainer.classList.remove('hidden');
+            DOM.actionBoxContainer.classList.add('hidden');
             DOM.playerInput.disabled = true;
             DOM.sendBtn.disabled = true;
-            DOM.playerInput.placeholder = 'Wuerfle zuerst die anstehenden Proben aus...';
+            DOM.playerInput.placeholder = 'Würfle zuerst die anstehenden Proben...';
 
             const isClient = State._mpRole === 'client';
             const myChar = State._mpMyCharId ? State.party.find(p => p.id === State._mpMyCharId) : null;
 
-            let html = '<h3 class="text-indigo-400 text-[10px] font-bold uppercase mb-2 tracking-widest flex items-center gap-2"><i class="fas fa-dice-d20"></i> Erforderliche Proben</h3><div class="space-y-1.5">';
+            let html = `<div class="flex items-center gap-2 mb-3 pb-2 border-b border-white/10">
+                <i class="fas fa-dice-d20 text-indigo-400 text-xl animate-pulse"></i>
+                <span class="text-indigo-300 font-bold text-sm uppercase tracking-widest">Probe erforderlich</span>
+            </div><div class="space-y-2">`;
+
             State.pendingRolls.forEach(r => {
                 const dt = r.diceType || 'W20';
-                const btnClass = dt === 'W6'
-                    ? 'bg-blue-600 hover:bg-blue-500'
-                    : (dt === 'W100' ? 'bg-purple-700 hover:bg-purple-600 shadow-[0_0_15px_rgba(147,51,234,0.5)]' : 'bg-indigo-600 hover:bg-indigo-500');
-                const textClass = dt === 'W6' ? 'text-blue-400' : (dt === 'W100' ? 'text-purple-300 font-bold' : 'text-indigo-400');
+                const btnClass = dt === 'W6' ? 'bg-blue-600 hover:bg-blue-500' : (dt === 'W100' ? 'bg-purple-700 hover:bg-purple-600' : 'bg-indigo-600 hover:bg-indigo-500');
                 const canRoll = !isClient || (myChar && r.name === myChar.name);
+                const ownHighlight = isClient && myChar && r.name === myChar.name ? 'border-cyan-600/50 bg-cyan-950/20' : 'border-white/10';
                 let status;
 
                 if (r.rolled) {
-                    status = r.result >= r.dc
-                        ? `<span class="text-green-400 text-xs font-bold flex items-center gap-1 bg-green-900/20 px-2 py-1 rounded border border-green-700/50"><i class="fas fa-check"></i> Erfolg (${r.result})</span>`
-                        : `<span class="text-red-400 text-xs font-bold flex items-center gap-1 bg-red-900/20 px-2 py-1 rounded border border-red-700/50"><i class="fas fa-times"></i> Fehlschlag (${r.result})</span>`;
+                    const ok = r.result >= r.dc;
+                    status = ok
+                        ? `<span class="text-green-400 font-bold text-base flex items-center gap-1.5"><i class="fas fa-check-circle"></i> <span>${r.result}</span></span>`
+                        : `<span class="text-red-400 font-bold text-base flex items-center gap-1.5"><i class="fas fa-times-circle"></i> <span>${r.result}</span></span>`;
                 } else if (canRoll) {
-                    status = `<div id="roll-status-${r.id}"><button data-action="roll-specific" data-roll-id="${r.id}" class="${btnClass} px-3 py-1 rounded text-white text-[10px] font-bold shadow-md transition-all">${dt} werfen</button></div>`;
+                    status = `<button data-action="roll-specific" data-roll-id="${r.id}" class="${btnClass} px-5 py-2 rounded-lg text-white text-sm font-bold shadow-lg transition-all">${dt} <i class="fas fa-dice ml-1"></i></button>`;
                 } else if (window.App?.Network?.isHost?.()) {
-                    status = `<div class="flex flex-col items-end gap-1"><span class="text-[9px] text-slate-500 italic"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span><button data-action="mp-roll-pending" data-roll-id="${r.id}" class="px-2 py-1 rounded border border-amber-500/40 text-amber-300 text-[9px] font-bold hover:bg-amber-900/30 transition-colors">Fuer ${r.name} wuerfeln</button></div>`;
+                    status = `<button data-action="mp-roll-pending" data-roll-id="${r.id}" class="px-3 py-1.5 rounded-lg border border-amber-500/40 text-amber-300 text-xs font-bold hover:bg-amber-900/30 transition-colors">Für ${r.name}</button>`;
                 } else {
-                    status = '<span class="text-[9px] text-slate-500 italic animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span>';
+                    status = '<span class="text-xs text-slate-500 animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span>';
                 }
 
-                const modHtml = r.stat ? `<span class="bg-slate-800 text-slate-300 px-1 py-0.5 rounded text-[9px] ml-1 font-mono align-middle border border-slate-600/50">${r.stat} ${r.mod >= 0 ? '+' + r.mod : r.mod}</span>` : '';
-                const ownHighlight = isClient && myChar && r.name === myChar.name ? 'border-cyan-700/50' : 'border-slate-700';
+                const modDisplay = r.stat && r.mod !== 0 ? ` +${r.mod}` : '';
+                const statLabel = r.stat || dt;
 
-                html += `<div class="flex justify-between items-center bg-slate-900/80 border ${ownHighlight} p-2.5 rounded-lg shadow-sm">
-                    <div class="text-[11px] leading-tight"><span class="text-amber-400 font-bold text-xs">${r.name}</span> <span class="text-[10px] ${textClass} font-mono font-bold">[${dt}]</span>${modHtml}<br><span class="text-slate-300 block mt-1">${r.desc} <span class="text-slate-500 ml-1 font-mono">(DC ${r.dc})</span></span></div>
-                    <div>${status}</div>
+                html += `<div class="bg-black/40 rounded-xl p-3 border ${ownHighlight}">
+                    <div class="flex justify-between items-center gap-3">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                                <span class="text-amber-400 font-bold text-sm">${r.name}</span>
+                                <span class="text-indigo-300 text-xs font-mono font-bold">${statLabel}${modDisplay}</span>
+                                ${r.dc > 0 ? `<span class="text-slate-500 text-xs">SG ${r.dc}</span>` : ''}
+                            </div>
+                            <div class="text-slate-300 text-xs leading-snug">${r.desc}</div>
+                        </div>
+                        <div class="shrink-0">${status}</div>
+                    </div>
                 </div>`;
             });
             html += '</div>';
 
-            if (State.pendingRolls.some(r => !r.rolled)) {
+            if (!State.pendingRolls.some(r => !r.rolled)) {
                 if (!isClient) {
-                    html += '<button id="btn-roll-all" data-action="roll-all" class="mt-3 w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"><i class="fas fa-dice mr-1"></i> Alle automatisch auswuerfeln</button>';
+                    html += '<p class="mt-3 text-center text-xs text-emerald-300 animate-pulse"><i class="fas fa-wand-sparkles mr-1"></i>Alle Würfe liegen vor...</p>';
+                } else {
+                    html += '<p class="mt-3 text-center text-xs text-amber-400 animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte auf den Host...</p>';
                 }
-            } else if (!isClient) {
-                html += '<p class="mt-3 text-center text-[10px] text-emerald-300 animate-pulse"><i class="fas fa-wand-sparkles mr-1"></i>Alle Wuerfe liegen vor. Die Probe wird automatisch ausgewertet...</p>';
-            } else {
-                html += '<p class="mt-3 text-center text-[10px] text-amber-400 animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte auf den Host...</p>';
             }
 
-            DOM.actionBoxContainer.innerHTML = sanitize(html);
+            if (diceAlertContent) diceAlertContent.innerHTML = sanitize(html);
+            if (diceAlert) diceAlert.classList.remove('hidden');
         } else if (State.routeChoices.length > 0) {
+            if (diceAlert) diceAlert.classList.add('hidden');
             DOM.actionBoxContainer.classList.remove('hidden');
             DOM.playerInput.disabled = false;
             DOM.sendBtn.disabled = false;
@@ -622,6 +636,7 @@ export const UI = {
             ).join('');
             DOM.actionBoxContainer.innerHTML = sanitize(`<h3 class="text-slate-300 text-[10px] font-bold uppercase mb-2 tracking-widest flex items-center gap-2"><i class="fas fa-compass"></i> Verfuegbare Wege</h3>${routeButtons}`);
         } else {
+            if (diceAlert) diceAlert.classList.add('hidden');
             DOM.actionBoxContainer.classList.add('hidden');
             DOM.playerInput.disabled = false;
             DOM.sendBtn.disabled = false;
