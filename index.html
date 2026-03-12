@@ -32,13 +32,11 @@
     <!-- HEADER                                     -->
     <!-- ========================================== -->
     <header
-        class="p-4 border-b border-purple-900/40 bg-black/40 backdrop-blur-xl flex justify-between items-center shadow-[0_4px_30px_rgba(0,0,0,0.6)] z-50">
-        <div class="flex items-center gap-4">
-            <h1
-                class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300 tracking-wider logo-shake cursor-default drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]">
-                INFINITE DUNGEONS</h1>
-        </div>
-        <div id="header-controls" class="flex gap-2 items-center">
+        class="p-4 border-b border-purple-900/40 bg-black/40 backdrop-blur-xl grid grid-cols-[1fr_auto_1fr] items-center shadow-[0_4px_30px_rgba(0,0,0,0.6)] z-50">
+        <div></div>
+        <h1 class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300 tracking-wider logo-shake cursor-default drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]">
+            INFINITE DUNGEONS</h1>
+        <div id="header-controls" class="flex gap-2 items-center justify-end">
             <span id="mp-status-badge" class="hidden text-[10px] font-bold tracking-widest text-green-300 border border-green-500/30 rounded-lg px-2 py-1 bg-green-900/20 cursor-pointer" data-action="show-multiplayer"></span>
         </div>
     </header>
