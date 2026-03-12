@@ -550,7 +550,7 @@ export const UI = {
         document.body.classList.toggle('session-startscreen', ['start', 'api_gate'].includes(State.sessionPhase || 'start'));
         document.body.classList.toggle('session-pregame', State.sessionPhase === 'pregame');
         this.updateSelfControlButton();
-        this.updateTargetModeButton();
+
         this.updateActionBox();
         this.renderDiceFeed();
         this.renderSystemLog();
@@ -558,10 +558,7 @@ export const UI = {
 
     },
 
-    toggleTargetMode: function () {
-        State.targetMapMode = !State.targetMapMode;
-        this.updateTargetModeButton();
-    },
+
     _updateActionBoxTimeout: null,
     updateActionBox: function () {
         if (this._updateActionBoxTimeout) {
@@ -724,19 +721,7 @@ export const UI = {
         DOM.musicModal?.classList.remove('hidden');
     },
 
-    updateTargetModeButton: function () {
-        const button = document.getElementById('target-mode-btn');
-        if (!button) return;
-        const active = !!State.targetMapMode;
-        button.classList.toggle('border-amber-500/50', active);
-        button.classList.toggle('text-white', active);
-        button.classList.toggle('bg-amber-900/30', active);
-        const icon = button.querySelector('i');
-        if (icon) {
-            icon.classList.toggle('text-amber-400', active);
-            icon.classList.toggle('text-slate-500', !active);
-        }
-    },
+
     buildHostInventoryOverview: function () {
         const heroes = State.party.filter(c => !c.isSummon);
         if (heroes.length === 0) {

@@ -1,10 +1,10 @@
-﻿export const State = {
+export const State = {
     party: [], activeEnemies: [], defeatedEnemies: [], lootDrops: [],
     lastStoryPart: "", gameStarted: false, isProcessing: false,
     tempPortraitData: "", tempImagePrompt: "",
     pendingRolls: [], recentRolls: [], craftingIngredients: [], routeChoices: [],
     chatMessages: [], systemMessages: [], transientEvents: [],
-    targetMapMode: false,
+
     imageQuotaExceeded: false,
     combatEnded: false,
     activeMerchant: null,
@@ -176,6 +176,11 @@ export function dispatch(action) {
         }
         case 'BULK_UPDATE': {
             Object.assign(State, action.updates);
+            break;
+        }
+        case 'RESTORE_SNAPSHOT': {
+            Object.assign(State, action.snapshot);
+            State.undoSnapshot = null;
             break;
         }
         case 'ADD_CHAT_MSG': {

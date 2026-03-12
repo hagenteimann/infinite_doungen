@@ -45,10 +45,10 @@ export function initEvents() {
                 text ? Engine.submitPlayerAction(text) : Engine.submitPlayerAction();
             },
             'show-prompts': () => UI.showPromptManager(),
-            'toggle-target': () => UI.toggleTargetMode(),
+
             'camp': () => Engine.camp(),
             'ask-oracle': () => Engine.askOracle(),
-            'plot-twist': () => Engine.generatePlotTwist(),
+
             'generate-npc': () => Engine.generateNPC(),
             'check-enemies': () => Engine.checkEnemies(),
             'toggle-quickplay': () => Engine.toggleQuickplay(),

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { State } from '../js/state.js';
+import { State, subscribe } from '../js/state.js';
 
 vi.mock('peerjs', () => ({ default: vi.fn() }));
 vi.mock('../js/ui.js', () => ({
@@ -41,6 +41,13 @@ vi.mock('../js/features.js', () => ({
 const { Network } = await import('../js/network.js');
 const { UI } = await import('../js/ui.js');
 const { Engine } = await import('../js/engine.js');
+
+// Decoupled UI sync (mirrors main.js)
+subscribe((_state, action) => {
+    if (action.type === 'ADD_CHAT_MSG' || action.type === 'ADD_SYSTEM_MSG') {
+        UI.addChatLog(action.entry, null, { persist: false });
+    }
+});
 
 function resetNetwork() {
     Network.peer = null;

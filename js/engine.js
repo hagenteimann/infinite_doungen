@@ -1027,21 +1027,7 @@ export const Engine = {
             UI.addChatLog(SYSTEM_NOTICE.oracle, ans);
         } catch (e) { UI.addChatLog('System', `${SYSTEM_NOTICE.warning} Orakel-Fehler: ${e.message}`); } finally { UI.showLoader(false); }
     },
-    generatePlotTwist: async function () {
-        if (this._requireHost('Plot-Twist')) return;
-        UI.showLoader(true, "Schicksal weben...");
-        try {
-            const twistText = await API.generateText(
-                `Die Gruppe erlebt gerade: "${State.lastStoryPart}". Erschaffe jetzt einen dramatischen, unerwarteten Wendepunkt der die Geschichte vorantreibt. Nutze Mechanik-Tags wie nötig (Gegner, XP, Beute, etc.).`,
-                CONFIG.systemPrompt
-            );
-            State.lastStoryPart = twistText.substring(0, 600);
-            State.chatHistory.push({ role: 'assistant', content: twistText.substring(0, 400) });
-            if (State.chatHistory.length > 8) State.chatHistory.shift();
-            TagParser.process(twistText);
-            UI.addChatLog(`${SYSTEM_NOTICE.fate} Schicksal`, twistText);
-        } catch (e) { UI.addChatLog('System', `${SYSTEM_NOTICE.warning} Plot-Twist Fehler: ${e.message}`); } finally { UI.showLoader(false); }
-    },
+
 
     generatePortraitForPrompts: async function (prompts) {
         return API.generateImageWithFallbacks(prompts);
@@ -1532,7 +1518,7 @@ export const Engine = {
                 const allowed = Object.keys(State);
                 Object.keys(data).forEach(k => { if (!allowed.includes(k)) delete data[k]; });
                 Object.assign(State, data);
-                State.targetMapMode = false;
+
                 if (State.party) State.party = State.party.filter(c => typeof c === 'object' && c.name).map(c => Utils.sanitizeCharacter(c));
                 UI.toggleViews(State.gameStarted);
                 UI.updateAll();
