@@ -102,6 +102,8 @@
                             class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-indigo-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
                             <i class="fas fa-sparkles text-indigo-400/70 group-hover:text-indigo-400"></i>
                             Regel fragen</button>
+                        <button data-action="open-sidebar" class="md:hidden bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg text-[11px] font-medium transition-all backdrop-blur-md flex items-center gap-1.5">
+                            <i class="fas fa-users text-purple-400/70"></i> Gruppe</button>
                         <button id="self-control-toggle" data-action="toggle-self-control"
                             class="hidden bg-white/5 hover:bg-white/10 px-3.5 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-emerald-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
                             title="Dich selbst auf Human oder KI stellen">
@@ -122,13 +124,16 @@
         </section>
 
         <!-- Rechter Bereich: Sidebar -->
-        <aside
-            class="w-[23rem] lg:w-[25rem] bg-black/20 backdrop-blur-xl border-l border-white/5 p-4 flex flex-col gap-4 overflow-visible hidden md:flex shadow-[-10px_0_30px_rgba(0,0,0,0.5)] z-40 relative">
+        <aside id="sidebar"
+            class="w-[23rem] lg:w-[25rem] bg-black/95 md:bg-black/20 backdrop-blur-xl border-l border-white/5 p-4 flex flex-col gap-4 overflow-y-auto fixed md:relative inset-y-0 right-0 z-[60] md:z-40 translate-x-full md:translate-x-0 transition-transform duration-300 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
 
             <!-- Gruppe & Charaktere -->
             <div class="flex-[2] flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center border-b border-white/10 mb-3 pb-3">
-                    <h2 class="text-xl text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]">Gefaehrten</h2>
+                    <div class="flex items-center gap-2">
+                        <button data-action="close-sidebar" class="md:hidden text-slate-400 hover:text-white p-1 transition-colors"><i class="fas fa-times"></i></button>
+                        <h2 class="text-xl text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]">Gefaehrten</h2>
+                    </div>
                     <div class="relative">
                         <button id="settings-btn" data-action="toggle-settings-panel"
                             class="bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-white/10 hover:border-slate-400/50 shadow-[0_0_8px_rgba(0,0,0,0.3)] transition-all duration-300 backdrop-blur-sm inline-flex items-center text-slate-300 hover:text-white"

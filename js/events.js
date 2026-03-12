@@ -17,6 +17,11 @@ export function initEvents() {
         if (!e.target.closest('#settings-panel') && !e.target.closest('#settings-btn')) {
             document.getElementById('settings-panel')?.classList.add('hidden');
         }
+        // Close mobile sidebar when clicking backdrop
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && !sidebar.classList.contains('translate-x-full') && !e.target.closest('#sidebar')) {
+            sidebar.classList.add('translate-x-full');
+        }
         // Close sound menu when clicking outside
         if (!e.target.closest('#sound-menu-wrapper')) {
             document.getElementById('sound-menu-panel')?.classList.add('hidden');
@@ -52,6 +57,8 @@ export function initEvents() {
                 text ? Engine.submitPlayerAction(text) : Engine.submitPlayerAction();
             },
             'toggle-settings-panel': () => document.getElementById('settings-panel')?.classList.toggle('hidden'),
+            'open-sidebar': () => document.getElementById('sidebar')?.classList.remove('translate-x-full'),
+            'close-sidebar': () => document.getElementById('sidebar')?.classList.add('translate-x-full'),
             'toggle-verbose-mode': () => Engine.toggleVerboseMode(),
 
             'camp': () => Engine.camp(),

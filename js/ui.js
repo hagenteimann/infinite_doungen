@@ -578,8 +578,10 @@ export const UI = {
             State.pendingRolls.forEach(r => {
                 const dt = r.diceType || 'W20';
                 const btnClass = dt === 'W6' ? 'bg-blue-600 hover:bg-blue-500' : (dt === 'W100' ? 'bg-purple-700 hover:bg-purple-600' : 'bg-indigo-600 hover:bg-indigo-500');
-                const canRoll = !isClient || (myChar && r.name === myChar.name);
-                const ownHighlight = isClient && myChar && r.name === myChar.name ? 'border-cyan-600/50 bg-cyan-950/20' : 'border-white/10';
+                const rollChar = State.party.find(p => p.name === r.name);
+                const isSummon = !!rollChar?.isSummon;
+                const canRoll = !isClient || (myChar && (r.name === myChar.name || isSummon));
+                const ownHighlight = canRoll && !r.rolled ? 'border-cyan-600/50 bg-cyan-950/20' : 'border-white/10';
                 let status;
 
                 if (r.rolled) {
@@ -592,7 +594,7 @@ export const UI = {
                 } else if (window.App?.Network?.isHost?.()) {
                     status = `<button data-action="mp-roll-pending" data-roll-id="${r.id}" class="px-3 py-1.5 rounded-lg border border-amber-500/40 text-amber-300 text-xs font-bold hover:bg-amber-900/30 transition-colors">Für ${r.name}</button>`;
                 } else {
-                    status = '<span class="text-xs text-slate-500 animate-pulse"><i class="fas fa-hourglass-half mr-1"></i>Warte...</span>';
+                    status = '';
                 }
 
                 const modDisplay = r.stat && r.mod !== 0 ? ` +${r.mod}` : '';
