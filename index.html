@@ -40,42 +40,6 @@
         </div>
         <div id="header-controls" class="flex gap-2 items-center">
             <span id="mp-status-badge" class="hidden text-[10px] font-bold tracking-widest text-green-300 border border-green-500/30 rounded-lg px-2 py-1 bg-green-900/20 cursor-pointer" data-action="show-multiplayer"></span>
-            <div class="relative">
-                <button id="settings-btn" data-action="toggle-settings-panel"
-                    class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-slate-400/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(148,163,184,0.3)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
-                    title="Einstellungen"><i class="fas fa-cog text-slate-300"></i></button>
-                <div id="settings-panel" class="hidden absolute right-0 top-full mt-2 bg-black/95 border border-white/10 rounded-xl p-2 flex flex-col gap-1 min-w-[200px] z-[200] backdrop-blur-xl shadow-2xl">
-                    <button data-action="show-multiplayer" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-cyan-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-users text-cyan-400 w-4"></i> Multiplayer</button>
-                    <button data-action="show-api-settings" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-purple-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-plug text-purple-400 w-4"></i> API Einstellungen</button>
-                    <div class="h-px bg-white/10 my-1"></div>
-                    <button id="music-toggle" data-action="show-music-settings" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-pink-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-music text-pink-300 w-4"></i> Musik</button>
-                    <button id="sound-toggle" data-action="toggle-sound" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-indigo-400/30 text-slate-300 hover:text-white transition-all sound-on w-full text-left"><i class="fas fa-volume-up text-indigo-300 w-4"></i> Soundeffekte</button>
-                    <button data-action="tts-open-picker" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-purple-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-microphone text-purple-400 w-4"></i> Stimme</button>
-                    <div class="h-px bg-white/10 my-1"></div>
-                    <button data-action="download-save" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-emerald-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-save text-emerald-400 w-4"></i> Welt speichern</button>
-                    <label class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-amber-500/30 text-slate-300 hover:text-white transition-all w-full cursor-pointer"><i class="fas fa-folder-open text-amber-400 w-4"></i> Laden <input type="file" id="load-input" class="hidden" accept=".json"></label>
-                    <div class="h-px bg-white/10 my-1"></div>
-                    <div class="px-3 py-2 flex items-center gap-2">
-                        <i class="fas fa-skull text-rose-500/70 w-4"></i>
-                        <select id="game-difficulty" class="flex-1 bg-black/60 text-slate-300 border border-white/10 rounded-lg outline-none cursor-pointer text-xs p-1">
-                            <option value="Einfach" class="bg-slate-900">Einfach</option>
-                            <option value="Normal" selected class="bg-slate-900">Normal</option>
-                            <option value="Schwer" class="bg-slate-900">Schwer</option>
-                            <option value="Albtraum" class="bg-slate-900">Albtraum</option>
-                        </select>
-                    </div>
-                    <div class="px-3 py-2 flex items-center gap-2">
-                        <i class="fas fa-ghost text-purple-400/70 w-4"></i>
-                        <select id="enemy-rate" class="flex-1 bg-black/60 text-slate-300 border border-white/10 rounded-lg outline-none cursor-pointer text-xs p-1">
-                            <option value="Wenig" class="bg-slate-900">Wenig</option>
-                            <option value="Normal" selected class="bg-slate-900">Normal</option>
-                            <option value="Viel" class="bg-slate-900">Viel</option>
-                        </select>
-                    </div>
-                    <div class="h-px bg-white/10 my-1"></div>
-                    <button data-action="toggle-verbose-mode" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-amber-400/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-align-left text-amber-400/70 w-4"></i> Ausführliche Texte</button>
-                </div>
-            </div>
         </div>
     </header>
     <div id="topbar-thinking-status" class="hidden thinking-status-chip" aria-live="polite">
@@ -170,6 +134,42 @@
             <div class="flex-[2] flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center border-b border-white/10 mb-3 pb-3">
                     <h2 class="text-xl text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]">Gefaehrten</h2>
+                    <div class="relative">
+                        <button id="settings-btn" data-action="toggle-settings-panel"
+                            class="bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-white/10 hover:border-slate-400/50 shadow-[0_0_8px_rgba(0,0,0,0.3)] transition-all duration-300 backdrop-blur-sm inline-flex items-center text-slate-300 hover:text-white"
+                            title="Einstellungen"><i class="fas fa-cog"></i></button>
+                        <div id="settings-panel" class="hidden absolute right-0 top-full mt-2 bg-black/95 border border-white/10 rounded-xl p-2 flex flex-col gap-1 min-w-[200px] z-[200] backdrop-blur-xl shadow-2xl">
+                            <button data-action="show-multiplayer" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-cyan-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-users text-cyan-400 w-4"></i> Multiplayer</button>
+                            <button data-action="show-api-settings" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-purple-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-plug text-purple-400 w-4"></i> API Einstellungen</button>
+                            <div class="h-px bg-white/10 my-1"></div>
+                            <button id="music-toggle" data-action="show-music-settings" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-pink-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-music text-pink-300 w-4"></i> Musik</button>
+                            <button id="sound-toggle" data-action="toggle-sound" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-indigo-400/30 text-slate-300 hover:text-white transition-all sound-on w-full text-left"><i class="fas fa-volume-up text-indigo-300 w-4"></i> Soundeffekte</button>
+                            <button data-action="tts-open-picker" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-purple-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-microphone text-purple-400 w-4"></i> Stimme</button>
+                            <div class="h-px bg-white/10 my-1"></div>
+                            <button data-action="download-save" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-emerald-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-save text-emerald-400 w-4"></i> Welt speichern</button>
+                            <label class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-amber-500/30 text-slate-300 hover:text-white transition-all w-full cursor-pointer"><i class="fas fa-folder-open text-amber-400 w-4"></i> Laden <input type="file" id="load-input" class="hidden" accept=".json"></label>
+                            <div class="h-px bg-white/10 my-1"></div>
+                            <div class="px-3 py-2 flex items-center gap-2">
+                                <i class="fas fa-skull text-rose-500/70 w-4"></i>
+                                <select id="game-difficulty" class="flex-1 bg-black/60 text-slate-300 border border-white/10 rounded-lg outline-none cursor-pointer text-xs p-1">
+                                    <option value="Einfach" class="bg-slate-900">Einfach</option>
+                                    <option value="Normal" selected class="bg-slate-900">Normal</option>
+                                    <option value="Schwer" class="bg-slate-900">Schwer</option>
+                                    <option value="Albtraum" class="bg-slate-900">Albtraum</option>
+                                </select>
+                            </div>
+                            <div class="px-3 py-2 flex items-center gap-2">
+                                <i class="fas fa-ghost text-purple-400/70 w-4"></i>
+                                <select id="enemy-rate" class="flex-1 bg-black/60 text-slate-300 border border-white/10 rounded-lg outline-none cursor-pointer text-xs p-1">
+                                    <option value="Wenig" class="bg-slate-900">Wenig</option>
+                                    <option value="Normal" selected class="bg-slate-900">Normal</option>
+                                    <option value="Viel" class="bg-slate-900">Viel</option>
+                                </select>
+                            </div>
+                            <div class="h-px bg-white/10 my-1"></div>
+                            <button data-action="toggle-verbose-mode" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-amber-400/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-align-left text-amber-400/70 w-4"></i> Ausführliche Texte</button>
+                        </div>
+                    </div>
                 </div>
                 <input type="file" class="hidden" accept=".json" id="import-hero">
 
