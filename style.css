@@ -2425,6 +2425,100 @@ body.session-startscreen .thinking-status-chip {
     color: #475569;
 }
 
+/* Saved hero roster */
+
+.pg2-roster {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.pg2-roster-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.1rem;
+}
+
+.pg2-roster-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.7rem;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(148, 163, 184, 0.09);
+    border-radius: 0.75rem;
+    transition: border-color 0.18s;
+}
+
+.pg2-roster-row:hover {
+    border-color: rgba(250, 204, 21, 0.18);
+}
+
+.pg2-roster-portrait {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0.5rem;
+    object-fit: cover;
+    border: 1px solid rgba(250, 204, 21, 0.2);
+    flex-shrink: 0;
+}
+
+.pg2-roster-avatar {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0.5rem;
+    background: radial-gradient(circle, rgba(250, 204, 21, 0.12), rgba(88, 28, 135, 0.12));
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    display: grid;
+    place-items: center;
+    font-size: 0.95rem;
+    color: #475569;
+    flex-shrink: 0;
+}
+
+.pg2-roster-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pg2-roster-name {
+    font-size: 0.83rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pg2-roster-meta {
+    font-size: 0.68rem;
+    color: #64748b;
+    margin-top: 0.1rem;
+}
+
+.pg2-roster-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.pg2-mini-btn-load {
+    border-color: rgba(250, 204, 21, 0.2);
+    color: #a16207;
+}
+
+.pg2-mini-btn-load:hover {
+    border-color: rgba(250, 204, 21, 0.45);
+    color: #fcd34d;
+    background: rgba(250, 204, 21, 0.06);
+}
+
 /* Hero change row & mini buttons */
 
 .pg2-hero-change-row {

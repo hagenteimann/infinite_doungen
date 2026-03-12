@@ -124,7 +124,7 @@ export const initDOM = () => {
         'story-log', 'lobby-view', 'start-adventure-container', 'action-area',
         'action-box-container', 'player-input', 'send-btn',
         'dynamic-roll-container', 'game-difficulty', 'enemy-rate', 'loading-spinner',
-        'loading-text', 'party-list', 'char-details', 'export-hero-btn',
+        'loading-text', 'party-list', 'char-details', 'export-hero-btn', 'save-roster-btn',
         'details-content', 'enemy-section', 'enemy-history-container',
         'current-enemy-container', 'loot-drop-section', 'loot-list', 'creator-modal',
         'new-name', 'new-class', 'new-appearance', 'start-item', 'portrait-preview',
@@ -1027,6 +1027,24 @@ export const UI = {
             ? `<img src="${localHero.portrait}" alt="${repairDisplayText(localHero.name)}" class="pg2-hero-portrait">`
             : `<div class="pg2-hero-avatar"><i class="fas fa-shield-halved"></i></div>`;
 
+        const roster = Engine.getHeroRoster();
+        const rosterHtml = roster.length ? `
+            <div class="pg2-roster">
+                <div class="pg2-roster-title"><i class="fas fa-bookmark"></i> Gespeicherte Helden</div>
+                ${roster.map(h => `
+                <div class="pg2-roster-row">
+                    ${h.portrait ? `<img src="${h.portrait}" alt="${repairDisplayText(h.name)}" class="pg2-roster-portrait">` : `<div class="pg2-roster-avatar"><i class="fas fa-shield-halved"></i></div>`}
+                    <div class="pg2-roster-info">
+                        <div class="pg2-roster-name">${repairDisplayText(h.name)}</div>
+                        <div class="pg2-roster-meta">${repairDisplayText(h.class || 'Held')}${h.level ? ` · Lvl ${h.level}` : ''}</div>
+                    </div>
+                    <div class="pg2-roster-actions">
+                        <button type="button" data-action="pregame-load-saved-hero" data-hero-id="${h.id}" class="pg2-mini-btn pg2-mini-btn-load"><i class="fas fa-play"></i> Laden</button>
+                        <button type="button" data-action="pregame-delete-saved-hero" data-hero-id="${h.id}" class="pg2-mini-btn pg2-mini-btn-remove" title="Aus Browser löschen"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>`).join('')}
+            </div>` : '';
+
         const heroContent = localHero ? `
             <div class="pg2-hero-card">
                 ${heroPortraitHtml}
@@ -1045,14 +1063,14 @@ export const UI = {
             </div>
             ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn${localProfile?.isReady ? ' is-ready' : ''}">${localProfile?.isReady ? '<i class="fas fa-times-circle"></i> Nicht mehr bereit' : '<i class="fas fa-shield-heart"></i> Bereit melden'}</button>` : ''}
         ` : `
-            <div class="pg2-hero-empty">
+            ${rosterHtml || `<div class="pg2-hero-empty">
                 <i class="fas fa-user-plus pg2-hero-empty-icon"></i>
                 <p>Kein Held gewählt</p>
                 <p class="pg2-hero-empty-hint">Erstelle einen neuen Helden oder lade einen Speicherstand.</p>
-            </div>
+            </div>`}
             <div class="pg2-action-row">
                 <button type="button" data-action="pregame-create-hero" class="pg2-ghost-btn pg2-ghost-btn-primary"><i class="fas fa-plus"></i> Erstellen</button>
-                <button type="button" data-action="pregame-load-hero" class="pg2-ghost-btn"><i class="fas fa-file-import"></i> Laden</button>
+                <button type="button" data-action="pregame-load-hero" class="pg2-ghost-btn"><i class="fas fa-file-import"></i> Datei laden</button>
             </div>
             ${!isSolo ? `<button type="button" data-action="pregame-toggle-ready" class="pg2-ready-btn pg2-ready-btn-locked" disabled><i class="fas fa-shield-heart"></i> Bereit melden</button>` : ''}`;
 
@@ -1281,6 +1299,7 @@ export const UI = {
 
         DOM.exportHeroBtn.dataset.action = 'export-hero';
         DOM.exportHeroBtn.dataset.charId = c.id;
+        if (DOM.saveRosterBtn) { DOM.saveRosterBtn.dataset.action = 'save-hero-to-roster'; DOM.saveRosterBtn.dataset.charId = c.id; }
     },
 
     openEnemyLightbox: function (enemy) {

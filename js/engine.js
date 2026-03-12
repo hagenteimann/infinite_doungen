@@ -14,7 +14,7 @@ import {
     EQUIPMENT_LIMIT, ABILITY_LIMIT, SUMMON_COOLDOWN,
     CHAT_HISTORY_MAX, CHAT_HISTORY_CHAR_LIMIT, CHAT_CONTEXT_CHAR_LIMIT,
     FATIGUE_MAX, CAMP_REDUCTION_WITH_FOOD, CAMP_REDUCTION_WITHOUT_FOOD,
-    AUTO_SAVE_KEY, JOURNAL_MAX_ENTRIES,
+    AUTO_SAVE_KEY, HERO_ROSTER_KEY, JOURNAL_MAX_ENTRIES,
     FATE_BOSS_THRESHOLD, FATE_DARK_THRESHOLD, FATE_UNREST_THRESHOLD,
 } from './constants.js';
 
@@ -278,6 +278,61 @@ export const Engine = {
 
     openHeroImport() {
         document.getElementById('import-hero')?.click();
+    },
+
+    // ── Local Hero Roster (localStorage) ──────────────────────────────────
+
+    getHeroRoster() {
+        try { return JSON.parse(Utils.safeStorageGet(HERO_ROSTER_KEY) || '[]'); } catch { return []; }
+    },
+
+    _saveCharToRoster(char) {
+        if (!char || char.isNPC) return;
+        try {
+            const roster = this.getHeroRoster();
+            const idx = roster.findIndex(h => h.id === char.id);
+            if (idx >= 0) roster[idx] = { ...char };
+            else roster.push({ ...char });
+            Utils.safeStorageSet(HERO_ROSTER_KEY, JSON.stringify(roster));
+        } catch (e) {
+            console.warn('Hero roster save failed:', e);
+        }
+    },
+
+    saveHeroToRoster(charId) {
+        const char = State.party.find(p => p.id === charId);
+        if (!char) return;
+        this._saveCharToRoster(char);
+        UI.showToast(`${repairDisplayText(char.name)} im Browser gespeichert.`);
+    },
+
+    loadHeroFromRoster(rosterId) {
+        const hero = this.getHeroRoster().find(h => h.id === rosterId);
+        if (!hero) return;
+        const localKey = this._getResolvedLocalPlayerName();
+        const h = Utils.sanitizeCharacter({ ...hero, id: Utils.generateId() });
+        if (Network.isClient() && Network.isConnected()) {
+            this._syncLocalProfile({ heroId: h.id, heroName: h.name, isReady: false });
+            Network.sendCharacterCreate(h);
+        } else {
+            const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
+            if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
+            State.party.push(h);
+            if (Network.isHost() && Network.isConnected()) {
+                Network.registerCharacter(Network.playerName, h.id);
+                Network.broadcastState();
+            } else {
+                this._syncLocalProfile({ heroId: h.id, heroName: h.name, isReady: false });
+            }
+        }
+        UI.updateAll();
+        UI.showToast(`${repairDisplayText(h.name)} geladen!`);
+    },
+
+    deleteHeroFromRoster(rosterId) {
+        const roster = this.getHeroRoster().filter(h => h.id !== rosterId);
+        Utils.safeStorageSet(HERO_ROSTER_KEY, JSON.stringify(roster));
+        UI.updateAll();
     },
 
 getPregameStatus() {
@@ -1091,6 +1146,7 @@ getPregameStatus() {
         }
         State.tempPortraitData = ""; State.tempImagePrompt = ""; UI.closeCreator(); UI.updateAll();
         UI.showToast(`Held ${charData.name} wurde erfolgreich erstellt!`);
+        this._saveCharToRoster(charData);
     },
 
     generateNPC: async function () {
@@ -1556,6 +1612,7 @@ getPregameStatus() {
                         this._syncLocalProfile({ heroId: hero.id, heroName: hero.name, isReady: false });
                     }
                 }
+                this._saveCharToRoster(hero);
                 UI.updateAll();
             } catch (err) {
                 UI.addChatLog('System', `Hero-Import fehlgeschlagen: ${repairDisplayText(err.message)}`);
