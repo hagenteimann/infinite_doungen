@@ -1735,8 +1735,10 @@ this._combatStatus = msg.combatSubmitted || {};
             this._renderCombatRoundPanel(el);
             const submitted = !!this._mySubmittedAction;
             this._setQuickActionsEnabled(false);
-            playerInput.disabled = submitted || State.isProcessing;
             sendBtn.disabled = submitted || State.isProcessing;
+            sendBtn.classList.toggle('opacity-40', sendBtn.disabled);
+            sendBtn.classList.toggle('pointer-events-none', sendBtn.disabled);
+            playerInput.disabled = submitted || State.isProcessing;
             playerInput.placeholder = submitted
                 ? 'Aktion eingereicht – warte auf andere...'
                 : 'Deine Kampfaktion eingeben...';
@@ -1792,6 +1794,8 @@ this._combatStatus = msg.combatSubmitted || {};
             + (autoToggleHtml ? `<div class="flex flex-wrap gap-1 mt-1.5 justify-center">${autoToggleHtml}</div>` : ''));
         playerInput.disabled = !myTurn || State.isProcessing;
         sendBtn.disabled = !myTurn || State.isProcessing;
+        sendBtn.classList.toggle('opacity-40', sendBtn.disabled);
+        sendBtn.classList.toggle('pointer-events-none', sendBtn.disabled);
         playerInput.placeholder = State.isProcessing ? 'DM antwortet...' : (myTurn ? 'Was tut ihr?' : `Warte auf ${currentPlayerLabel}...`);
         this._setQuickActionsEnabled(myTurn && !State.isProcessing);
     },
@@ -1900,7 +1904,6 @@ this._combatStatus = msg.combatSubmitted || {};
 
     _setQuickActionsEnabled(enabled) {
         const selectors = [
-            '[data-action="submit-action"]',
             '[data-action="camp"]',
             '[data-action="ask-oracle"]',
             '[data-action="plot-twist"]',
