@@ -2400,6 +2400,72 @@ body.session-startscreen .thinking-status-chip {
     color: #f59e0b;
 }
 
+/* Solo Multi-Hero Lobby Styles */
+.pg2-hero-list-solo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.pg2-hero-card-small {
+    padding: 0.65rem 0.8rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.pg2-hero-card-small:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(148, 163, 184, 0.25);
+}
+
+.pg2-hero-card-small .pg2-hero-portrait {
+    width: 2.75rem;
+    height: 2.75rem;
+}
+
+.pg2-hero-card-small .pg2-hero-name {
+    font-size: 0.9rem;
+}
+
+.pg2-hero-remove {
+    position: absolute;
+    top: 50%;
+    right: 0.8rem;
+    transform: translateY(-50%);
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+    opacity: 0;
+}
+
+.pg2-hero-card-small:hover .pg2-hero-remove {
+    opacity: 1;
+}
+
+.pg2-hero-remove:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.pg2-hero-add-row {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
 .pg2-hero-empty {
     display: flex;
     flex-direction: column;

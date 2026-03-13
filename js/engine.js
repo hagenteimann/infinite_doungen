@@ -315,8 +315,11 @@ export const Engine = {
             this._syncLocalProfile({ heroId: h.id, heroName: h.name, isReady: false });
             Network.sendCharacterCreate(h);
         } else {
-            const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
-            if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
+            // In multiplayer, replace the current hero. In solo, allow multiple.
+            if (Network.isConnected()) {
+                const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
+                if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
+            }
             State.party.push(h);
             if (Network.isHost() && Network.isConnected()) {
                 Network.registerCharacter(Network.playerName, h.id);
@@ -473,6 +476,13 @@ getPregameStatus() {
         UI.toggleViews(true);
         UI.updateAll();
         if (Network.isHost() && Network.isConnected()) Network.broadcastState();
+
+        // Solo multi-hero support: set initial acting character
+        if (!Network.isConnected() && State.party.length > 0) {
+            const firstHero = State.party.find(p => !p.isNPC && !p.isSummon) || State.party[0];
+            State.actingChar = firstHero.name;
+        }
+
         this.interactWithAI('Die Reise beginnt.');
     },
 
@@ -695,9 +705,29 @@ getPregameStatus() {
                         Network.advanceTurn();
                     }
                 }
+            } else if (!Network.isConnected() && !State.pendingRolls.some(r => !r.rolled)) {
+                // Solo turn rotation
+                this._soloAdvanceTurn();
             }
             Network._currentActionPlayerName = null;
         }
+    },
+
+    _soloAdvanceTurn: function () {
+        if (Network.isConnected() || State.party.length <= 1) return;
+        const currentHero = State.party.find(p => p.name === State.actingChar) || State.party[0];
+        const currentIndex = State.party.indexOf(currentHero);
+        
+        // Find next non-NPC, non-Summon hero
+        for (let i = 1; i <= State.party.length; i++) {
+            const nextIdx = (currentIndex + i) % State.party.length;
+            const nextHero = State.party[nextIdx];
+            if (!nextHero.isNPC && !nextHero.isSummon) {
+                State.actingChar = nextHero.name;
+                break;
+            }
+        }
+        UI.updateAll();
     },
 
     chooseRoute: function (route) {
@@ -1150,8 +1180,11 @@ getPregameStatus() {
             this._syncLocalProfile({ heroId: charData.id, heroName: charData.name, isReady: false });
             Network.sendCharacterCreate(charData);
         } else {
-            const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
-            if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
+            // In multiplayer, replace the current hero. In solo, allow multiple.
+            if (Network.isConnected()) {
+                const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
+                if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
+            }
             State.party.push(charData);
             if (Network.isHost() && Network.isConnected()) {
                 Network.registerCharacter(Network.playerName, charData.id);
