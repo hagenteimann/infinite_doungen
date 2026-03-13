@@ -166,13 +166,17 @@ export const initDOM = () => {
    8. UI RENDERING (Templates & DOM Updates)
    ========================================== */
 export const UIBuilders = {
-    buildHeroCard: function (c, isOwnHero = false) {
+    buildHeroCard: function (c, isOwnHero = false, isActive = false) {
         c = { ...c, name: repairDisplayText(c.name || ''), class: repairDisplayText(c.class || '') };
         const isDead = c.hp === 0;
-        const ownHighlight = isOwnHero && !isDead ? 'border-cyan-400/70 shadow-[0_0_20px_rgba(34,211,238,0.35)] ring-1 ring-cyan-500/30' : '';
-        const borderClass = ownHighlight || (isDead ? 'border-red-900 shadow-[0_0_15px_rgba(220,38,38,0.3)] grayscale opacity-80' :
+        const activeHighlight = isActive && !isDead ? 'border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-500/40 z-20 scale-[1.02]' : '';
+        const ownHighlight = isOwnHero && !isDead && !isActive ? 'border-cyan-400/70 shadow-[0_0_20px_rgba(34,211,238,0.35)] ring-1 ring-cyan-500/30' : '';
+        const borderClass = activeHighlight || ownHighlight || (isDead ? 'border-red-900 shadow-[0_0_15px_rgba(220,38,38,0.3)] grayscale opacity-80' :
             (c.isSummon ? 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]' :
                 (c.isNPC ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-white/10 hover:border-amber-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]')));
+        
+        const activeBadge = isActive ? '<div class="hero-active-badge">Am Zug</div>' : '';
+
         const nameColor = isDead ? 'text-red-500 line-through' :
             (c.isSummon ? 'text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.5)]' :
                 (c.isNPC ? 'text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]' : 'text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]'));
@@ -201,6 +205,7 @@ export const UIBuilders = {
             </div>`;
 
         return `<div class="bg-black/30 backdrop-blur-md p-2 rounded-xl border entity-card entity-card-hero ${borderClass} cursor-pointer group transition-all btn-premium relative" data-action="entity-click" data-name="${c.name.replace(/\"/g, '&quot;')}" data-entity-type="hero" data-entity-id="${c.id}">
+            ${activeBadge}
             <button data-action="remove-char" data-char-id="${c.id}" class="absolute top-1.5 right-1.5 z-30 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all bg-red-950/90 rounded-full border border-red-500/50 hover:bg-red-900 shadow-[0_0_10px_rgba(239,68,68,0.5)] flex items-center justify-center w-6 h-6"><i class="fas fa-trash text-[10px]"></i></button>
             <div class="entity-card-collapsed flex gap-2.5 items-center">
                 ${portraitThumb}
@@ -475,7 +480,12 @@ export const UI = {
                 <button data-action="pregame-load-hero" class="pg2-ghost-btn"><i class="fas fa-file-import"></i> Laden</button>
             </div>`)
             : '';
-        this._setHtmlIfChanged(DOM.partyList, lateJoinBanner + sanitize(sorted.map(c => UIBuilders.buildHeroCard(c, c.id === myCharId)).join('')));
+        const isSolo = !Network.isConnected();
+        this._setHtmlIfChanged(DOM.partyList, lateJoinBanner + sanitize(sorted.map(c => {
+            const isOwn = c.id === myCharId;
+            const isActive = isSolo ? (c.name === State.actingChar) : isOwn;
+            return UIBuilders.buildHeroCard(c, isOwn, isActive);
+        }).join('')));
         const isMp = State._mpRole && myCharId;
         if (isMp) {
             const myChar = State.party.find(p => p.id === myCharId);
