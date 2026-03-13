@@ -6,9 +6,7 @@ export const Utils = {
         /([+-]\s*\d+)\s*(STR|DEX|INT|CON)\b/gi,
     ],
     generateId: function (prefix = 'id') {
-        const ts = Date.now().toString(36);
-        const rand = Math.random().toString(36).substring(2, 7);
-        return `${prefix}-${ts}-${rand}`;
+        return `${prefix}-${crypto.randomUUID()}`;
     },
     splitByCommaOutsideBrackets: function (str) {
         let res = [];

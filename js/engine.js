@@ -320,7 +320,7 @@ export const Engine = {
                 const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
                 if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
             }
-            State.party.push(h);
+            dispatch({ type: 'ADD_PARTY_MEMBER', character: h });
             if (Network.isHost() && Network.isConnected()) {
                 Network.registerCharacter(Network.playerName, h.id);
                 Network.broadcastState();
@@ -1185,7 +1185,7 @@ getPregameStatus() {
                 const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
                 if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
             }
-            State.party.push(charData);
+            dispatch({ type: 'ADD_PARTY_MEMBER', character: charData });
             if (Network.isHost() && Network.isConnected()) {
                 Network.registerCharacter(Network.playerName, charData.id);
                 Network.broadcastState();
@@ -1621,9 +1621,12 @@ getPregameStatus() {
                     this._syncLocalProfile({ heroId: hero.id, heroName: hero.name, isReady: false });
                     Network.sendCharacterCreate(hero);
                 } else {
-                    const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
-                    if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
-                    State.party.push(hero);
+                    // In multiplayer, replace the current hero. In solo, allow multiple.
+                    if (Network.isConnected()) {
+                        const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
+                        if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
+                    }
+                    dispatch({ type: 'ADD_PARTY_MEMBER', character: hero });
                     if (Network.isHost() && Network.isConnected()) {
                         Network.registerCharacter(Network.playerName, hero.id);
                         Network.broadcastState();
@@ -1631,6 +1634,7 @@ getPregameStatus() {
                         this._syncLocalProfile({ heroId: hero.id, heroName: hero.name, isReady: false });
                     }
                 }
+                UI.showToast(`Held importiert: ${repairDisplayText(hero.name)}`, 'success');
                 this._saveCharToRoster(hero);
                 UI.updateAll();
             } catch (err) {
