@@ -6,8 +6,9 @@
     <!-- HTML & META DATEN                          -->
     <!-- ========================================== -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Infinite Dungeons - D&D Simulator Pro</title>
+    <link rel="icon" href="/infinite_doungen/assets/infinite%20dungeons-DCW6I67X.png" type="image/png">
 
     <!-- Dependencies -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap"
@@ -17,71 +18,31 @@
     <!-- ========================================== -->
     <!-- CSS STYLES                                 -->
     <!-- ========================================== -->
-  <script type="module" crossorigin src="/infinite_doungen/assets/index-Dkruj87E.js"></script>
-  <link rel="stylesheet" crossorigin href="/infinite_doungen/assets/index-BLkYIypM.css">
+  <script type="module" crossorigin src="/infinite_doungen/assets/index-erHXufvo.js"></script>
+  <link rel="stylesheet" crossorigin href="/infinite_doungen/assets/index-D59esf1O.css">
 </head>
 
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="flex flex-col overflow-hidden" style="height: 100dvh">
 
     <!-- Weather Overlay (Partikeleffekte: Regen, Schnee, Nebel...) -->
     <div id="weather-overlay"></div>
+
+    <!-- Animated Chat/Global Background -->
+    <div id="animated-bg" class="global-animated-bg"></div>
 
     <!-- ========================================== -->
     <!-- HEADER                                     -->
     <!-- ========================================== -->
     <header
-        class="p-4 border-b border-purple-900/40 bg-black/40 backdrop-blur-xl flex justify-between items-center shadow-[0_4px_30px_rgba(0,0,0,0.6)] z-50">
-        <div class="flex items-center gap-4">
-            <h1
-                class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300 tracking-wider logo-shake cursor-default drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]">
-                INFINITE DUNGEONS</h1>
-            <div id="dungeon-hud" class="hidden md:flex items-center gap-3 ml-4 border-l border-white/20 pl-4">
-                <div class="text-[10px] font-bold tracking-widest text-slate-300"><i
-                        class="fas fa-hourglass-half text-purple-400"></i> SCHICKSAL: <span id="hud-fate"
-                        class="text-green-400 text-xs">0/100</span></div>
-                <div class="text-[10px] font-bold tracking-widest text-slate-300"><i
-                        class="fas fa-bed text-amber-500"></i> ERSCHOEPFUNG: <span id="hud-fatigue"
-                        class="text-white text-xs">0</span></div>
-                <div id="weather-badge" class="text-[10px] font-bold tracking-widest text-slate-300"
-                    title="Aktuelles Wetter">
-                    <span id="hud-weather-icon">&#9728;</span> <span id="hud-weather-name"
-                        class="text-yellow-300 text-xs">Sonnig</span>
-                </div>
-            </div>
-        </div>
-        <div id="header-controls" class="flex gap-2 items-center">
-            <span id="mp-status-badge" class="hidden text-[10px] font-bold tracking-widest text-green-300 border border-green-500/30 rounded-lg px-2 py-1 bg-green-900/20 cursor-pointer" data-action="show-multiplayer"></span>
-            <button data-action="show-multiplayer"
-                class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-cyan-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
-                title="Multiplayer"><i class="fas fa-users text-cyan-400"></i> MP</button>
-            <button id="self-control-toggle" data-action="toggle-self-control" class="hidden bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-emerald-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white" title="Dich selbst auf Human oder KI stellen"><i class="fas fa-user-astronaut text-emerald-400"></i> Ich: Human</button>
-            <button data-action="show-api-settings"
-                class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-purple-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
-                title="API Einstellungen oeffnen"><i class="fas fa-plug text-purple-400"></i> API</button>
-            <div id="sound-menu-wrapper" class="relative">
-                <button id="sound-menu-btn" data-action="toggle-sound-menu"
-                    class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-pink-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(236,72,153,0.35)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
-                    title="Sound & Musik"><i class="fas fa-music text-pink-300"></i> Sound</button>
-                <div id="sound-menu-panel" class="hidden absolute right-0 top-full mt-2 bg-black/90 border border-white/10 rounded-xl p-2 flex flex-col gap-1 min-w-[160px] z-[200] backdrop-blur-xl shadow-2xl">
-                    <button id="music-toggle" data-action="show-music-settings"
-                        class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-pink-500/30 text-slate-300 hover:text-white transition-all w-full text-left"
-                        title="Musiksteuerung oeffnen"><i class="fas fa-music text-pink-300 w-4"></i> Musik</button>
-                    <button id="sound-toggle" data-action="toggle-sound"
-                        class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-indigo-400/30 text-slate-300 hover:text-white transition-all sound-on w-full text-left"
-                        title="Sound an/aus"><i class="fas fa-volume-up text-indigo-300 w-4"></i> Soundeffekte</button>
-                </div>
-            </div>
-            <button data-action="tts-open-picker"
-                class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-purple-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
-                title="Erzaehlerstimme waehlen"><i class="fas fa-microphone text-purple-400"></i> Stimme</button>
-            <button data-action="download-save"
-                class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-emerald-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white">
-                <i class="fas fa-save text-emerald-400"></i> Welt speichern</button>
-            <label
-                class="bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-amber-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all duration-300 backdrop-blur-md cursor-pointer inline-flex items-center gap-1.5 text-slate-300 hover:text-white">
-                <i class="fas fa-folder-open text-amber-400"></i> Laden <input type="file" id="load-input"
-                    class="hidden" accept=".json" id="import-save">
-            </label>
+        class="hidden md:grid p-4 border-b border-purple-900/40 bg-black/40 backdrop-blur-xl grid-cols-[1fr_auto_1fr] items-center shadow-[0_4px_30px_rgba(0,0,0,0.6)] z-50">
+        <div></div>
+        <h1 class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300 tracking-wider logo-shake cursor-default drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]">
+            INFINITE DUNGEONS</h1>
+        <div id="header-controls" class="flex gap-2 items-center justify-end">
+            <span id="mp-status-badge" class="hidden text-[10px] font-bold tracking-widest text-green-300 border border-green-500/30 rounded-lg px-2 py-1 bg-green-900/20"></span>
+            <button data-action="open-sidebar" class="md:hidden bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg text-slate-300 hover:text-white transition-all backdrop-blur-md">
+                <i class="fas fa-users text-purple-400"></i>
+            </button>
         </div>
     </header>
     <div id="topbar-thinking-status" class="hidden thinking-status-chip" aria-live="polite">
@@ -101,7 +62,7 @@
         <section class="flex-1 min-w-0 flex flex-col p-3 md:p-4 gap-3 relative">
 
             <div id="story-log"
-                class="chat-container flex-1 min-h-[24rem] overflow-y-auto space-y-4 p-4 parchment rounded-lg shadow-inner">
+                class="chat-container flex-1 min-h-0 overflow-y-auto space-y-4 p-4 parchment rounded-lg shadow-inner">
                 <div id="lobby-view" class="h-full flex flex-col items-center justify-center text-center p-8">
                     <h2
                         class="text-4xl cinzel text-transparent bg-clip-text bg-gradient-to-b from-purple-300 to-indigo-500 mb-4 glow-text drop-shadow-lg tracking-wider">
@@ -125,89 +86,47 @@
                 class="hidden p-2.5 md:p-3 parchment rounded-xl flex flex-col gap-2 shadow-[0_-5px_25px_rgba(0,0,0,0.5)]">
 
                 <div id="action-box-container"
-                    class="hidden mb-2 bg-black/30 border border-indigo-500/50 p-3 rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.2)] max-h-48 min-h-0 overflow-y-auto custom-scrollbar backdrop-blur-md">
+                    class="hidden mb-2 bg-black/30 border border-indigo-500/50 p-3 rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.2)] max-h-72 min-h-0 overflow-y-auto custom-scrollbar backdrop-blur-md">
                 </div>
 
                 <div class="flex gap-2 relative items-center">
                     <input type="text" id="player-input" placeholder="Was tut ihr?"
-                        class="flex-1 bg-black/50 border border-slate-700/50 rounded-lg p-2.5 focus:outline-none focus:border-purple-500/70 focus:ring-1 focus:ring-purple-500/70 focus:shadow-[0_0_15px_rgba(168,85,247,0.3)] text-sm disabled:opacity-50 transition-all shadow-inner placeholder-slate-500/70 text-slate-200 backdrop-blur-md"
-                        onkeydown="if(event.key === 'Enter') App.Engine.submitPlayerAction()">
+                        class="flex-1 bg-black/50 border border-slate-700/50 rounded-lg p-2.5 focus:outline-none focus:border-purple-500/70 focus:ring-1 focus:ring-purple-500/70 focus:shadow-[0_0_15px_rgba(168,85,247,0.3)] text-sm disabled:opacity-50 transition-all shadow-inner placeholder-slate-500/70 text-slate-200 backdrop-blur-md">
                     <button id="send-btn" data-action="submit-action"
                         class="bg-purple-700/80 hover:bg-purple-600 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-[0_0_15px_rgba(147,51,234,0.4)] hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border border-purple-500/40 backdrop-blur-md inline-flex items-center">
                         <i class="fas fa-paper-plane mr-2 opacity-80"></i> Senden
                     </button>
-                    <button id="prompt-manager-btn" data-action="show-prompts"
-                        class="bg-blue-700/80 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] transition-all duration-300 border border-blue-500/40 backdrop-blur-md inline-flex items-center"
-                        title="Gespeicherte Prompts">
-                        <i class="fas fa-bookmark"></i>
+                </div>
+
+                <!-- Mobile handle bar: Aktionen & Gruppe -->
+                <div class="flex md:hidden items-center border-t border-slate-700/50 pt-2 mt-1 gap-1">
+                    <button data-action="toggle-mobile-actions"
+                        class="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-slate-400 hover:text-white text-xs transition-colors">
+                        <i id="mobile-actions-chevron" class="fas fa-chevron-up text-[10px]"></i>
+                        <span>Aktionen</span>
+                    </button>
+                    <div class="w-px h-4 bg-slate-700/50"></div>
+                    <button data-action="open-sidebar"
+                        class="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-slate-400 hover:text-white text-xs transition-colors">
+                        <i class="fas fa-users text-purple-400 text-[10px]"></i>
+                        <span>Gruppe</span>
                     </button>
                 </div>
 
-                <div
-                    class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 border-t border-slate-700/50 pt-4 mt-1">
-                    <div class="flex flex-wrap items-center gap-2.5 text-[11px] font-medium w-full xl:w-auto">
-                        <button id="target-mode-btn" data-action="toggle-target"
-                            class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-amber-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg transition-all duration-300 flex items-center gap-1.5 shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(245,158,11,0.3)] backdrop-blur-md tracking-wide">
-                            <i
-                                class="fas fa-crosshairs text-slate-500 group-hover:text-amber-400 transition-colors"></i>
-                            Schnellauswahl
-                        </button>
-
-                        <div class="h-6 w-px bg-slate-700/70 hidden sm:block mx-1"></div>
-
-                        <button data-action="submit-action" data-text="Die Gruppe schaut sich um."
-                            class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-slate-400/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(148,163,184,0.4)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
-                            <i class="fas fa-eye text-slate-500 group-hover:text-slate-300"></i>
-                            Umschauen</button>
+                <!-- Action buttons: always visible on desktop, slide-down on mobile -->
+                <div id="action-buttons-row" class="hidden md:flex flex-wrap items-center gap-2.5 text-[11px] font-medium border-t border-slate-700/50 pt-4 mt-1">
                         <button data-action="camp"
                             class="group bg-amber-900/40 hover:bg-amber-800/60 border border-amber-500/50 text-amber-100 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
                             <i class="fas fa-campground text-amber-500 group-hover:text-amber-400"></i>
                             Lager aufschlagen</button>
-
                         <button data-action="ask-oracle"
                             class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-indigo-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
                             <i class="fas fa-sparkles text-indigo-400/70 group-hover:text-indigo-400"></i>
                             Regel fragen</button>
-                        <button data-action="plot-twist"
-                            class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-rose-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(244,63,94,0.5)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
-                            <i class="fas fa-bolt text-rose-400/70 group-hover:text-rose-400"></i>
-                            Plot-Twist</button>
-                        <button data-action="generate-npc"
-                            class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-emerald-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
-                            <i class="fas fa-user-astronaut text-emerald-400/70 group-hover:text-emerald-400"></i>
-                            NPC begegnen</button>
-                        <button data-action="check-enemies"
-                            class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-red-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
-                            <i class="fas fa-dragon text-red-400/70 group-hover:text-red-400"></i>
-                            Gegner sichten</button>
-                        <button id="quickplay-btn" data-action="toggle-quickplay"
-                            class="group bg-white/5 hover:bg-black/40 border border-white/10 hover:border-blue-500/50 text-slate-300 hover:text-white px-3.5 py-2 rounded-lg shadow-[0_0_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300 backdrop-blur-md tracking-wide flex items-center gap-1.5">
-                            <i class="fas fa-forward text-blue-400/70 group-hover:text-blue-400"></i>
-                            Quickplay</button>
-                    </div>
-
-                    <div
-                        class="flex items-center gap-2 text-[10px] bg-black/40 p-1 rounded-lg border border-white/10 shadow-inner backdrop-blur-md">
-                        <div class="flex items-center gap-1.5 px-2 py-1">
-                            <i class="fas fa-skull text-rose-500/70"></i>
-                            <select id="game-difficulty"
-                                class="bg-transparent text-slate-300 outline-none cursor-pointer">
-                                <option value="Einfach" class="bg-slate-900">Einfach</option>
-                                <option value="Normal" selected class="bg-slate-900">Normal</option>
-                                <option value="Schwer" class="bg-slate-900">Schwer</option>
-                                <option value="Albtraum" class="bg-slate-900">Albtraum</option>
-                            </select>
-                        </div>
-                        <div class="w-px h-4 bg-slate-700/50"></div>
-                        <div class="flex items-center gap-1.5 px-2 py-1">
-                            <i class="fas fa-ghost text-purple-400/70"></i>
-                            <select id="enemy-rate" class="bg-transparent text-slate-300 outline-none cursor-pointer">
-                                <option value="Wenig" class="bg-slate-900">Wenig</option>
-                                <option value="Normal" selected class="bg-slate-900">Normal</option>
-                                <option value="Viel" class="bg-slate-900">Viel</option>
-                            </select>
-                        </div>
-                    </div>
+                        <button id="self-control-toggle" data-action="toggle-self-control"
+                            class="hidden bg-white/5 hover:bg-white/10 px-3.5 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-emerald-500/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all duration-300 backdrop-blur-md inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
+                            title="Dich selbst auf Human oder KI stellen">
+                            <i class="fas fa-user-astronaut text-emerald-400"></i> Ich: Human</button>
                 </div>
             </div>
 
@@ -224,28 +143,54 @@
         </section>
 
         <!-- Rechter Bereich: Sidebar -->
-        <aside
-            class="w-[23rem] lg:w-[25rem] bg-black/20 backdrop-blur-xl border-l border-white/5 p-4 flex flex-col gap-4 overflow-hidden hidden md:flex shadow-[-10px_0_30px_rgba(0,0,0,0.5)] z-40 relative">
+        <aside id="sidebar"
+            class="w-[23rem] lg:w-[25rem] bg-black/95 md:bg-black/20 backdrop-blur-xl border-l border-white/5 p-4 flex flex-col gap-4 overflow-y-auto fixed md:relative inset-y-0 right-0 z-[60] md:z-40 translate-x-full md:translate-x-0 transition-transform duration-300 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
 
             <!-- Gruppe & Charaktere -->
             <div class="flex-[2] flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center border-b border-white/10 mb-3 pb-3">
-                    <h2 class="text-xl cinzel text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]">Gefaehrten</h2>
-                    <div class="flex gap-2">
-                        <label
-                            class="text-xs bg-white/5 hover:bg-black/40 border border-white/10 px-2.5 py-1 rounded-lg cursor-pointer shadow-[0_0_8px_rgba(0,0,0,0.3)] hover:shadow-[0_0_12px_rgba(59,130,246,0.3)] hover:border-blue-500/50 text-slate-300 hover:text-white transition-all duration-300 backdrop-blur-sm"
-                            title="Held Importieren">
-                            <i class="fas fa-file-import text-blue-400 max-h-4"></i> <input type="file" class="hidden"
-                                accept=".json" id="import-hero">
-                        </label>
-                        <button data-action="bulk-export" title="Alle Helden exportieren"
-                            class="text-xs bg-white/5 hover:bg-black/40 border border-white/10 px-2.5 py-1 rounded-lg shadow-[0_0_8px_rgba(0,0,0,0.3)] hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] hover:border-amber-500/50 text-slate-300 hover:text-white transition-all duration-300 backdrop-blur-sm font-bold tracking-wider">
-                            <i class="fas fa-boxes text-amber-400/80"></i></button>
-                        <button data-action="show-creator"
-                            class="text-xs bg-white/5 hover:bg-black/40 border border-white/10 px-2.5 py-1 rounded-lg shadow-[0_0_8px_rgba(0,0,0,0.3)] hover:shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:border-emerald-500/50 text-slate-300 hover:text-white transition-all duration-300 backdrop-blur-sm font-bold tracking-wider">
-                            <i class="fas fa-plus text-emerald-400/80 mr-1"></i> Held</button>
+                    <div class="flex items-center gap-2">
+                        <button data-action="close-sidebar" class="md:hidden text-slate-400 hover:text-white p-1 transition-colors"><i class="fas fa-times"></i></button>
+                        <h2 class="text-xl text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]">Gefaehrten</h2>
+                    </div>
+                    <div class="relative">
+                        <button id="settings-btn" data-action="toggle-settings-panel"
+                            class="bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-white/10 hover:border-slate-400/50 shadow-[0_0_8px_rgba(0,0,0,0.3)] transition-all duration-300 backdrop-blur-sm inline-flex items-center text-slate-300 hover:text-white"
+                            title="Einstellungen"><i class="fas fa-cog"></i></button>
+                        <div id="settings-panel" class="hidden absolute right-0 top-full mt-2 bg-black/95 border border-white/10 rounded-xl p-2 flex flex-col gap-1 min-w-[200px] z-[200] backdrop-blur-xl shadow-2xl">
+                            <button data-action="show-multiplayer" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-cyan-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-users text-cyan-400 w-4"></i> Multiplayer</button>
+                            <button data-action="show-api-settings" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-purple-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-plug text-purple-400 w-4"></i> API Einstellungen</button>
+                            <div class="h-px bg-white/10 my-1"></div>
+                            <button id="music-toggle" data-action="show-music-settings" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-pink-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-music text-pink-300 w-4"></i> Musik</button>
+                            <button id="sound-toggle" data-action="toggle-sound" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-indigo-400/30 text-slate-300 hover:text-white transition-all sound-on w-full text-left"><i class="fas fa-volume-up text-indigo-300 w-4"></i> Soundeffekte</button>
+                            <button data-action="tts-open-picker" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-purple-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-microphone text-purple-400 w-4"></i> Stimme</button>
+                            <div class="h-px bg-white/10 my-1"></div>
+                            <button data-action="download-save" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-emerald-500/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-save text-emerald-400 w-4"></i> Welt speichern</button>
+                            <label class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-amber-500/30 text-slate-300 hover:text-white transition-all w-full cursor-pointer"><i class="fas fa-folder-open text-amber-400 w-4"></i> Laden <input type="file" id="load-input" class="hidden" accept=".json"></label>
+                            <div class="h-px bg-white/10 my-1"></div>
+                            <div class="px-3 py-2 flex items-center gap-2">
+                                <i class="fas fa-skull text-rose-500/70 w-4"></i>
+                                <select id="game-difficulty" class="flex-1 bg-black/60 text-slate-300 border border-white/10 rounded-lg outline-none cursor-pointer text-xs p-1">
+                                    <option value="Einfach" class="bg-slate-900">Einfach</option>
+                                    <option value="Normal" selected class="bg-slate-900">Normal</option>
+                                    <option value="Schwer" class="bg-slate-900">Schwer</option>
+                                    <option value="Albtraum" class="bg-slate-900">Albtraum</option>
+                                </select>
+                            </div>
+                            <div class="px-3 py-2 flex items-center gap-2">
+                                <i class="fas fa-ghost text-purple-400/70 w-4"></i>
+                                <select id="enemy-rate" class="flex-1 bg-black/60 text-slate-300 border border-white/10 rounded-lg outline-none cursor-pointer text-xs p-1">
+                                    <option value="Wenig" class="bg-slate-900">Wenig</option>
+                                    <option value="Normal" selected class="bg-slate-900">Normal</option>
+                                    <option value="Viel" class="bg-slate-900">Viel</option>
+                                </select>
+                            </div>
+                            <div class="h-px bg-white/10 my-1"></div>
+                            <button data-action="toggle-verbose-mode" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-amber-400/30 text-slate-300 hover:text-white transition-all w-full text-left"><i class="fas fa-align-left text-amber-400/70 w-4"></i> Ausführliche Texte</button>
+                        </div>
                     </div>
                 </div>
+                <input type="file" class="hidden" accept=".json" id="import-hero">
 
                 <!-- Sidebar Tabs -->
                 <div class="tabs-row flex border-b border-white/5 mb-2 text-[10px] overflow-x-auto">
@@ -275,7 +220,7 @@
                 </div>
 
                 <div id="tab-content-party" class="flex flex-col overflow-hidden flex-1">
-                    <div id="party-list" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1"></div>
+                    <div id="party-list" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 px-1"></div>
 
                     <div id="char-details"
                         class="hidden bg-black/30 backdrop-blur-md p-3 rounded-xl space-y-3 border-amber-900/30 border shadow-inner fade-in overflow-y-auto custom-scrollbar flex-1 pr-1 relative">
@@ -283,9 +228,14 @@
                             <button data-action="hide-details"
                                 class="text-xs text-slate-400 hover:text-white transition-colors duration-300 px-2 py-1 flex items-center gap-1"><i
                                     class="fas fa-chevron-left text-[10px]"></i> Zurueck</button>
-                            <button id="export-hero-btn"
-                                class="text-xs bg-white/5 hover:bg-black/40 border border-white/10 px-2.5 py-1 rounded-lg shadow-[0_0_8px_rgba(0,0,0,0.3)] hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] hover:border-amber-500/50 text-slate-300 hover:text-white transition-all duration-300 backdrop-blur-sm">Export
-                                <i class="fas fa-file-export ml-1 text-amber-400/70"></i></button>
+                            <div class="flex gap-1.5">
+                                <button id="save-roster-btn"
+                                    class="text-xs bg-white/5 hover:bg-black/40 border border-white/10 px-2.5 py-1 rounded-lg shadow-[0_0_8px_rgba(0,0,0,0.3)] hover:shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:border-emerald-500/50 text-slate-300 hover:text-white transition-all duration-300 backdrop-blur-sm" title="Im Browser speichern">
+                                    <i class="fas fa-bookmark text-emerald-400/70"></i></button>
+                                <button id="export-hero-btn"
+                                    class="text-xs bg-white/5 hover:bg-black/40 border border-white/10 px-2.5 py-1 rounded-lg shadow-[0_0_8px_rgba(0,0,0,0.3)] hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] hover:border-amber-500/50 text-slate-300 hover:text-white transition-all duration-300 backdrop-blur-sm">Export
+                                    <i class="fas fa-file-export ml-1 text-amber-400/70"></i></button>
+                            </div>
                         </div>
                         <div id="details-content"></div>
                     </div>
@@ -328,7 +278,7 @@
             </div>
             <!-- Kampf Ansicht -->
             <div id="enemy-section"
-                class="flex-1 border-t border-white/10 pt-4 flex flex-col overflow-hidden hidden relative">
+                class="flex-1 border-t border-white/10 pt-4 flex flex-col overflow-visible hidden relative">
                 <div
                     class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-[1px] bg-gradient-to-r from-transparent via-red-500/50 to-transparent">
                 </div>
@@ -336,10 +286,9 @@
                     class="text-sm cinzel text-red-400 mb-3 tracking-widest uppercase flex items-center gap-2 drop-shadow-[0_0_5px_rgba(248,113,113,0.5)]">
                     <i class="fas fa-swords"></i> Schlachtfeld
                 </h2>
-                <div id="enemy-history-container" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1 mb-2">
+                <div id="enemy-history-container" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-0 mb-2 overflow-visible">
                 </div>
-                <div id="current-enemy-container"
-                    class="mt-auto space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1 pt-2 border-t border-white/5">
+                <div id="current-enemy-container" class="mt-auto space-y-2 overflow-visible custom-scrollbar pr-1 pt-2 border-t border-white/5">
                 </div>
             </div>
 
@@ -503,7 +452,7 @@
                 <i class="fas fa-key text-amber-500/70 mr-2"></i>Eigener API-Key
             </h2>
             <p class="text-[10px] text-slate-400 text-center">Trage hier deinen Google AI Studio Key ein. Lass das Feld
-                leer, um ihn zu löschen.</p>
+                leer, um ihn zu löschen. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors ml-1">Wo finde ich diesen?</a></p>
             <input type="password" id="custom-key-input"
                 class="w-full bg-black/50 p-3 rounded-lg border border-white/10 focus:border-amber-500/50 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner"
                 placeholder="AIzaSy...">
@@ -527,7 +476,7 @@
             </h2>
             <input type="text" id="oracle-input"
                 class="w-full bg-black/50 p-3 rounded-lg border border-white/10 focus:border-indigo-500/50 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-inner"
-                placeholder="Deine Regelfrage..." onkeydown="if(event.key === 'Enter') App.Engine.submitOracle()">
+                placeholder="Deine Regelfrage...">
             <div class="flex gap-3 mt-4 pt-2 border-t border-white/5">
                 <button data-action="submit-oracle"
                     class="flex-1 bg-indigo-600/80 hover:bg-indigo-500 py-2.5 rounded-lg border border-indigo-500/50 font-bold text-xs shadow-[0_0_15px_rgba(79,70,229,0.4)] hover:shadow-[0_0_20px_rgba(99,102,241,0.6)] transition-all duration-300 text-white">Fragen</button>
@@ -709,33 +658,6 @@
     </div>
     </div>
 
-    <!-- Prompt Manager Modal -->
-    <div id="prompt-manager-modal"
-        class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex justify-center items-center p-4">
-        <div
-            class="bg-slate-800/95 backdrop-blur-xl border border-blue-500/50 p-6 rounded-2xl w-full max-w-lg shadow-[0_0_40px_rgba(59,130,246,0.3)] flex flex-col max-h-[90vh]">
-            <h2
-                class="cinzel text-xl text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 text-center mb-4 drop-shadow-md">
-                <i class="fas fa-bookmark text-blue-500 mr-2"></i> Gespeicherte Prompts
-            </h2>
-            <div id="prompt-list"
-                class="flex-1 overflow-y-auto custom-scrollbar space-y-2 mb-4 bg-black/30 p-3 rounded-xl border border-white/5 shadow-inner min-h-[150px]">
-                <!-- Prompts render here -->
-            </div>
-            <div class="flex gap-2 mb-4 mt-2">
-                <input type="text" id="new-prompt-input" placeholder="Neuen Prompttext eingeben..."
-                    class="flex-1 bg-black/50 border border-slate-700/50 rounded-lg p-2.5 text-sm text-slate-200 outline-none focus:border-blue-500/50 transition-all shadow-inner">
-                <button data-action="save-prompt"
-                    class="bg-emerald-600/80 hover:bg-emerald-500 px-4 py-2 rounded-lg text-white text-xs font-bold shadow-sm transition-all shadow-[0_0_10px_rgba(16,185,129,0.3)]"><i
-                        class="fas fa-plus mr-1"></i> Speichern</button>
-            </div>
-            <div class="flex gap-3 justify-end pt-3 border-t border-white/10">
-                <button data-close-modal="prompt-manager-modal"
-                    class="bg-white/5 hover:bg-white/10 py-2.5 px-6 rounded-xl border border-white/10 font-bold text-xs transition-all text-slate-300 hover:text-white uppercase tracking-widest">Schlie&#223;en</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Multiplayer Modal -->
     <div id="multiplayer-modal"
         class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex justify-center items-center p-4">
@@ -785,6 +707,14 @@
             </div>
         </div>
     </div>
+    <!-- Dice Alert Overlay (centered, shown when pending rolls exist) -->
+    <div id="dice-alert" class="hidden fixed inset-0 z-[75] flex items-center justify-center pointer-events-none p-4">
+        <div id="dice-alert-content"
+            class="pointer-events-auto bg-slate-900/95 backdrop-blur-xl border-2 border-indigo-500/60 rounded-2xl shadow-[0_0_60px_rgba(99,102,241,0.45)] w-full max-w-sm p-4">
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
     <!-- API Settings Modal -->
     <div id="api-settings-modal"
         class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex justify-center items-center p-4">
@@ -900,6 +830,15 @@
 </body>
 
 </html>
+
+
+
+
+
+
+
+
+
 
 
 

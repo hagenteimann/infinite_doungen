@@ -3197,7 +3197,7 @@ body {
 
 #tab-content-party {
     min-height: 0;
-    overflow-x: visible;
+    overflow-x: clip;
     overflow-y: hidden;
 }
 
