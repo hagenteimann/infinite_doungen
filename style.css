@@ -1,26 +1,28 @@
 @import "tailwindcss";
 
 :root {
-    --ink: #e2e8f0;
-    --muted: #94a3b8;
-    --panel: rgba(9, 13, 26, 0.76);
-    --panel-strong: rgba(7, 12, 26, 0.86);
-    --accent: #a855f7;
-    --accent-strong: #7c3aed;
-    --gold: #fbbf24;
-    --emerald: #10b981;
-    --shadow-soft: 0 10px 26px rgba(2, 6, 23, 0.28);
-    --shadow-strong: 0 18px 40px rgba(2, 6, 23, 0.38);
-    --radius-lg: 1.1rem;
-    --radius-md: 0.75rem;
+    --ink: #DDD0B8;
+    --muted: #7A6A54;
+    --panel: rgba(20, 13, 6, 0.88);
+    --panel-strong: rgba(14, 9, 4, 0.94);
+    --accent: #C47B1E;
+    --accent-strong: #8A5210;
+    --gold: #D4A420;
+    --emerald: #1E7A52;
+    --shadow-soft: 0 10px 26px rgba(6, 3, 1, 0.45);
+    --shadow-strong: 0 18px 40px rgba(6, 3, 1, 0.55);
+    --radius-lg: 0.5rem;
+    --radius-md: 0.3rem;
 }
 body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0b0f19;
-            background-image: 
-                radial-gradient(circle at 50% -20%, rgba(67, 44, 122, 0.5) 0%, rgba(13, 19, 48, 0.9) 60%, #060812 100%),
-                url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-            color: #e2e8f0;
+            font-family: 'Crimson Text', Georgia, serif;
+            font-size: 1.05rem;
+            background-color: #100A04;
+            background-image:
+                radial-gradient(ellipse at 50% 100%, rgba(170, 90, 8, 0.38) 0%, rgba(18, 10, 3, 0.9) 48%, #080402 100%),
+                radial-gradient(ellipse at 0% 0%, rgba(90, 40, 4, 0.18) 0%, transparent 55%),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+            color: #DDD0B8;
             background-attachment: fixed;
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
@@ -87,16 +89,17 @@ body {
         h1,
         h2,
         h3 {
-            font-family: 'Inter', 'Space Grotesk', sans-serif;
-            letter-spacing: 0.03em;
-            font-weight: 600;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            letter-spacing: 0.04em;
+            font-weight: 700;
         }
 
         .cinzel {
-            font-family: 'Cinzel', 'Inter', sans-serif;
-            letter-spacing: 0.12em;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
             font-weight: 700;
+            font-style: italic;
         }
 
         .parchment {
@@ -289,32 +292,31 @@ body {
 
         /* Journal & Stats */
         .tab-btn {
-    border-radius: 0.6rem 0.6rem 0 0;
-    box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.6);
+    border-radius: 0.3rem 0.3rem 0 0;
+    box-shadow: inset 0 -1px 0 rgba(6, 3, 1, 0.7);
             transition: all 0.2s ease, color 0.25s ease;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.08);
             font-weight: 600;
-            font-family: 'Inter', 'Space Grotesk', sans-serif;
-            letter-spacing: 0.14em;
+            font-family: 'Crimson Text', Georgia, serif;
+            letter-spacing: 0.12em;
             text-transform: uppercase;
-            color: rgba(241, 245, 249, 0.65);
-            background: linear-gradient(180deg, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.4));
+            color: rgba(221, 208, 184, 0.55);
+            background: linear-gradient(180deg, rgba(22, 13, 5, 0.8), rgba(16, 9, 3, 0.4));
         }
 
         .tab-btn:hover {
-    box-shadow: 0 6px 14px rgba(168, 85, 247, 0.12);
-            color: #fbbf24;
-            border-bottom-color: rgba(251, 191, 36, 0.6);
-            background: rgba(248, 250, 252, 0.02);
+    box-shadow: 0 6px 14px rgba(196, 123, 30, 0.12);
+            color: #D4A420;
+            border-bottom-color: rgba(212, 164, 32, 0.6);
+            background: rgba(200, 130, 10, 0.04);
         }
 
         .tab-btn.active {
-    box-shadow: 0 8px 18px rgba(168, 85, 247, 0.12), inset 0 -1px 0 rgba(15, 23, 42, 0.6);
-    text-shadow: 0 0 10px rgba(251, 191, 36, 0.55);
-            border-bottom-color: #fbbf24;
-            color: #fef3c7;
-            background: linear-gradient(180deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.05));
-            text-shadow: 0 0 8px rgba(251, 191, 36, 0.65);
+    box-shadow: 0 8px 18px rgba(196, 123, 30, 0.14), inset 0 -1px 0 rgba(6, 3, 1, 0.7);
+            border-bottom-color: #C47B1E;
+            color: #F0DDA8;
+            background: linear-gradient(180deg, rgba(160, 95, 8, 0.22), rgba(100, 55, 4, 0.06));
+            text-shadow: 0 0 10px rgba(196, 123, 30, 0.55);
         }
 
         .tabs-row {
@@ -1036,9 +1038,9 @@ body {
 
         /* Visual FX (feature.json driven) */
         :root {
-            --fx-accent: #7dd3fc;
-            --fx-vignette: 0.28;
-            --fx-light-intensity: 0.75;
+            --fx-accent: #D4912A;
+            --fx-vignette: 0.35;
+            --fx-light-intensity: 0.8;
         }
 
         #visual-overlay {
@@ -3255,4 +3257,440 @@ body {
 @keyframes activeHeroPulse {
   0%, 100% { box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2), 0 0 15px rgba(245, 158, 11, 0.15); }
   50% { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5), 0 0 25px rgba(245, 158, 11, 0.3); }
+}
+
+/* =====================================================================
+   FORGE & STONE THEME — Complete Visual Override
+   Replaces generic blue-purple AI aesthetic with dark amber/forge look
+   ===================================================================== */
+
+/* ── Focus outlines ── */
+:focus-visible {
+    outline-color: rgba(196, 123, 30, 0.65) !important;
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+    box-shadow: 0 0 0 2px rgba(196, 123, 30, 0.22) !important;
+}
+
+/* ── Header & logo ── */
+header {
+    border-bottom-color: rgba(150, 78, 6, 0.35) !important;
+    background: rgba(10, 6, 2, 0.75) !important;
+}
+.logo-shake {
+    text-shadow: 0 0 12px rgba(196, 123, 30, 0.5), 0 0 24px rgba(150, 78, 6, 0.25) !important;
+}
+@keyframes lightningShake {
+    0%, 94% {
+        transform: translate(0,0) rotate(0deg);
+        text-shadow: 0 0 12px rgba(196,123,30,0.5), 0 0 24px rgba(150,78,6,0.25);
+    }
+    95% { transform: translate(-3px,1px) rotate(-1deg); text-shadow: 0 0 32px rgba(255,200,90,0.95), 0 0 44px rgba(196,123,30,0.85); }
+    96% { transform: translate(3px,-2px) rotate(1deg); }
+    97% { transform: translate(-2px,-3px) rotate(-0.5deg); }
+    98% { transform: translate(2px,3px) rotate(0.5deg); text-shadow: 0 0 28px rgba(255,200,90,0.75), 0 0 32px rgba(196,123,30,0.65); }
+    99% { transform: translate(-1px,0) rotate(0deg); }
+    100% { transform: translate(0,0) rotate(0deg); text-shadow: 0 0 12px rgba(196,123,30,0.5), 0 0 24px rgba(150,78,6,0.25); }
+}
+
+/* ── Header control buttons ── */
+#header-controls > button:hover,
+#header-controls > label:hover,
+#sound-menu-wrapper > button:hover {
+    border-color: rgba(196, 123, 30, 0.5) !important;
+}
+
+/* ── Glow text ── */
+.glow-text {
+    text-shadow: 0 0 10px rgba(196, 123, 30, 0.5) !important;
+}
+
+/* ── Scrollbars ── */
+.chat-container::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(150, 78, 6, 0.85), rgba(100, 50, 3, 0.85)) !important;
+    border-color: rgba(196, 123, 30, 0.35) !important;
+}
+
+/* ── Parchment panels ── */
+.parchment {
+    background: linear-gradient(180deg, rgba(22, 13, 5, 0.92), rgba(16, 9, 3, 0.82)) !important;
+    border-color: rgba(140, 78, 6, 0.28) !important;
+    border-top-color: rgba(196, 123, 30, 0.45) !important;
+    box-shadow: inset 0 1px 0 rgba(196, 123, 30, 0.08),
+                inset 0 0 24px rgba(0,0,0,0.5),
+                0 15px 35px rgba(0,0,0,0.6) !important;
+}
+
+/* ── Send button ── */
+#send-btn {
+    box-shadow: 0 12px 28px rgba(130, 60, 4, 0.38) !important;
+}
+
+/* ── Chat container ── */
+.chat-container {
+    border-color: rgba(140, 78, 6, 0.14) !important;
+    background: linear-gradient(180deg, rgba(12, 7, 2, 0.6), rgba(16, 9, 3, 0.44)) !important;
+}
+
+/* ── Portrait & entity frames ── */
+.portrait-frame {
+    border-color: #6A4408 !important;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 12px rgba(180,100,8,0.35) !important;
+}
+
+/* ── Loading chip (DM thinks) ── */
+.loading-chip {
+    border-color: rgba(196, 123, 30, 0.42) !important;
+    background: linear-gradient(180deg, rgba(22, 13, 5, 0.95), rgba(16, 9, 3, 0.88)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 12px 30px rgba(6,3,1,0.45) !important;
+}
+.loading-chip-dot {
+    background: linear-gradient(135deg, #D4A420, #C47B1E) !important;
+    box-shadow: 0 0 0 0 rgba(196, 123, 30, 0.55) !important;
+}
+@keyframes loadingPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(196, 123, 30, 0.48); }
+    70%  { box-shadow: 0 0 0 12px rgba(196, 123, 30, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(196, 123, 30, 0); }
+}
+.text-violet-300\/80 { color: rgba(196, 123, 30, 0.85) !important; }
+
+/* ── DM typing orb ── */
+.dm-typing-orb {
+    background: radial-gradient(circle at 35% 30%, #FEF3CC, #D4A420 45%, #8A5210) !important;
+    box-shadow: 0 0 10px 3px rgba(196,123,30,0.6),
+                0 0 28px 6px rgba(150,78,6,0.28),
+                inset 0 1px 2px rgba(255,255,255,0.4) !important;
+}
+@keyframes dmOrbFloat {
+    0%, 100% {
+        transform: translateY(0);
+        box-shadow: 0 0 10px 3px rgba(196,123,30,0.6),
+                    0 0 28px 6px rgba(150,78,6,0.28),
+                    inset 0 1px 2px rgba(255,255,255,0.4);
+    }
+    50% {
+        transform: translateY(-9px);
+        box-shadow: 0 0 18px 6px rgba(212,164,32,0.78),
+                    0 0 44px 10px rgba(196,123,30,0.35),
+                    inset 0 1px 2px rgba(255,255,255,0.5);
+    }
+}
+
+/* ── Chat bubbles ── */
+.chat-bubble {
+    border-radius: 0.45rem !important;
+    border-color: rgba(140, 78, 6, 0.16) !important;
+}
+.chat-bubble-dm {
+    background: linear-gradient(180deg, rgba(22, 13, 5, 0.88), rgba(16, 9, 3, 0.76)) !important;
+}
+.chat-bubble-player {
+    background: linear-gradient(180deg, rgba(44, 24, 6, 0.62), rgba(30, 14, 3, 0.48)) !important;
+    border-color: rgba(196, 123, 30, 0.28) !important;
+}
+.dm-message-card {
+    background: linear-gradient(180deg, rgba(18, 11, 4, 0.85), rgba(14, 8, 3, 0.7)) !important;
+}
+
+/* ── Chat sender labels ── */
+.chat-sender { color: #D4A420 !important; }
+.chat-sender-dm { color: #C47B1E !important; }
+.chat-turn-label { color: rgba(212, 164, 32, 0.85) !important; }
+
+/* ── Suggestion options ── */
+.suggestion-option {
+    background: linear-gradient(180deg, rgba(22, 13, 5, 0.85), rgba(16, 9, 3, 0.7)) !important;
+    border-color: rgba(140, 78, 6, 0.28) !important;
+    color: #DDD0B8 !important;
+    border-radius: 0.35rem !important;
+}
+.suggestion-option:hover {
+    border-color: rgba(196, 123, 30, 0.52) !important;
+    background: linear-gradient(180deg, rgba(34, 20, 6, 0.92), rgba(26, 14, 4, 0.85)) !important;
+    box-shadow: -4px 0 12px rgba(196, 123, 30, 0.2) !important;
+}
+.suggestion-icon {
+    background: rgba(150, 78, 6, 0.18) !important;
+    color: #D4A420 !important;
+}
+
+/* ── Toast notifications ── */
+.toast {
+    background: rgba(20, 12, 4, 0.95) !important;
+    border-color: rgba(196, 123, 30, 0.42) !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.65),
+                0 0 16px rgba(196, 123, 30, 0.18) !important;
+}
+
+/* ── Sidebar ── */
+#sidebar {
+    border-left-color: rgba(140, 78, 6, 0.15) !important;
+}
+.dice-sidebar-panel, .system-sidebar-panel {
+    background: linear-gradient(180deg, rgba(18, 11, 4, 0.96), rgba(14, 8, 3, 0.92)) !important;
+    border-color: rgba(140, 78, 6, 0.3) !important;
+}
+.dice-feed-card {
+    background: linear-gradient(180deg, rgba(18, 11, 4, 0.8), rgba(14, 8, 3, 0.62)) !important;
+    border-color: rgba(100, 55, 4, 0.4) !important;
+    border-radius: 0.45rem !important;
+}
+.dice-feed-name { color: #D4A420 !important; }
+
+/* ── System feed ── */
+.system-feed-item {
+    background: linear-gradient(180deg, rgba(16, 10, 3, 0.86), rgba(12, 7, 2, 0.68)) !important;
+    border-color: rgba(100, 55, 4, 0.32) !important;
+    border-radius: 0.45rem !important;
+}
+.system-feed-neutral {
+    border-color: rgba(196, 123, 30, 0.28) !important;
+    background: linear-gradient(180deg, rgba(30, 16, 4, 0.62), rgba(18, 9, 2, 0.52)) !important;
+}
+
+/* ── Entry/Lobby card ── */
+.entry-card, .pregame-card, .pg2-card {
+    background: radial-gradient(circle at 50% 0%, rgba(180, 100, 10, 0.1), transparent 42%),
+                linear-gradient(180deg, rgba(22, 14, 7, 0.97), rgba(14, 9, 4, 0.98)) !important;
+    border-color: rgba(150, 78, 6, 0.38) !important;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7),
+                inset 0 1px 0 rgba(196, 123, 30, 0.14) !important;
+    border-radius: 0.6rem !important;
+}
+
+/* ── Entry buttons ── */
+.entry-primary-btn, .pregame-start-btn {
+    background: linear-gradient(135deg, #C47B1E, #8A5210) !important;
+    color: #F5E8D0 !important;
+    box-shadow: 0 14px 32px rgba(196, 123, 30, 0.32) !important;
+    border-radius: 0.35rem !important;
+}
+.entry-secondary-btn, .entry-join-btn, .pregame-ready-btn, .pregame-ghost-btn {
+    background: rgba(20, 12, 4, 0.9) !important;
+    border-color: rgba(140, 78, 6, 0.32) !important;
+    color: #DDD0B8 !important;
+    border-radius: 0.35rem !important;
+}
+.entry-primary-btn:hover, .pregame-start-btn:hover {
+    background: linear-gradient(135deg, #D4872A, #9A6018) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 38px rgba(196, 123, 30, 0.42) !important;
+}
+.entry-secondary-btn:hover, .entry-join-btn:hover {
+    border-color: rgba(196, 123, 30, 0.52) !important;
+    background: rgba(26, 16, 6, 0.94) !important;
+}
+.entry-input {
+    background: rgba(10, 6, 2, 0.88) !important;
+    border-color: rgba(140, 78, 6, 0.24) !important;
+    color: #DDD0B8 !important;
+    border-radius: 0.3rem !important;
+}
+.entry-input:focus {
+    border-color: rgba(196, 123, 30, 0.65) !important;
+    box-shadow: 0 0 0 3px rgba(196, 123, 30, 0.14) !important;
+}
+.entry-join-card {
+    background: rgba(16, 10, 3, 0.68) !important;
+    border-color: rgba(140, 78, 6, 0.22) !important;
+    border-radius: 0.4rem !important;
+}
+.entry-title, .pregame-title, .pg2-title { color: #D4A420 !important; }
+.entry-subtitle, .pregame-subtitle, .entry-footnote,
+.entry-modal-copy, .entry-modal-hint, .pregame-player-meta,
+.pregame-hero-meta, .pregame-wait-note { color: #7A6A54 !important; }
+.entry-label, .pregame-panel-title, .pregame-kicker,
+.entry-join-copy { color: #A89070 !important; }
+.entry-copy-chip {
+    border-color: rgba(196, 123, 30, 0.2) !important;
+    background: rgba(16, 10, 3, 0.58) !important;
+    border-radius: 0.35rem !important;
+}
+.entry-copy-chip i { color: #D4A420 !important; }
+
+/* ── Entry modal ── */
+.entry-modal {
+    background: linear-gradient(180deg, rgba(20, 12, 4, 0.99), rgba(14, 8, 3, 0.97)) !important;
+    border-color: rgba(196, 123, 30, 0.28) !important;
+    border-radius: 0.5rem !important;
+}
+.entry-modal-title { color: #D4A420 !important; }
+.entry-provider-card {
+    background: rgba(16, 10, 3, 0.85) !important;
+    border-color: rgba(140, 78, 6, 0.2) !important;
+    border-radius: 0.4rem !important;
+}
+.entry-provider-card.is-active {
+    border-color: rgba(212, 164, 32, 0.85) !important;
+    background: linear-gradient(135deg, rgba(100, 50, 6, 0.55), rgba(16, 10, 3, 0.92)) !important;
+    color: #F0DDA8 !important;
+    box-shadow: 0 0 0 1px rgba(212, 164, 32, 0.22) !important;
+}
+
+/* ── Pregame panels ── */
+.pregame-panel, .pg2-panel {
+    background: rgba(16, 10, 3, 0.68) !important;
+    border-color: rgba(140, 78, 6, 0.12) !important;
+    border-radius: 0.45rem !important;
+}
+.pg2-player-row {
+    background: rgba(10, 6, 2, 0.58) !important;
+    border-color: rgba(140, 78, 6, 0.1) !important;
+    border-radius: 0.35rem !important;
+}
+.pg2-player-row.is-me {
+    border-color: rgba(212, 164, 32, 0.2) !important;
+    background: rgba(212, 164, 32, 0.05) !important;
+}
+.pg2-avatar {
+    background: linear-gradient(135deg, rgba(150, 78, 6, 0.42), rgba(196, 123, 30, 0.42)) !important;
+    border-color: rgba(150, 78, 6, 0.35) !important;
+    color: #D4A420 !important;
+}
+.pg2-hero-card {
+    background: rgba(212, 164, 32, 0.04) !important;
+    border-color: rgba(212, 164, 32, 0.16) !important;
+    border-radius: 0.45rem !important;
+}
+.pg2-hero-avatar {
+    background: radial-gradient(circle, rgba(196,123,30,0.22), rgba(100, 50, 6, 0.18)) !important;
+    border-color: rgba(196, 123, 30, 0.28) !important;
+    color: #D4A420 !important;
+}
+.pg2-hero-card-small {
+    background: rgba(255,255,255,0.02) !important;
+    border-color: rgba(140, 78, 6, 0.16) !important;
+    border-radius: 0.35rem !important;
+}
+.pg2-hero-card-small:hover {
+    background: rgba(255,255,255,0.04) !important;
+    border-color: rgba(196, 123, 30, 0.28) !important;
+}
+.pg2-panel-title {
+    border-bottom-color: rgba(140, 78, 6, 0.1) !important;
+    color: #7A6A54 !important;
+}
+.pg2-room-chip {
+    background: rgba(16, 10, 3, 0.65) !important;
+    border-color: rgba(140, 78, 6, 0.16) !important;
+}
+.pg2-room-code { color: #D4A420 !important; }
+
+/* ── Notification cards ── */
+.notification-card {
+    background: linear-gradient(180deg, rgba(16, 10, 3, 0.94), rgba(14, 8, 2, 0.8)) !important;
+    border-color: rgba(100, 55, 4, 0.44) !important;
+    border-radius: 0.5rem !important;
+}
+
+/* ── TTS button ── */
+.tts-btn { color: rgba(196, 123, 30, 0.48) !important; }
+.tts-btn:hover { color: rgba(196, 123, 30, 0.92) !important; }
+.tts-btn.tts-active { color: #C47B1E !important; }
+
+/* ── Journal ── */
+.journal-entry { border-left-color: #8A5210 !important; }
+
+/* ── Dice modal ── */
+.dice-crit-glow {
+    text-shadow: 0 0 20px rgba(212, 164, 32, 0.85),
+                 0 0 40px rgba(196, 123, 30, 0.45) !important;
+}
+
+/* ── Global rounded → angular conversion ── */
+.chat-bubble-dm, .chat-bubble-player,
+.notification-card, .dice-feed-card,
+.system-feed-item, .entry-card,
+.entry-modal, .pregame-card, .pg2-card {
+    border-radius: 0.45rem;
+}
+
+/* ── Collect-all dropdown ── */
+#collect-all-select {
+    background: linear-gradient(180deg, rgba(10, 6, 2, 0.68), rgba(16, 10, 3, 0.72)) !important;
+    border-color: rgba(196, 123, 30, 0.58) !important;
+    box-shadow: 0 8px 20px rgba(196, 123, 30, 0.2) !important;
+    color: #F0DDA8 !important;
+}
+#collect-all-select:focus, #collect-all-select:hover {
+    border-color: rgba(212, 164, 32, 0.9) !important;
+    box-shadow: 0 12px 26px rgba(212, 164, 32, 0.32) !important;
+}
+
+/* ── Action area active turn ── */
+#action-area.mp-active-turn {
+    border-color: rgba(34, 197, 94, 0.4) !important;
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.24),
+                0 0 24px rgba(34, 197, 94, 0.2) !important;
+}
+
+/* ── Settings panel dropdown ── */
+#settings-panel {
+    background: rgba(14, 8, 2, 0.97) !important;
+    border-color: rgba(140, 78, 6, 0.2) !important;
+    border-radius: 0.5rem !important;
+}
+
+/* ── Sidebar separator ── */
+#sidebar .border-b { border-bottom-color: rgba(140, 78, 6, 0.18) !important; }
+
+/* ── Font override for all UI text ── */
+.tab-btn, .dice-sidebar-kicker, .system-sidebar-kicker,
+.dice-feed-die, .chat-sender, .chat-sender-dm,
+.entry-label, .pg2-panel-title, .pg2-kicker {
+    font-family: 'Crimson Text', Georgia, serif !important;
+}
+
+/* ── Loot section ── */
+#loot-drop-section::after {
+    border-color: rgba(196, 123, 30, 0.28) !important;
+    box-shadow: inset 0 0 20px rgba(196, 123, 30, 0.1) !important;
+}
+
+/* ── Dice feed empty state ── */
+.dice-feed-empty {
+    border-color: rgba(100, 55, 4, 0.5) !important;
+    background: rgba(8, 4, 1, 0.32) !important;
+}
+
+/* ── Hero detail panel ── */
+.hero-details-stack > div {
+    background: linear-gradient(180deg, rgba(20, 12, 4, 0.82), rgba(16, 9, 3, 0.66)) !important;
+    border-color: rgba(140, 78, 6, 0.2) !important;
+}
+.hero-detail-header-bg {
+    filter: blur(8px) brightness(0.4) saturate(0.7) !important;
+}
+
+/* ── Input/select global colors ── */
+input[type="text"], input[type="password"], input[type="number"],
+input[type="range"], textarea, select {
+    border-color: rgba(140, 78, 6, 0.28) !important;
+    background: rgba(8, 4, 1, 0.6) !important;
+}
+input::placeholder, textarea::placeholder {
+    color: rgba(122, 106, 84, 0.72) !important;
+}
+
+/* ── Scrollbar for custom-scrollbar class ── */
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(100, 55, 4, 0.7) !important;
+}
+
+/* ── DM question line ── */
+.dm-question-line {
+    background: rgba(22, 13, 4, 0.45) !important;
+    border-color: rgba(150, 78, 6, 0.2) !important;
+}
+
+/* ── Loading chip violet text override ── */
+#loading-spinner .text-\[9px\] {
+    color: rgba(212, 164, 32, 0.85) !important;
+}
+
+/* ── Subdue the animated background to not clash with warm theme ── */
+#animated-bg {
+    opacity: 0.06 !important;
+    filter: saturate(0.1) brightness(0.35) !important;
 }
