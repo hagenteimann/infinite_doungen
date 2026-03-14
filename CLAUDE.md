@@ -86,13 +86,3 @@ When adding a new dispatch action: add the case to `js/state.js` AND write a tes
 ## Deployment
 
 GitHub Actions (`deploy.yml`) builds on push to `main` and deploys to GitHub Pages. Build output goes to `dist/` with base path `/infinite_doungen/`.
-
-## UI Design Direction
-
-**Theme: "Forge & Stone"** — dark amber/warm aesthetic. Do NOT revert to generic AI aesthetics.
-
-- **Fonts:** `Cormorant Garamond` (italic serif, headers + `.cinzel` class) + `Crimson Text` (body). Imported in `index.html`. Do not swap back to Cinzel/Inter.
-- **Accent color:** `#C47B1E` forge amber (CSS var `--accent`). Purple (`#a855f7`) is gone — do not reintroduce it anywhere.
-- **Background:** Warm near-black (`#100A04`) with amber glow from bottom. Not blue-purple.
-- **Tailwind classes** in HTML use `amber-*` / `orange-*` — not `purple-*` / `indigo-*`.
-- **Border radius:** Angular (`0.3–0.5rem`) — avoid adding large round corners (`rounded-xl`, `rounded-full`) to new components.

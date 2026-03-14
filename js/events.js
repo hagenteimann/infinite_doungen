@@ -59,7 +59,13 @@ export function initEvents() {
             'toggle-settings-panel': () => document.getElementById('settings-panel')?.classList.toggle('hidden'),
             'open-sidebar': () => document.getElementById('sidebar')?.classList.remove('translate-x-full'),
             'close-sidebar': () => document.getElementById('sidebar')?.classList.add('translate-x-full'),
-            'toggle-mobile-actions': () => _toggleMobileActions(),
+            'toggle-mobile-actions': () => {
+                const row = document.getElementById('action-buttons-row');
+                const chevron = document.getElementById('mobile-actions-chevron');
+                if (!row) return;
+                const nowHidden = row.classList.toggle('hidden');
+                if (chevron) chevron.className = `fas fa-chevron-${nowHidden ? 'up' : 'down'} text-[10px]`;
+            },
             'toggle-verbose-mode': () => Engine.toggleVerboseMode(),
 
             'camp': () => Engine.camp(),
@@ -232,24 +238,22 @@ export function initEvents() {
     }
 
     // Swipe-up on action area opens mobile actions panel
-    const _mobileBreakpoint = window.matchMedia('(max-width: 767px)');
-    const _actionRow = document.getElementById('action-buttons-row');
     let _swipeStartY = 0;
     document.addEventListener('touchstart', e => { _swipeStartY = e.touches[0].clientY; }, { passive: true });
     document.addEventListener('touchend', e => {
-        if (!_mobileBreakpoint.matches || !_actionRow) return;
+        if (window.innerWidth >= 768) return;
         const dy = _swipeStartY - e.changedTouches[0].clientY;
-        if (dy > 50 && _actionRow.classList.contains('hidden')) _toggleMobileActions();
-        else if (dy < -50 && !_actionRow.classList.contains('hidden')) _toggleMobileActions();
+        const row = document.getElementById('action-buttons-row');
+        const chevron = document.getElementById('mobile-actions-chevron');
+        if (!row) return;
+        if (dy > 50 && row.classList.contains('hidden')) {
+            row.classList.remove('hidden');
+            if (chevron) chevron.className = 'fas fa-chevron-down text-[10px]';
+        } else if (dy < -50 && !row.classList.contains('hidden')) {
+            row.classList.add('hidden');
+            if (chevron) chevron.className = 'fas fa-chevron-up text-[10px]';
+        }
     }, { passive: true });
-}
-
-function _toggleMobileActions() {
-    const row = document.getElementById('action-buttons-row');
-    const chevron = document.getElementById('mobile-actions-chevron');
-    if (!row) return;
-    const nowHidden = row.classList.toggle('hidden');
-    if (chevron) chevron.className = `fas fa-chevron-${nowHidden ? 'up' : 'down'} text-[10px]`;
 }
 
 window.addEventListener('keydown', (e) => {
