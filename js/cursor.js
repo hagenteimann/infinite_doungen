@@ -20,7 +20,6 @@ export function initTargetCursor(selector = 'button, a, [data-action], .pvp-acti
     let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
     let curX = mouseX, curY = mouseY;
     let currentTarget = null;
-    let spinAngle = 0;
 
     // Current corner offsets from cursor center
     const pos = [
@@ -49,11 +48,7 @@ export function initTargetCursor(selector = 'button, a, [data-action], .pvp-acti
 
         if (currentTarget && !document.contains(currentTarget)) currentTarget = null;
 
-        spinAngle = (spinAngle + 1.2) % 360;
-        const rad = spinAngle * (Math.PI / 180);
-        const cos = Math.cos(rad), sin = Math.sin(rad);
-
-        // Base square corners (fixed offsets, rotated as a rigid unit)
+        // Static corner offsets — no rotation to avoid problematic shapes
         const base = [
             { x: -18, y: -18 },
             { x:  18, y: -18 },
@@ -76,9 +71,8 @@ export function initTargetCursor(selector = 'button, a, [data-action], .pvp-acti
                 tx = targets[i].x;
                 ty = targets[i].y;
             } else {
-                // Rotate the whole square as one rigid body
-                tx = base[i].x * cos - base[i].y * sin;
-                ty = base[i].x * sin + base[i].y * cos;
+                tx = base[i].x;
+                ty = base[i].y;
             }
 
             pos[i].x = lerp(pos[i].x, tx, 0.1);
