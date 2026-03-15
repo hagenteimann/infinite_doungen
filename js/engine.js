@@ -1663,16 +1663,14 @@ getPregameStatus() {
         const shell = document.getElementById('pvp-arena-shell');
         if (!shell) return;
         
-        // Only the host needs an API key (the host mediates combat)
-        if (!API.getKey()) {
-            State.pendingApiMode = 'pvp';
-            State.selectedApiProvider = State.selectedApiProvider || API.getProvider();
-            State.pendingApiKeyValue = API.getKey(State.selectedApiProvider) || '';
-            State.pendingApiModelText = State.selectedApiProvider === 'openrouter' ? (API.getOrModelText() || 'arcee-ai/trinity-large-preview:free') : '';
-            State.sessionPhase = 'api_gate';
-            UI.updateAll();
-            return;
-        }
+        // Always ask for API key/provider before entering the arena
+        State.pendingApiMode = 'pvp';
+        State.selectedApiProvider = API.getProvider();
+        State.pendingApiKeyValue = API.getKey(State.selectedApiProvider) || '';
+        State.pendingApiModelText = State.selectedApiProvider === 'openrouter' ? (API.getOrModelText() || 'arcee-ai/trinity-large-preview:free') : '';
+        State.sessionPhase = 'api_gate';
+        UI.updateAll();
+        return;
         
         // If not connected, host a room first (name will be updated on hero import)
         if (!Network.isConnected()) {
