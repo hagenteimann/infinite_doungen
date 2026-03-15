@@ -173,6 +173,15 @@ export function initEvents() {
                 }
                 UI.addChatLog('System', 'Ungueltiges Format. Nutze: Frage | Option1, Option2, Option3');
             },
+
+            // Hero Generator
+            'open-hero-generator': () => UI.showHeroGenerator(),
+            'close-generator': () => UI.closeHeroGenerator(),
+            'gen-stat-plus': () => UI.changeGeneratorStat(actionEl.dataset.stat, 1),
+            'gen-stat-minus': () => UI.changeGeneratorStat(actionEl.dataset.stat, -1),
+            // Re-using gen-portrait for the generator specifically
+            'gen-export-hero': () => UI.exportGeneratorHero(),
+            'gen-finalize-hero': () => UI.finalizeGeneratorHero(),
         };
 
         ACTIONS[action]?.();

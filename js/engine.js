@@ -1134,9 +1134,12 @@ getPregameStatus() {
         return API.generateImageWithFallbacks(prompts);
     },
 
-    generatePortrait: async function () {
-        const a = DOM.newAppearance.value, c = DOM.newClass.value;
-        DOM.genImgBtn.innerText = 'Laedt...';
+    generatePortrait: async function (charData = null) {
+        const a = charData ? charData.appearance : DOM.newAppearance.value;
+        const c = charData ? charData.class : DOM.newClass.value;
+        
+        if (!charData) DOM.genImgBtn.innerText = 'Laedt...';
+        
         const primaryPrompt = `Fantasy portrait, American shot, waist-up, highly detailed, ${c}${a ? ', ' + a : ''}`.split('\n').join(' ').trim();
         const prompts = [
             primaryPrompt,
@@ -1149,24 +1152,29 @@ getPregameStatus() {
             State.pendingPortraitRequestId = 'portrait-' + Date.now().toString(36);
             UI.showLoader(true, 'Host generiert Portraet...');
             Network.requestPortraitGeneration(State.pendingPortraitRequestId, prompts);
-            DOM.saveCharBtn.disabled = false;
-            DOM.saveCharBtn.classList.remove('opacity-50');
+            if (!charData) {
+                DOM.saveCharBtn.disabled = false;
+                DOM.saveCharBtn.classList.remove('opacity-50');
+            }
             return;
         }
 
         const pData = await this.generatePortraitForPrompts(prompts);
-        State.tempPortraitData = pData;
-
-        if (State.tempPortraitData) {
-            DOM.generatedPortrait.src = State.tempPortraitData;
-            DOM.portraitPreview.classList.remove('hidden');
-        } else {
-            DOM.portraitPreview.classList.add('hidden');
+        
+        if (!charData) {
+            State.tempPortraitData = pData;
+            if (State.tempPortraitData) {
+                DOM.generatedPortrait.src = State.tempPortraitData;
+                DOM.portraitPreview.classList.remove('hidden');
+            } else {
+                DOM.portraitPreview.classList.add('hidden');
+            }
+            DOM.saveCharBtn.disabled = false;
+            DOM.saveCharBtn.classList.remove('opacity-50');
+            DOM.genImgBtn.innerText = State.imageQuotaExceeded ? 'Ohne Portraet' : 'Portraet';
         }
-
-        DOM.saveCharBtn.disabled = false;
-        DOM.saveCharBtn.classList.remove('opacity-50');
-        DOM.genImgBtn.innerText = State.imageQuotaExceeded ? 'Ohne Portraet' : 'Portraet';
+        
+        return pData;
     },
 
     finalizeCharacter: function () {

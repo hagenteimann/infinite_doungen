@@ -141,7 +141,11 @@ export const initDOM = () => {
         'tab-content-party', 'tab-content-dice', 'tab-content-system', 'tab-content-journal', 'tab-content-stats',
         'tab-party', 'tab-dice', 'tab-system', 'tab-journal', 'tab-stats',
         'topbar-thinking-status', 'topbar-thinking-text',
-        'enemy-lightbox', 'enemy-lightbox-image', 'enemy-lightbox-title'
+        'enemy-lightbox', 'enemy-lightbox-image', 'enemy-lightbox-title',
+        'hero-generator-modal', 'gen-api-key', 'gen-name', 'gen-class', 
+        'gen-appearance', 'gen-points-left', 'val-STR', 'val-DEX', 
+        'val-INT', 'val-CON', 'gen-portrait-img', 'gen-portrait-placeholder', 
+        'btn-gen-portrait'
     ];
     ids.forEach(id => {
         const camelCaseId = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
@@ -979,6 +983,8 @@ export const UI = {
             </div>` : '';
         return `
             <div class="entry-shell">
+                <img src="infinite%20dungeons.png" class="entry-logo-image" alt="Infinite Dungeons Logo">
+                
                 <div class="entry-card">
                     <div class="entry-cta-stack">
                         <button type="button" data-action="entry-start-solo" class="entry-primary-btn"><i class="fas fa-gamepad"></i> Solo spielen</button>
@@ -991,8 +997,21 @@ export const UI = {
                             <button type="button" data-action="entry-join-room" class="entry-join-btn"><i class="fas fa-globe"></i> Beitreten</button>
                         </div>
                     </div>
-                    <p class="entry-footnote">Als Client brauchst du keinen API-Key - Anfragen laufen ueber den Host.</p>
                 </div>
+
+                <!-- Hero Generator Section -->
+                <div class="entry-generator-card">
+                    <div class="generator-portrait-circle">
+                         <i class="fas fa-user-shield"></i>
+                    </div>
+                    <h3 class="cinzel text-amber-400 text-sm mb-1">Helden-Generator</h3>
+                    <p class="text-[10px] text-slate-400 mb-4 px-4">Erstelle deinen eigenen Helden mit KI-Unterstützung und exportiere ihn.</p>
+                    <button type="button" data-action="open-hero-generator" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2.5 text-xs text-slate-200 transition-all">
+                        <i class="fas fa-plus-circle mr-1 text-amber-500"></i> Helden generieren
+                    </button>
+                </div>
+
+                <p class="entry-footnote">Als Client brauchst du keinen API-Key - Anfragen laufen ueber den Host.</p>
                 ${apiOverlay}
             </div>`;
     },
@@ -1177,6 +1196,165 @@ export const UI = {
         document.getElementById('ability-replace-modal').classList.remove('hidden');
     },
     closeCreator: function () { DOM.creatorModal.classList.add('hidden'); },
+
+    _generatorState: {
+        points: 20,
+        stats: { STR: 10, DEX: 10, INT: 10, CON: 10 },
+        portrait: null
+    },
+
+    showHeroGenerator: function () {
+        DOM.heroGeneratorModal.classList.remove('hidden');
+        this._generatorState = {
+            points: 20,
+            stats: { STR: 10, DEX: 10, INT: 10, CON: 10 },
+            portrait: null
+        };
+        // Pre-fill API key from State if available
+        if (State.apiKeys && State.apiKeys.gemini) {
+            DOM.genApiKey.value = State.apiKeys.gemini;
+        }
+        this.updateGeneratorUI();
+    },
+
+    closeHeroGenerator: function () {
+        DOM.heroGeneratorModal.classList.add('hidden');
+    },
+
+    updateGeneratorUI: function () {
+        DOM.genPointsLeft.innerText = `Punkte: ${this._generatorState.points}`;
+        for (const [stat, val] of Object.entries(this._generatorState.stats)) {
+            const el = document.getElementById(`val-${stat}`);
+            if (el) el.innerText = val;
+        }
+        
+        // Disable plus buttons if points are 0
+        document.querySelectorAll('[data-action="gen-stat-plus"]').forEach(btn => {
+            btn.disabled = this._generatorState.points <= 0;
+        });
+        
+        // Disable minus if stat is 8 (minimum)
+        document.querySelectorAll('[data-action="gen-stat-minus"]').forEach(btn => {
+            const stat = btn.getAttribute('data-stat');
+            btn.disabled = this._generatorState.stats[stat] <= 8;
+        });
+
+        if (this._generatorState.portrait) {
+            DOM.genPortraitImg.src = this._generatorState.portrait;
+            DOM.genPortraitImg.classList.remove('hidden');
+            DOM.genPortraitPlaceholder.classList.add('hidden');
+        } else {
+            DOM.genPortraitImg.classList.add('hidden');
+            DOM.genPortraitPlaceholder.classList.remove('hidden');
+        }
+    },
+
+    changeGeneratorStat: function (stat, delta) {
+        const current = this._generatorState.stats[stat];
+        if (delta > 0 && this._generatorState.points > 0 && current < 18) {
+            this._generatorState.stats[stat]++;
+            this._generatorState.points--;
+        } else if (delta < 0 && current > 8) {
+            this._generatorState.stats[stat]--;
+            this._generatorState.points++;
+        }
+        this.updateGeneratorUI();
+        Sound.play('click');
+    },
+
+    genPortrait: async function () {
+        const name = DOM.genName.value;
+        const cls = DOM.genClass.value;
+        const app = DOM.genAppearance.value;
+        const apiKey = DOM.genApiKey.value;
+
+        if (!name || !cls) {
+            this.showToast("Bitte Name und Klasse angeben!");
+            return;
+        }
+
+        if (apiKey) {
+            // Temporarily set the key for generation if provided
+            if (!State.apiKeys) State.apiKeys = {};
+            State.apiKeys.gemini = apiKey;
+        }
+
+        DOM.btnGenPortrait.disabled = true;
+        DOM.btnGenPortrait.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generiere...';
+        
+        try {
+            const prompt = `Fantasy portrait of a ${cls} named ${name}. Appearance: ${app}. Premium D&D art style, highly detailed.`;
+            const url = await Engine.generatePortrait({ name, class: cls, appearance: app });
+            if (url) {
+                this._generatorState.portrait = url;
+                this.updateGeneratorUI();
+            }
+        } catch (e) {
+            console.error("Portrait gen failed", e);
+            this.showToast("Generierung fehlgeschlagen.");
+        } finally {
+            DOM.btnGenPortrait.disabled = false;
+            DOM.btnGenPortrait.innerHTML = '<i class="fas fa-magic"></i> Portrait generieren';
+        }
+    },
+
+    finalizeGeneratorHero: function () {
+        const name = DOM.genName.value;
+        const cls = DOM.genClass.value;
+        const app = DOM.genAppearance.value;
+        
+        if (!name) {
+            this.showToast("Bitte gib einen Namen ein!");
+            return;
+        }
+
+        const hero = {
+            id: crypto.randomUUID(),
+            name,
+            class: cls,
+            appearance: app,
+            portrait: this._generatorState.portrait,
+            level: 1,
+            hp: 20 + (this._generatorState.stats.CON - 10),
+            maxHp: 20 + (this._generatorState.stats.CON - 10),
+            xp: 0,
+            stats: { ...this._generatorState.stats },
+            inventory: ["Heiltrank"],
+            abilities: [],
+            equipment: { weapon: null, armor: null, accessory: null }
+        };
+
+        // If we have an active game, add to party
+        if (State.party) {
+            dispatch({ type: 'ADD_PARTY_MEMBER', character: hero });
+        } else {
+            // Otherwise just save it to local storage for "Roster" (if that exists)
+            // For now, let's just toast
+            console.log("Generated Hero:", hero);
+        }
+
+        this.showToast(`${name} wurde erstellt!`);
+        this.closeHeroGenerator();
+    },
+
+    exportGeneratorHero: function () {
+        const name = DOM.genName.value || "Held";
+        const hero = {
+            name,
+            class: DOM.genClass.value,
+            appearance: DOM.genAppearance.value,
+            portrait: this._generatorState.portrait,
+            stats: { ...this._generatorState.stats }
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(hero, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href",     dataStr);
+        downloadAnchorNode.setAttribute("download", name.toLowerCase().replace(/\s+/g, '_') + ".json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    },
     applyPreset: function (k) { DOM.newName.value = k; DOM.newClass.value = PRESETS[k].class; DOM.newAppearance.value = PRESETS[k].appearance; },
 
     closeCrafting: function () { DOM.craftingModal.classList.add('hidden'); },
