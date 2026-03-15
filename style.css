@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+.hidden { display: none !important; }
+
 :root {
     --ink: #e2e8f0;
     --muted: #94a3b8;
