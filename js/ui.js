@@ -471,14 +471,19 @@ export const UI = {
 
     _updateAllInternal: function () {
         this.renderLobbyView();
-        this.toggleViews(!!State.gameStarted || State.sessionPhase === 'in_game');
-        
-        // PvP Arena Display
+
+        // PvP Arena Display — must run before toggleViews to properly gate the lobby
         const pvpShell = document.getElementById('pvp-arena-shell');
-        if (pvpShell) {
-            const isPvP = State.sessionPhase === 'pvp_combat';
-            pvpShell.classList.toggle('hidden', !isPvP);
-            if (isPvP) Engine.updatePvPUI();
+        const isPvP = State.sessionPhase === 'pvp_combat';
+        if (pvpShell) pvpShell.classList.toggle('hidden', !isPvP);
+
+        if (isPvP) {
+            // PvP shell is a full-screen overlay — hide everything behind it
+            DOM.lobbyView?.classList.add('hidden');
+            DOM.actionArea?.classList.add('hidden');
+            Engine.updatePvPUI();
+        } else {
+            this.toggleViews(!!State.gameStarted || State.sessionPhase === 'in_game');
         }
         const myCharId = State._mpMyCharId || null;
         const sorted = [...State.party].sort((a, b) => {

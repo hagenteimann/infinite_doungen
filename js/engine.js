@@ -8,7 +8,7 @@ import { API } from './api.js';
 import { PartyManager } from './party.js';
 import { CombatManager } from './combat.js';
 import { TagParser } from './tagparser.js';
-import { repairDisplayText, repairStoredText, sanitize, validateSaveData, validateHeroData } from './sanitize.js';
+import { repairDisplayText, repairStoredText, sanitize, sanitizeStrict, validateSaveData, validateHeroData } from './sanitize.js';
 import { Network } from './network.js';
 import {
     EQUIPMENT_LIMIT, ABILITY_LIMIT, SUMMON_COOLDOWN,
@@ -1659,8 +1659,8 @@ getPregameStatus() {
         const shell = document.getElementById('pvp-arena-shell');
         if (!shell) return;
         
-        // Ensure API Key exists (especially for Host who mediates)
-        if (!API.getKey()) {
+        // Only the host needs an API key (the host mediates combat)
+        if (Network.isHost() && !API.getKey()) {
             UI.showApiGate();
             return;
         }
@@ -1708,44 +1708,55 @@ getPregameStatus() {
     _renderPvPSetupButtons: function () {
         const log = document.getElementById('pvp-log');
         if (!log) return;
-        
+
         const isHost = Network.isHost();
         const isClient = Network.isClient();
         const p1 = State.pvp.player1;
         const p2 = State.pvp.player2;
 
-        let html = '<div class="p-4 space-y-4 text-center">';
-        
+        // Prepend existing log entries above the setup buttons
+        const entries = State.pvp.combatLog
+            .map(m => `<div class="arena-log-entry">${sanitize(m)}</div>`)
+            .join('');
+
+        let btns = '<div class="p-4 space-y-4 text-center">';
+
         if (isHost) {
-            if (!p1) html += `<button id="pvp-import-p1" class="pvp-action-btn bg-amber-600/50"><i class="fas fa-upload mr-2"></i> Meinen Helden laden (P1)</button>`;
-            else html += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Dein Held ist bereit</div>`;
-            
-            if (!p2) html += `<div class="text-slate-500 text-xs italic">Warte auf Gegner...</div>`;
-            else html += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Gegner ist bereit (${p2.name})</div>`;
+            if (!p1) btns += `<button id="pvp-import-p1" class="pvp-action-btn bg-amber-600/50"><i class="fas fa-upload mr-2"></i> Meinen Helden laden (P1)</button>`;
+            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Dein Held bereit: ${p1.name}</div>`;
+
+            if (!p2) btns += `<div class="text-slate-500 text-xs italic">Warte auf Gegner...</div>`;
+            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Gegner bereit: ${p2.name}</div>`;
         } else if (isClient) {
-            if (!p2) html += `<button id="pvp-import-p2" class="pvp-action-btn bg-amber-600/50"><i class="fas fa-upload mr-2"></i> Meinen Helden laden (P2)</button>`;
-            else html += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Dein Held ist bereit</div>`;
-            
-            if (!p1) html += `<div class="text-slate-500 text-xs italic">Warte auf Host...</div>`;
-            else html += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Host ist bereit (${p1.name})</div>`;
+            if (!p1) btns += `<div class="text-slate-500 text-xs italic">Warte auf Host...</div>`;
+            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Host bereit: ${p1.name}</div>`;
+
+            if (!p2) btns += `<button id="pvp-import-p2" class="pvp-action-btn bg-amber-600/50"><i class="fas fa-upload mr-2"></i> Meinen Helden laden</button>`;
+            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Dein Held bereit: ${p2.name}</div>`;
         } else {
-             // Solo fallback
-             html += `<div class="flex flex-col gap-2">
-                        <button id="pvp-import-p1" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 1 laden</button>
-                        <button id="pvp-import-p2" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 2 laden</button>
-                      </div>`;
+            // Solo fallback
+            btns += `<div class="flex flex-col gap-2">`;
+            if (!p1) btns += `<button id="pvp-import-p1" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 1 laden</button>`;
+            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> ${p1.name} bereit</div>`;
+            if (!p2) btns += `<button id="pvp-import-p2" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 2 laden</button>`;
+            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> ${p2.name} bereit</div>`;
+            btns += `</div>`;
         }
 
-        if (p1 && p2 && isHost) {
-            html += `<button id="pvp-start-battle" class="pvp-action-btn bg-amber-600">KAMPF STARTEN</button>`;
+        if (p1 && p2 && (isHost || !Network.isConnected())) {
+            btns += `<button id="pvp-start-battle" class="pvp-action-btn bg-amber-600">KAMPF STARTEN</button>`;
         }
-        
-        html += '</div>';
-        log.innerHTML = html;
-        
-        document.getElementById('pvp-import-p1')?.addEventListener('click', () => this._triggerPvPImport(1));
-        document.getElementById('pvp-import-p2')?.addEventListener('click', () => this._triggerPvPImport(2));
-        document.getElementById('pvp-start-battle')?.addEventListener('click', () => this.startPvPCombat());
+
+        btns += '</div>';
+        log.innerHTML = entries + btns;
+
+        // Use onclick to prevent multiple listeners accumulating
+        const p1Btn = document.getElementById('pvp-import-p1');
+        const p2Btn = document.getElementById('pvp-import-p2');
+        const startBtn = document.getElementById('pvp-start-battle');
+        if (p1Btn) p1Btn.onclick = () => this._triggerPvPImport(1);
+        if (p2Btn) p2Btn.onclick = () => this._triggerPvPImport(2);
+        if (startBtn) startBtn.onclick = () => this.startPvPCombat();
     },
 
     _triggerPvPImport: function (num) {
@@ -1877,22 +1888,30 @@ WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn a
 `;
 
             const response = await API.generateText(prompt, { systemPrompt: PVP_SYSTEM_PROMPT });
-            const data = JSON.parse(response.match(/\{[\s\S]*\}/)[0]);
+            const match = response.match(/\{[\s\S]*\}/);
+            if (!match) throw new Error('Keine gültige JSON-Antwort vom Schiedsrichter erhalten.');
+            const data = JSON.parse(match[0]);
 
             if (data.narrative) {
-                this.addPvPLog(`📖 ${data.narrative}`);
+                this.addPvPLog(`📖 ${sanitizeStrict(data.narrative)}`);
             }
 
             if (data.events) {
                 for (const ev of data.events) {
                     if (ev.type === 'SCHADEN') {
                         const target = ev.target === State.pvp.player1.name ? State.pvp.player1 : State.pvp.player2;
-                        target.hp = Math.max(0, target.hp - (ev.amount || 0));
-                        Sound.play('sword');
+                        const amount = parseInt(ev.amount, 10);
+                        if (!isNaN(amount) && amount > 0) {
+                            target.hp = Math.max(0, target.hp - amount);
+                            Sound.play('sword');
+                        }
                     } else if (ev.type === 'HEILUNG') {
                         const target = ev.target === State.pvp.player1.name ? State.pvp.player1 : State.pvp.player2;
-                        target.hp = Math.min(target.maxHp || 100, target.hp + (ev.amount || 0));
-                        Sound.play('heal');
+                        const amount = parseInt(ev.amount, 10);
+                        if (!isNaN(amount) && amount > 0) {
+                            target.hp = Math.min(target.maxHp || 100, target.hp + amount);
+                            Sound.play('heal');
+                        }
                     } else if (ev.type === 'PVP_ENDE') {
                         this.addPvPLog(`🎉 **${ev.winner} hat gewonnen!**`);
                         Sound.play('victory');
@@ -1966,45 +1985,65 @@ WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn a
 
         // Sync log
         const logContainer = document.getElementById('pvp-log');
-        if (logContainer && State.pvp.combatLog.length > 0) {
-            // Find if we are still in setup
+        if (logContainer) {
             if (!p1 || !p2) {
-                // Keep the setup buttons, but prepend log entries
-                const entries = State.pvp.combatLog.map(m => `<div class="arena-log-entry">${m}</div>`).join('');
-                if (!logContainer.dataset.setupDone) {
-                    const btnHtml = logContainer.querySelector('.space-y-4')?.outerHTML || '';
-                    logContainer.innerHTML = entries + btnHtml;
-                    
-                    // Re-bind buttons if they were just re-rendered
-                    document.getElementById('pvp-import-p1')?.addEventListener('click', () => this._triggerPvPImport(1));
-                    document.getElementById('pvp-import-p2')?.addEventListener('click', () => this._triggerPvPImport(2));
-                    document.getElementById('pvp-start-battle')?.addEventListener('click', () => this.startPvPCombat());
+                // Still in setup — always regenerate so clients/hosts see up-to-date buttons
+                this._renderPvPSetupButtons();
+            } else {
+                logContainer.innerHTML = State.pvp.combatLog
+                    .map(m => `<div class="arena-log-entry">${sanitize(m)}</div>`)
+                    .join('');
+            }
+        }
+
+        // Active card glow
+        const card1 = document.getElementById('pvp-card-p1');
+        const card2 = document.getElementById('pvp-card-p2');
+        if (card1 && card2 && p1 && p2) {
+            card1.classList.toggle('pvp-card-active', turn === 0);
+            card2.classList.toggle('pvp-card-active', turn === 1);
+        }
+
+        // Turn banner + actions vs waiting state
+        const banner = document.getElementById('pvp-turn-banner');
+        const actionsPanel = document.getElementById('pvp-actions-panel');
+        const waitingState = document.getElementById('pvp-waiting-state');
+        const waitingText = document.getElementById('pvp-waiting-text');
+        const canAct = (p1 && p2 && p1.hp > 0 && p2.hp > 0) && !State.isProcessing &&
+            ((Network.isHost() && turn === 0) || (Network.isClient() && turn === 1) || (!Network.isConnected()));
+
+        if (banner) {
+            if (p1 && p2) {
+                const activeName = turn === 0 ? p1.name : p2.name;
+                if (canAct) {
+                    banner.textContent = `⚔ Dein Zug — ${activeName}`;
+                    banner.className = 'pvp-turn-banner is-my-turn mb-3';
+                } else if (State.isProcessing) {
+                    banner.textContent = 'Schiedsrichter entscheidet...';
+                    banner.className = 'pvp-turn-banner is-waiting mb-3';
+                } else {
+                    banner.textContent = `${activeName} ist am Zug`;
+                    banner.className = 'pvp-turn-banner is-waiting mb-3';
                 }
             } else {
-                logContainer.dataset.setupDone = "true";
-                logContainer.innerHTML = State.pvp.combatLog.map(m => `<div class="arena-log-entry">${m}</div>`).join('');
+                banner.textContent = 'Warte auf Helden-Import...';
+                banner.className = 'pvp-turn-banner is-waiting mb-3';
             }
         }
 
-        // Sync turn indicator
-        const indicator = document.getElementById('pvp-turn-indicator');
-        if (indicator) {
-            if (p1 && p2) {
-                const active = turn === 0 ? p1.name : p2.name;
-                const isMyTurn = (Network.isHost() && turn === 0) || (Network.isClient() && turn === 1) || (!Network.isConnected());
-                indicator.innerText = isMyTurn ? `DEIN ZUG (${active})` : `Warte auf ${active}...`;
-                indicator.className = isMyTurn ? 'text-amber-400 font-bold' : 'text-slate-400 italic';
+        if (actionsPanel && waitingState) {
+            if (canAct) {
+                actionsPanel.classList.remove('hidden');
+                waitingState.classList.add('hidden');
             } else {
-                indicator.innerText = `Warte auf Helden-Import...`;
+                actionsPanel.classList.add('hidden');
+                waitingState.classList.remove('hidden');
+                if (waitingText && p1 && p2) {
+                    const activeName = turn === 0 ? p1.name : p2.name;
+                    waitingText.textContent = State.isProcessing ? 'KI berechnet...' : `${activeName} ist am Zug...`;
+                }
             }
         }
-
-        // Disable buttons if not turn
-        const btns = document.querySelectorAll('.pvp-actions .pvp-action-btn');
-        const canAct = (p1 && p2 && p1.hp > 0 && p2.hp > 0) && ((Network.isHost() && turn === 0) || (Network.isClient() && turn === 1) || (!Network.isConnected()));
-        btns.forEach(b => {
-            b.disabled = !canAct;
-        });
     }
 };
 
