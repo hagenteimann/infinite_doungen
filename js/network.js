@@ -28,7 +28,7 @@ const SYNC_KEYS = [
     'isBossFight', 'weather', 'momentum', 'chatHistory', 'isProcessing',
     'pendingRolls', 'recentRolls', 'pendingAbilityLearning', 'quickplayEnabled',
     'routeChoices', 'craftingIngredients', 'activeCrafterId',
-    'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'afkSince',
+    'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'afkSince', 'pvp',
 ];
 
 export const Network = {
@@ -540,6 +540,25 @@ export const Network = {
         this._sendTo(this.connections[0], {
             type: 'CHARACTER_CREATE',
             charData,
+            playerName: this.playerName,
+        });
+    },
+    
+    sendPvPHero(heroData) {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], {
+            type: 'PVP_HERO_SYNC',
+            heroData,
+            playerName: this.playerName,
+        });
+    },
+
+    sendPvPAction(actionType, value = '') {
+        if (!this.isClient() || this.connections.length === 0) return;
+        this._sendTo(this.connections[0], {
+            type: 'PVP_ACTION',
+            actionType,
+            value,
             playerName: this.playerName,
         });
     },
@@ -1182,6 +1201,20 @@ export const Network = {
                 })();
                 break;
             }
+            case 'PVP_HERO_SYNC': {
+                if (State.sessionPhase === 'pvp_combat' && msg.heroData) {
+                    State.pvp.player2 = msg.heroData; // Client is always P2 for host
+                    Engine.addPvPLog(`✅ ${msg.heroData.name} (von ${msg.playerName}) geladen!`);
+                    this.broadcastState();
+                }
+                break;
+            }
+            case 'PVP_ACTION': {
+                if (State.sessionPhase === 'pvp_combat') {
+                    Engine.processPvPAction(msg.actionType, msg.value);
+                }
+                break;
+            }
             case 'CHARACTER_CREATE': {
                 try {
                     const char = validateHeroData(msg.charData);
@@ -1366,6 +1399,7 @@ export const Network = {
         if (incoming.playerControlMode !== undefined) State.playerControlMode = { ...(State.playerControlMode || {}), ...(incoming.playerControlMode || {}) };
         if (incoming.chatMessages !== undefined) State.chatMessages = this._mergeCollectionById(State.chatMessages, incoming.chatMessages);
         if (incoming.systemMessages !== undefined) State.systemMessages = this._mergeCollectionById(State.systemMessages, incoming.systemMessages);
+        if (incoming.pvp !== undefined) State.pvp = { ...(State.pvp || {}), ...(incoming.pvp || {}) };
 
         if (incoming.turnOrder !== undefined) this.turnOrder = incoming.turnOrder;
         if (incoming.currentTurnIndex !== undefined) this.currentTurnIndex = incoming.currentTurnIndex;

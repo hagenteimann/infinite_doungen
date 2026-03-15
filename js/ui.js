@@ -472,6 +472,14 @@ export const UI = {
     _updateAllInternal: function () {
         this.renderLobbyView();
         this.toggleViews(!!State.gameStarted || State.sessionPhase === 'in_game');
+        
+        // PvP Arena Display
+        const pvpShell = document.getElementById('pvp-arena-shell');
+        if (pvpShell) {
+            const isPvP = State.sessionPhase === 'pvp_combat';
+            pvpShell.classList.toggle('hidden', !isPvP);
+            if (isPvP) Engine.updatePvPUI();
+        }
         const myCharId = State._mpMyCharId || null;
         const sorted = [...State.party].sort((a, b) => {
             if (a.id === myCharId) return -1;
@@ -988,7 +996,7 @@ export const UI = {
                 <div class="entry-card">
                     <div class="entry-cta-stack">
                         <button type="button" data-action="entry-start-solo" class="entry-primary-btn"><i class="fas fa-gamepad"></i> Solo spielen</button>
-                        <button type="button" data-action="open-pvp-arena" class="entry-secondary-btn pvp-entry-btn"><i class="fas fa-swords"></i> PvP Arena</button>
+                        <button type="button" data-action="open-pvp-arena" class="entry-secondary-btn pvp-entry-btn"><i class="fas fa-swords"></i> PvP Raum erstellen</button>
                         <button type="button" data-action="entry-start-host" class="entry-secondary-btn"><i class="fas fa-house"></i> Raum erstellen (Host)</button>
                     </div>
                     <div class="entry-join-card">

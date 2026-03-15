@@ -1658,10 +1658,23 @@ getPregameStatus() {
     showPvPScreen: function () {
         const shell = document.getElementById('pvp-arena-shell');
         if (!shell) return;
+        
+        // If not connected, host a room first
+        if (!Network.isConnected()) {
+            const name = prompt("Dein Name für die Arena:", State.localPlayerName || "Held");
+            if (!name) return;
+            Network.host(name);
+        }
+
         shell.classList.remove('hidden');
         State.sessionPhase = 'pvp_combat';
         this.addPvPLog("⚔️ Willkommen in der Arena!");
         this.addPvPLog("Bitte importiere beide Helden, um den Kampf zu starten.");
+        
+        if (Network.isHost()) {
+            this.addPvPLog(`📢 Raum-Code: **${Network.roomCode}**`);
+        }
+
         this.updatePvPUI();
         
         // Add Temporary Import Buttons to log if empty
@@ -1711,13 +1724,25 @@ getPregameStatus() {
                     let h = JSON.parse(ev.target.result);
                     h = validateHeroData(h);
                     const hero = Utils.sanitizeCharacter(h);
-                    if (num === 1) State.pvp.player1 = hero;
-                    else State.pvp.player2 = hero;
                     
-                    this.addPvPLog(`✅ ${hero.name} ist bereit!`);
+                    if (Network.isConnected()) {
+                        if (Network.isHost()) {
+                            State.pvp.player1 = hero;
+                            this.addPvPLog(`✅ Dein Held (${hero.name}) geladen!`);
+                            Network.broadcastState();
+                        } else {
+                            Network.sendPvPHero(hero);
+                            this.addPvPLog(`✅ Held (${hero.name}) gesendet! Warte auf Host...`);
+                        }
+                    } else {
+                        if (num === 1) State.pvp.player1 = hero;
+                        else State.pvp.player2 = hero;
+                        this.addPvPLog(`✅ ${hero.name} ist bereit!`);
+                    }
+                    
                     this.updatePvPUI();
                     
-                    if (State.pvp.player1 && State.pvp.player2) {
+                    if (State.pvp.player1 && State.pvp.player2 && Network.isHost()) {
                         document.getElementById('pvp-start-battle')?.classList.remove('hidden');
                     }
                 } catch (err) {
@@ -1748,6 +1773,18 @@ getPregameStatus() {
         const activePlayer = State.pvp.currentTurn === 0 ? State.pvp.player1 : State.pvp.player2;
         const opponent = State.pvp.currentTurn === 0 ? State.pvp.player2 : State.pvp.player1;
 
+        // If client and it's their turn, send to host
+        if (Network.isClient() && State.pvp.currentTurn === 1) {
+            Network.sendPvPAction(type, value);
+            if (type === 'text-input') document.getElementById('pvp-player-input').value = '';
+            return;
+        }
+        
+        // If host and not their turn, ignore local input (client must send it)
+        if (Network.isHost() && State.pvp.currentTurn === 1 && !arguments[2]) { // arguments[2] could be a 'fromNetwork' flag if we wanted to be explicit
+             // But Network handler calls it directly, so we just let it through if it's the host executing it
+        }
+
         if (type === 'text-input') {
             const val = value.toLowerCase().trim();
             if (val === 'angreifen' || val.includes('angriff')) type = 'attack';
@@ -1768,10 +1805,13 @@ getPregameStatus() {
             } else {
                 State.pvp.currentTurn = 1 - State.pvp.currentTurn;
             }
+            if (Network.isHost()) Network.broadcastState();
         } else if (type === 'open-abilities') {
             this.addPvPLog(`✨ ${activePlayer.name} bereitet eine Fähigkeit vor... (Noch nicht implementiert)`);
+            if (Network.isHost()) Network.broadcastState();
         } else if (type === 'open-inventory') {
             this.addPvPLog(`🎒 ${activePlayer.name} öffnet das Inventar... (Noch nicht implementiert)`);
+            if (Network.isHost()) Network.broadcastState();
         }
 
         this.updatePvPUI();
@@ -1799,6 +1839,16 @@ getPregameStatus() {
         const p2 = State.pvp.player2;
         const turn = State.pvp.currentTurn;
 
+        // Room Code Display
+        const roomDisplay = document.getElementById('pvp-room-display');
+        const roomCodeSpan = document.getElementById('pvp-room-code');
+        if (roomDisplay && roomCodeSpan && Network.isConnected() && Network.isHost()) {
+            roomDisplay.classList.remove('hidden');
+            roomCodeSpan.innerText = Network.roomCode;
+        } else if (roomDisplay) {
+            roomDisplay.classList.add('hidden');
+        }
+
         // Sync portraits and names
         if (p1) {
             document.getElementById('pvp-p1-portrait').src = p1.portrait || '';
@@ -1822,10 +1872,14 @@ getPregameStatus() {
             if (!p1 || !p2) {
                 // Keep the setup buttons, but prepend log entries
                 const entries = State.pvp.combatLog.map(m => `<div class="arena-log-entry">${m}</div>`).join('');
-                // This is a bit hacky, but avoids complex re-rendering of setup state
                 if (!logContainer.dataset.setupDone) {
                     const btnHtml = logContainer.querySelector('.space-y-4')?.outerHTML || '';
                     logContainer.innerHTML = entries + btnHtml;
+                    
+                    // Re-bind buttons if they were just re-rendered
+                    document.getElementById('pvp-import-p1')?.addEventListener('click', () => this._triggerPvPImport(1));
+                    document.getElementById('pvp-import-p2')?.addEventListener('click', () => this._triggerPvPImport(2));
+                    document.getElementById('pvp-start-battle')?.addEventListener('click', () => this.startPvPCombat());
                 }
             } else {
                 logContainer.dataset.setupDone = "true";
@@ -1838,9 +1892,9 @@ getPregameStatus() {
         if (indicator) {
             if (p1 && p2) {
                 const active = turn === 0 ? p1.name : p2.name;
-                indicator.innerText = `Zug von: ${active}`;
-                indicator.classList.add('text-amber-400');
-                indicator.classList.remove('text-slate-400');
+                const isMyTurn = (Network.isHost() && turn === 0) || (Network.isClient() && turn === 1) || (!Network.isConnected());
+                indicator.innerText = isMyTurn ? `DEIN ZUG (${active})` : `Warte auf ${active}...`;
+                indicator.className = isMyTurn ? 'text-amber-400 font-bold' : 'text-slate-400 italic';
             } else {
                 indicator.innerText = `Warte auf Helden-Import...`;
             }
@@ -1848,8 +1902,9 @@ getPregameStatus() {
 
         // Disable buttons if not turn
         const btns = document.querySelectorAll('.pvp-actions .pvp-action-btn');
+        const canAct = (p1 && p2 && p1.hp > 0 && p2.hp > 0) && ((Network.isHost() && turn === 0) || (Network.isClient() && turn === 1) || (!Network.isConnected()));
         btns.forEach(b => {
-            b.disabled = (!p1 || !p2 || p1.hp <= 0 || p2.hp <= 0);
+            b.disabled = !canAct;
         });
     }
 };
