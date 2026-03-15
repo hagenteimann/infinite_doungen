@@ -166,6 +166,11 @@ export function dispatch(action) {
             Object.assign(State, action.updates);
             break;
         }
+        case 'RESTORE_SNAPSHOT': {
+            Object.assign(State, action.snapshot);
+            State.undoSnapshot = null;
+            break;
+        }
         default:
             console.warn(`Unknown dispatch action: ${action.type}`);
             return;
