@@ -1000,8 +1000,8 @@ export const UI = {
                 <div class="entry-card">
                     <div class="entry-cta-stack">
                         <button type="button" data-action="entry-start-solo" class="entry-primary-btn"><i class="fas fa-gamepad"></i> Solo spielen</button>
-                        <button type="button" data-action="open-pvp-arena" class="entry-secondary-btn pvp-entry-btn"><i class="fas fa-swords"></i> PvP Raum erstellen</button>
-                        <button type="button" data-action="entry-start-host" class="entry-secondary-btn"><i class="fas fa-house"></i> Raum erstellen (Host)</button>
+                        <button type="button" data-action="entry-start-host" class="entry-secondary-btn"><i class="fas fa-house"></i> Coop Spiel Hosten</button>
+                        <button type="button" data-action="open-pvp-arena" class="entry-secondary-btn pvp-entry-btn"><i class="fas fa-swords"></i> PvP</button>
                     </div>
                     <div class="entry-join-card">
                         <div class="entry-join-copy">oder einem Raum beitreten:</div>
