@@ -980,7 +980,6 @@ export const UI = {
         return `
             <div class="entry-shell">
                 <div class="entry-card">
-                    <img src="infinite%20dungeons.png" alt="Infinite Dungeons" class="entry-logo-image">
                     <div class="entry-cta-stack">
                         <button type="button" data-action="entry-start-solo" class="entry-primary-btn"><i class="fas fa-gamepad"></i> Solo spielen</button>
                         <button type="button" data-action="entry-start-host" class="entry-secondary-btn"><i class="fas fa-house"></i> Raum erstellen (Host)</button>
