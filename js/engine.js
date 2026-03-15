@@ -1896,7 +1896,7 @@ Beschreibe das Ergebnis dieser Aktion. Sei neutral aber dramatisch. Nutze das de
 WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn ausgewichen wurde, nutze ein PROBE event für den Verteidiger (optional) oder beschreibe einfach den Fehlschlag.
 `;
 
-            const response = await API.generateText(prompt, { systemPrompt: PVP_SYSTEM_PROMPT });
+            const response = await API.generateText(prompt, PVP_SYSTEM_PROMPT);
             const match = response.match(/\{[\s\S]*\}/);
             if (!match) throw new Error('Keine gültige JSON-Antwort vom Schiedsrichter erhalten.');
             const data = JSON.parse(match[0]);
