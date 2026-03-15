@@ -8,3 +8,4 @@ dist/
 dnd_git
 dnd_git.pub
 .cursor/
+package-lock.json
