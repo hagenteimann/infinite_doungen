@@ -44,6 +44,12 @@ export const State = {
     playerProfiles: {},
     playerControlMode: {},
     afkSince: {},
+    pvp: {
+        player1: null,
+        player2: null,
+        currentTurn: 0, // 0 for player1, 1 for player2
+        combatLog: []
+    }
 };
 
 const listeners = new Set();
@@ -199,6 +205,15 @@ export function dispatch(action) {
                 State.systemMessages.push(action.entry);
                 if (State.systemMessages.length > 100) State.systemMessages.shift();
             }
+            break;
+        }
+        case 'SET_PVP_DATA': {
+            Object.assign(State.pvp, action.data);
+            break;
+        }
+        case 'ADD_PVP_LOG': {
+            State.pvp.combatLog.unshift(action.entry);
+            if (State.pvp.combatLog.length > 50) State.pvp.combatLog.pop();
             break;
         }
         default:

@@ -182,6 +182,13 @@ export function initEvents() {
             // Re-using gen-portrait for the generator specifically
             'gen-export-hero': () => UI.exportGeneratorHero(),
             'gen-finalize-hero': () => UI.finalizeGeneratorHero(),
+
+            // PvP Arena
+            'open-pvp-arena': () => Engine.showPvPScreen(),
+            'close-pvp-arena': () => Engine.closePvPArena(),
+            'pvp-attack': () => Engine.processPvPAction('attack'),
+            'pvp-open-abilities': () => Engine.processPvPAction('open-abilities'),
+            'pvp-open-inventory': () => Engine.processPvPAction('open-inventory'),
         };
 
         ACTIONS[action]?.();
@@ -200,6 +207,7 @@ export function initEvents() {
         const el = e.target;
         if (!el) return;
         if (el.id === 'player-input') Engine.submitPlayerAction();
+        else if (el.id === 'pvp-player-input') Engine.processPvPAction('text-input', el.value);
         else if (el.id === 'oracle-input') Engine.submitOracle();
     });
 

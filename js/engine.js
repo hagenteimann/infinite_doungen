@@ -1651,6 +1651,206 @@ getPregameStatus() {
         };
         r.readAsText(e.target.files[0]);
         e.target.value = "";
+    },
+
+    // --- PvP Arena Section ---
+
+    showPvPScreen: function () {
+        const shell = document.getElementById('pvp-arena-shell');
+        if (!shell) return;
+        shell.classList.remove('hidden');
+        State.sessionPhase = 'pvp_combat';
+        this.addPvPLog("⚔️ Willkommen in der Arena!");
+        this.addPvPLog("Bitte importiere beide Helden, um den Kampf zu starten.");
+        this.updatePvPUI();
+        
+        // Add Temporary Import Buttons to log if empty
+        if (!State.pvp.player1 || !State.pvp.player2) {
+            this._renderPvPSetupButtons();
+        }
+    },
+
+    closePvPArena: function () {
+        const shell = document.getElementById('pvp-arena-shell');
+        if (shell) shell.classList.add('hidden');
+        State.pvp.player1 = null;
+        State.pvp.player2 = null;
+        State.pvp.combatLog = [];
+        State.sessionPhase = 'lobby';
+        UI.updateAll();
+    },
+
+    _renderPvPSetupButtons: function () {
+        const log = document.getElementById('pvp-log');
+        if (!log) return;
+        log.innerHTML = `
+            <div class="p-4 space-y-4 text-center">
+                <div class="flex flex-col gap-2">
+                    <button id="pvp-import-p1" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 1 importieren</button>
+                    <button id="pvp-import-p2" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 2 importieren</button>
+                </div>
+                <button id="pvp-start-battle" class="pvp-action-btn bg-amber-600/50 hidden">KAMPF STARTEN</button>
+            </div>
+        `;
+        
+        document.getElementById('pvp-import-p1')?.addEventListener('click', () => this._triggerPvPImport(1));
+        document.getElementById('pvp-import-p2')?.addEventListener('click', () => this._triggerPvPImport(2));
+        document.getElementById('pvp-start-battle')?.addEventListener('click', () => this.startPvPCombat());
+    },
+
+    _triggerPvPImport: function (num) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const r = new FileReader();
+            r.onload = (ev) => {
+                try {
+                    let h = JSON.parse(ev.target.result);
+                    h = validateHeroData(h);
+                    const hero = Utils.sanitizeCharacter(h);
+                    if (num === 1) State.pvp.player1 = hero;
+                    else State.pvp.player2 = hero;
+                    
+                    this.addPvPLog(`✅ ${hero.name} ist bereit!`);
+                    this.updatePvPUI();
+                    
+                    if (State.pvp.player1 && State.pvp.player2) {
+                        document.getElementById('pvp-start-battle')?.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    this.addPvPLog(`❌ Import Fehler: ${err.message}`);
+                }
+            };
+            r.readAsText(file);
+        };
+        input.click();
+    },
+
+    startPvPCombat: function () {
+        if (!State.pvp.player1 || !State.pvp.player2) return;
+        
+        // Random start
+        State.pvp.currentTurn = Math.random() > 0.5 ? 0 : 1;
+        const starter = State.pvp.currentTurn === 0 ? State.pvp.player1 : State.pvp.player2;
+        
+        this.addPvPLog(`🏁 Der Kampf beginnt!`);
+        this.addPvPLog(`🎲 **${starter.name}** beginnt den Kampf.`);
+        this.updatePvPUI();
+    },
+
+    processPvPAction: function (type, value = '') {
+        if (State.sessionPhase !== 'pvp_combat') return;
+        if (!State.pvp.player1 || !State.pvp.player2) return;
+
+        const activePlayer = State.pvp.currentTurn === 0 ? State.pvp.player1 : State.pvp.player2;
+        const opponent = State.pvp.currentTurn === 0 ? State.pvp.player2 : State.pvp.player1;
+
+        if (type === 'text-input') {
+            const val = value.toLowerCase().trim();
+            if (val === 'angreifen' || val.includes('angriff')) type = 'attack';
+            else if (val.includes('fähigkeit') || val.includes('magic')) type = 'open-abilities';
+            else if (val.includes('item') || val.includes('inventar')) type = 'open-inventory';
+            document.getElementById('pvp-player-input').value = '';
+        }
+
+        if (type === 'attack') {
+            const damage = this._calculatePvPDamage(activePlayer, opponent);
+            opponent.hp = Math.max(0, opponent.hp - damage);
+            this.addPvPLog(`⚔️ **${activePlayer.name}** greift an und verursacht **${damage} Schaden**!`);
+            Sound.play('sword');
+            
+            if (opponent.hp <= 0) {
+                this.addPvPLog(`🏆 **${activePlayer.name}** hat den Kampf gewonnen!`);
+                Sound.play('victory');
+            } else {
+                State.pvp.currentTurn = 1 - State.pvp.currentTurn;
+            }
+        } else if (type === 'open-abilities') {
+            this.addPvPLog(`✨ ${activePlayer.name} bereitet eine Fähigkeit vor... (Noch nicht implementiert)`);
+        } else if (type === 'open-inventory') {
+            this.addPvPLog(`🎒 ${activePlayer.name} öffnet das Inventar... (Noch nicht implementiert)`);
+        }
+
+        this.updatePvPUI();
+    },
+
+    _calculatePvPDamage: function (attacker, defender) {
+        const attAttrs = attacker.attributes || { STR: 10, DEX: 10 };
+        const defAttrs = defender.attributes || { CON: 10 };
+        
+        // Simple D&D-ish math
+        const base = Math.floor(attAttrs.STR / 2) || 5;
+        const roll = Math.floor(Math.random() * 10) + 1;
+        const reduction = Math.floor(defAttrs.CON / 4) || 0;
+        
+        return Math.max(1, base + roll - reduction);
+    },
+
+    addPvPLog: function (msg) {
+        dispatch({ type: 'ADD_PVP_LOG', entry: msg });
+        this.updatePvPUI();
+    },
+
+    updatePvPUI: function () {
+        const p1 = State.pvp.player1;
+        const p2 = State.pvp.player2;
+        const turn = State.pvp.currentTurn;
+
+        // Sync portraits and names
+        if (p1) {
+            document.getElementById('pvp-p1-portrait').src = p1.portrait || '';
+            document.getElementById('pvp-p1-name').innerText = p1.name;
+            const p1Hp = Math.round((p1.hp / (p1.maxHp || 100)) * 100);
+            document.getElementById('pvp-p1-hp-fill').style.width = p1Hp + '%';
+            document.getElementById('pvp-p1-hp-text').innerText = `${p1.hp} / ${p1.maxHp || 100} HP`;
+        }
+        if (p2) {
+            document.getElementById('pvp-p2-portrait').src = p2.portrait || '';
+            document.getElementById('pvp-p2-name').innerText = p2.name;
+            const p2Hp = Math.round((p2.hp / (p2.maxHp || 100)) * 100);
+            document.getElementById('pvp-p2-hp-fill').style.width = p2Hp + '%';
+            document.getElementById('pvp-p2-hp-text').innerText = `${p2.hp} / ${p2.maxHp || 100} HP`;
+        }
+
+        // Sync log
+        const logContainer = document.getElementById('pvp-log');
+        if (logContainer && State.pvp.combatLog.length > 0) {
+            // Find if we are still in setup
+            if (!p1 || !p2) {
+                // Keep the setup buttons, but prepend log entries
+                const entries = State.pvp.combatLog.map(m => `<div class="arena-log-entry">${m}</div>`).join('');
+                // This is a bit hacky, but avoids complex re-rendering of setup state
+                if (!logContainer.dataset.setupDone) {
+                    const btnHtml = logContainer.querySelector('.space-y-4')?.outerHTML || '';
+                    logContainer.innerHTML = entries + btnHtml;
+                }
+            } else {
+                logContainer.dataset.setupDone = "true";
+                logContainer.innerHTML = State.pvp.combatLog.map(m => `<div class="arena-log-entry">${m}</div>`).join('');
+            }
+        }
+
+        // Sync turn indicator
+        const indicator = document.getElementById('pvp-turn-indicator');
+        if (indicator) {
+            if (p1 && p2) {
+                const active = turn === 0 ? p1.name : p2.name;
+                indicator.innerText = `Zug von: ${active}`;
+                indicator.classList.add('text-amber-400');
+                indicator.classList.remove('text-slate-400');
+            } else {
+                indicator.innerText = `Warte auf Helden-Import...`;
+            }
+        }
+
+        // Disable buttons if not turn
+        const btns = document.querySelectorAll('.pvp-actions .pvp-action-btn');
+        btns.forEach(b => {
+            b.disabled = (!p1 || !p2 || p1.hp <= 0 || p2.hp <= 0);
+        });
     }
 };
 

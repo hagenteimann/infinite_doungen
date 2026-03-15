@@ -871,6 +871,56 @@
     <!-- JAVASCRIPT APPLICATION LOGIC               -->
     <!-- ========================================== -->
     <script type="module" src="/js/main.js"></script>
+    <!-- PvP Arena Template -->
+    <div id="pvp-arena-shell" class="hidden arena-shell fade-in">
+        <div class="arena-side-left">
+            <h3 class="cinzel text-amber-400 text-sm mb-2"><i class="fas fa-scroll mr-2"></i>Kampf-Log</h3>
+            <div id="pvp-log" class="arena-log custom-scrollbar"></div>
+        </div>
+
+        <div class="arena-top">
+            <div id="pvp-card-p2" class="pvp-hero-card">
+                <img id="pvp-p2-portrait" src="" class="pvp-hero-portrait" alt="">
+                <div id="pvp-p2-name" class="cinzel text-slate-200 text-lg">Gegner</div>
+                <div class="pvp-hp-container">
+                    <div class="pvp-hp-bar"><div id="pvp-p2-hp-fill" class="pvp-hp-fill" style="width: 100%"></div></div>
+                    <div id="pvp-p2-hp-text" class="text-[10px] text-slate-400 mt-1">100 / 100 HP</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arena-middle">
+            <div id="arena-fx-container"></div>
+            <div class="text-slate-600 text-[10px] tracking-[0.5em] uppercase">Arena des Schicksals</div>
+        </div>
+
+        <div class="arena-bottom">
+            <div id="pvp-card-p1" class="pvp-hero-card">
+                <img id="pvp-p1-portrait" src="" class="pvp-hero-portrait" alt="">
+                <div id="pvp-p1-name" class="cinzel text-slate-200 text-lg">Held</div>
+                <div class="pvp-hp-container">
+                    <div class="pvp-hp-bar"><div id="pvp-p1-hp-fill" class="pvp-hp-fill" style="width: 100%"></div></div>
+                    <div id="pvp-p1-hp-text" class="text-[10px] text-slate-400 mt-1">100 / 100 HP</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arena-side-right">
+            <h3 class="cinzel text-amber-400 text-sm mb-2"><i class="fas fa-bolt mr-2"></i>Aktionen</h3>
+            <div id="pvp-turn-indicator" class="text-[10px] text-slate-400 italic mb-2 text-center">Warte auf Zug...</div>
+            <div class="pvp-actions">
+                <button data-action="pvp-attack" class="pvp-action-btn"><i class="fas fa-shredder mr-2"></i> Angriff</button>
+                <button data-action="pvp-open-abilities" class="pvp-action-btn"><i class="fas fa-magic mr-2"></i> Fähigkeiten</button>
+                <button data-action="pvp-open-inventory" class="pvp-action-btn"><i class="fas fa-briefcase mr-2"></i> Inventar</button>
+            </div>
+
+            <div class="pvp-input-container">
+                <input type="text" id="pvp-player-input" placeholder="Befehl eingeben..." class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2.5 focus:outline-none focus:border-amber-500/70 text-sm text-slate-200">
+            </div>
+            
+            <button data-action="close-pvp-arena" class="mt-auto text-[10px] text-red-400/50 hover:text-red-400 transition-colors py-2"><i class="fas fa-door-open mr-1"></i> Arena verlassen</button>
+        </div>
+    </div>
 </body>
 
 </html>
