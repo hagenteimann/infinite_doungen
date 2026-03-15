@@ -1687,6 +1687,7 @@ getPregameStatus() {
 
         shell.classList.remove('hidden');
         State.sessionPhase = 'pvp_combat';
+        this._startArenaParticles();
         this.addPvPLog("⚔️ Willkommen in der Arena!");
         this.addPvPLog("Bitte importiere deinen Helden, um den Kampf vorzubereiten.");
         
@@ -1779,6 +1780,9 @@ getPregameStatus() {
                     let h = JSON.parse(ev.target.result);
                     h = validateHeroData(h);
                     const hero = Utils.sanitizeCharacter(h);
+                    // Arena: start at full health with correct maxHp
+                    hero.maxHp = Math.max(hero.maxHp || 0, hero.hp || 100, 1);
+                    hero.hp = hero.maxHp;
                     
                     if (Network.isConnected()) {
                         if (Network.isHost()) {
@@ -2008,17 +2012,33 @@ WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn a
                 for (const ev of data.events) {
                     if (ev.type === 'SCHADEN') {
                         const target = ev.target === State.pvp.player1.name ? State.pvp.player1 : State.pvp.player2;
+                        const isP1 = target === State.pvp.player1;
                         const amount = parseInt(ev.amount, 10);
                         if (!isNaN(amount) && amount > 0) {
                             target.hp = Math.max(0, target.hp - amount);
                             Sound.play('sword');
+                            const barEl = document.getElementById(isP1 ? 'pvp-p1-hp-fill' : 'pvp-p2-hp-fill');
+                            if (barEl) {
+                                const r = barEl.getBoundingClientRect();
+                                const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+                                this._spawnHitParticles(cx, cy, '#f97316');
+                                this._spawnDamageNumber(cx, r.top - 4, amount, false);
+                            }
                         }
                     } else if (ev.type === 'HEILUNG') {
                         const target = ev.target === State.pvp.player1.name ? State.pvp.player1 : State.pvp.player2;
+                        const isP1 = target === State.pvp.player1;
                         const amount = parseInt(ev.amount, 10);
                         if (!isNaN(amount) && amount > 0) {
                             target.hp = Math.min(target.maxHp || 100, target.hp + amount);
                             Sound.play('heal');
+                            const barEl = document.getElementById(isP1 ? 'pvp-p1-hp-fill' : 'pvp-p2-hp-fill');
+                            if (barEl) {
+                                const r = barEl.getBoundingClientRect();
+                                const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+                                this._spawnHitParticles(cx, cy, '#4ade80');
+                                this._spawnDamageNumber(cx, r.top - 4, amount, true);
+                            }
                         }
                     } else if (ev.type === 'PVP_ENDE') {
                         this.addPvPLog(`🎉 **${ev.winner} hat gewonnen!**`);
@@ -2040,6 +2060,40 @@ WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn a
         } finally {
             State.isProcessing = false;
             this.updatePvPUI();
+        }
+    },
+
+    _spawnHitParticles: function (x, y, color = '#f97316') {
+        for (let i = 0; i < 14; i++) {
+            const p = document.createElement('div');
+            p.className = 'pvp-hit-particle';
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 25 + Math.random() * 50;
+            const size = 2 + Math.random() * 4;
+            p.style.cssText = `left:${x}px;top:${y}px;width:${size}px;height:${size}px;background:${color};--tx:${(Math.cos(angle) * dist).toFixed(1)}px;--ty:${(Math.sin(angle) * dist).toFixed(1)}px;`;
+            document.body.appendChild(p);
+            p.addEventListener('animationend', () => p.remove(), { once: true });
+        }
+    },
+
+    _spawnDamageNumber: function (x, y, amount, isHeal = false) {
+        const el = document.createElement('div');
+        el.className = 'pvp-dmg-number';
+        el.textContent = (isHeal ? '+' : '-') + amount;
+        el.style.cssText = `left:${x}px;top:${y}px;color:${isHeal ? '#4ade80' : '#fb923c'};`;
+        document.body.appendChild(el);
+        el.addEventListener('animationend', () => el.remove(), { once: true });
+    },
+
+    _startArenaParticles: function () {
+        const container = document.getElementById('arena-fx-container');
+        if (!container) return;
+        container.innerHTML = '';
+        for (let i = 0; i < 22; i++) {
+            const p = document.createElement('div');
+            p.className = 'arena-ember';
+            p.style.cssText = `left:${(Math.random() * 100).toFixed(1)}%;animation-delay:${(-Math.random() * 6).toFixed(2)}s;animation-duration:${(3 + Math.random() * 5).toFixed(2)}s;width:${(2 + Math.random() * 3).toFixed(1)}px;height:${(2 + Math.random() * 3).toFixed(1)}px;opacity:${(0.3 + Math.random() * 0.5).toFixed(2)};`;
+            container.appendChild(p);
         }
     },
 

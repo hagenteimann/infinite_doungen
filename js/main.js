@@ -8,6 +8,7 @@ import { Engine } from './engine.js';
 import { repairStoredText, validateSaveData } from './sanitize.js';
 import { AUTO_SAVE_KEY } from './constants.js';
 import { initEvents } from './events.js';
+import { initTargetCursor } from './cursor.js';
 import { Network } from './network.js';
 
 const init = () => {
@@ -85,6 +86,7 @@ subscribe((_state, action) => {
 init();
 initEvents();
 initFeatures();
+initTargetCursor();
 
 function initBackgroundAnimation() {
     const bgElement = document.getElementById('animated-bg');
