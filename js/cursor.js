@@ -50,6 +50,16 @@ export function initTargetCursor(selector = 'button, a, [data-action], .pvp-acti
         if (currentTarget && !document.contains(currentTarget)) currentTarget = null;
 
         spinAngle = (spinAngle + 1.2) % 360;
+        const rad = spinAngle * (Math.PI / 180);
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+
+        // Base square corners (fixed offsets, rotated as a rigid unit)
+        const base = [
+            { x: -18, y: -18 },
+            { x:  18, y: -18 },
+            { x:  18, y:  18 },
+            { x: -18, y:  18 },
+        ];
 
         corners.forEach((corner, i) => {
             let tx, ty;
@@ -66,9 +76,9 @@ export function initTargetCursor(selector = 'button, a, [data-action], .pvp-acti
                 tx = targets[i].x;
                 ty = targets[i].y;
             } else {
-                const angle = (spinAngle + i * 90) * (Math.PI / 180);
-                tx = Math.cos(angle) * 18;
-                ty = Math.sin(angle) * 18;
+                // Rotate the whole square as one rigid body
+                tx = base[i].x * cos - base[i].y * sin;
+                ty = base[i].x * sin + base[i].y * cos;
             }
 
             pos[i].x = lerp(pos[i].x, tx, 0.1);

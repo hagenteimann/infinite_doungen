@@ -231,7 +231,7 @@ export const Engine = {
 
         const mode = State.pendingApiMode;
         if (mode === 'pvp') {
-            this.showPvPScreen();
+            this._enterPvPArena();
             return;
         }
         if (mode === 'host') {
@@ -1670,8 +1670,12 @@ getPregameStatus() {
         State.pendingApiModelText = State.selectedApiProvider === 'openrouter' ? (API.getOrModelText() || 'arcee-ai/trinity-large-preview:free') : '';
         State.sessionPhase = 'api_gate';
         UI.updateAll();
-        return;
-        
+    },
+
+    _enterPvPArena: function () {
+        const shell = document.getElementById('pvp-arena-shell');
+        if (!shell) return;
+
         // If not connected, host a room first (name will be updated on hero import)
         if (!Network.isConnected()) {
             Network.host(State.localPlayerName || 'Held');
@@ -1688,14 +1692,13 @@ getPregameStatus() {
         this._startArenaParticles();
         this.addPvPLog("⚔️ Willkommen in der Arena!");
         this.addPvPLog("Bitte importiere deinen Helden, um den Kampf vorzubereiten.");
-        
+
         if (Network.isHost()) {
             this.addPvPLog(`📢 Raum-Code: **${Network.roomCode}**`);
         }
 
         this.updatePvPUI();
-        
-        // Add Temporary Import Buttons to log if empty
+
         if (!State.pvp.player1 || !State.pvp.player2) {
             this._renderPvPSetupButtons();
         }
