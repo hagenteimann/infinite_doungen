@@ -1,4 +1,4 @@
-﻿/* ==========================================
+/* ==========================================
    1. CONFIGURATION & CONSTANTS
    ========================================== */
 export const API_KEY_DEFAULT = "";
@@ -142,6 +142,30 @@ export const TALENT_TREES = {
 export const EQUIPMENT_SETS = [
     { name: 'Schattenkönig', pieces: ['Helm der Schatten', 'Schwert der Schatten', 'Rüstung der Schatten'], bonus: { STR: 3, DEX: 3 } },
     { name: 'Feuerwandler', pieces: ['Flammenstiefel', 'Ascheumhang', 'Magmaring'], bonus: { INT: 5 } },
-    { name: 'Ritter des Lichts', pieces: ['Lichtschild', 'Sonnenklinge', 'Plattenpanzer des Lichts'], bonus: { CON: 5 } }
 ];
+
+export const PVP_SYSTEM_PROMPT = `Du bist ein unparteiischer Schiedsrichter einer rundenbasierten PvP-Arena.
+Deine Aufgabe ist es, die Züge zweier Spieler (Held gegen Held) atmosphärisch zu beschreiben und die mechanischen Auswirkungen (Schaden, Effekte) festzulegen.
+
+WICHTIGSTE REGEL: Du musst IMMER im JSON-Format antworten. Kein Text außerhalb des JSON!
+Das JSON muss genau diese Struktur haben:
+{
+  "narrative": "Die atmosphärische Beschreibung des Angriffs oder der Aktion. HTML erlaubt.",
+  "events": [
+    { "type": "SCHADEN", "target": "NameDesHelden", "amount": Zahl },
+    { "type": "PROBE", "char": "NameDesHelden", "stat": "STR|DEX|CON|INT", "desc": "Ausweichen?", "dc": 15 },
+    { "type": "HEILUNG", "target": "NameDesHelden", "amount": Zahl },
+    { "type": "PVP_ENDE", "winner": "NameDesSiegers" }
+  ],
+  "options": []
+}
+
+ERZÄHLPRINZIPIEN:
+1. Sei heroisch und dramatisch.
+2. Berücksichtige die Ausrüstung und Attribute der Kontrahenten. Ein schwergepanzerter Krieger wird anders getroffen als ein flinker Dieb.
+3. Berechne den Schaden fair basierend auf den Stats. STR/DEX vs CON/Rüstung.
+4. Du darfst eine Ausweichen-Probe (PROBE) einbauen, um dem Verteidiger eine Chance zu geben.
+
+STAPELREGEL:
+Wenn ein Sieger feststeht, nutze das Event "PVP_ENDE".`;
 

@@ -1659,6 +1659,12 @@ getPregameStatus() {
         const shell = document.getElementById('pvp-arena-shell');
         if (!shell) return;
         
+        // Ensure API Key exists (especially for Host who mediates)
+        if (!API.getKey()) {
+            UI.showApiGate();
+            return;
+        }
+        
         // If not connected, host a room first
         if (!Network.isConnected()) {
             const name = prompt("Dein Name für die Arena:", State.localPlayerName || "Held");
@@ -1666,10 +1672,16 @@ getPregameStatus() {
             Network.host(name);
         }
 
+        // Reset PvP state for a new session
+        State.pvp.player1 = null;
+        State.pvp.player2 = null;
+        State.pvp.combatLog = [];
+        State.pvp.currentTurn = 0;
+
         shell.classList.remove('hidden');
         State.sessionPhase = 'pvp_combat';
         this.addPvPLog("⚔️ Willkommen in der Arena!");
-        this.addPvPLog("Bitte importiere beide Helden, um den Kampf zu starten.");
+        this.addPvPLog("Bitte importiere deinen Helden, um den Kampf vorzubereiten.");
         
         if (Network.isHost()) {
             this.addPvPLog(`📢 Raum-Code: **${Network.roomCode}**`);
@@ -1696,15 +1708,40 @@ getPregameStatus() {
     _renderPvPSetupButtons: function () {
         const log = document.getElementById('pvp-log');
         if (!log) return;
-        log.innerHTML = `
-            <div class="p-4 space-y-4 text-center">
-                <div class="flex flex-col gap-2">
-                    <button id="pvp-import-p1" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 1 importieren</button>
-                    <button id="pvp-import-p2" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 2 importieren</button>
-                </div>
-                <button id="pvp-start-battle" class="pvp-action-btn bg-amber-600/50 hidden">KAMPF STARTEN</button>
-            </div>
-        `;
+        
+        const isHost = Network.isHost();
+        const isClient = Network.isClient();
+        const p1 = State.pvp.player1;
+        const p2 = State.pvp.player2;
+
+        let html = '<div class="p-4 space-y-4 text-center">';
+        
+        if (isHost) {
+            if (!p1) html += `<button id="pvp-import-p1" class="pvp-action-btn bg-amber-600/50"><i class="fas fa-upload mr-2"></i> Meinen Helden laden (P1)</button>`;
+            else html += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Dein Held ist bereit</div>`;
+            
+            if (!p2) html += `<div class="text-slate-500 text-xs italic">Warte auf Gegner...</div>`;
+            else html += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Gegner ist bereit (${p2.name})</div>`;
+        } else if (isClient) {
+            if (!p2) html += `<button id="pvp-import-p2" class="pvp-action-btn bg-amber-600/50"><i class="fas fa-upload mr-2"></i> Meinen Helden laden (P2)</button>`;
+            else html += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Dein Held ist bereit</div>`;
+            
+            if (!p1) html += `<div class="text-slate-500 text-xs italic">Warte auf Host...</div>`;
+            else html += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Host ist bereit (${p1.name})</div>`;
+        } else {
+             // Solo fallback
+             html += `<div class="flex flex-col gap-2">
+                        <button id="pvp-import-p1" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 1 laden</button>
+                        <button id="pvp-import-p2" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 2 laden</button>
+                      </div>`;
+        }
+
+        if (p1 && p2 && isHost) {
+            html += `<button id="pvp-start-battle" class="pvp-action-btn bg-amber-600">KAMPF STARTEN</button>`;
+        }
+        
+        html += '</div>';
+        log.innerHTML = html;
         
         document.getElementById('pvp-import-p1')?.addEventListener('click', () => this._triggerPvPImport(1));
         document.getElementById('pvp-import-p2')?.addEventListener('click', () => this._triggerPvPImport(2));
@@ -1766,55 +1803,117 @@ getPregameStatus() {
         this.updatePvPUI();
     },
 
-    processPvPAction: function (type, value = '') {
+    processPvPAction: function (type, value = '', fromNetwork = false) {
         if (State.sessionPhase !== 'pvp_combat') return;
         if (!State.pvp.player1 || !State.pvp.player2) return;
+        if (State.isProcessing) return;
 
-        const activePlayer = State.pvp.currentTurn === 0 ? State.pvp.player1 : State.pvp.player2;
-        const opponent = State.pvp.currentTurn === 0 ? State.pvp.player2 : State.pvp.player1;
+        const turn = State.pvp.currentTurn;
+        
+        // Validation: Is it my turn? 
+        // A Host can process a Client's action if it comes from the network.
+        const isSolo = !Network.isConnected();
+        const isMyTurn = (Network.isHost() && turn === 0) || (Network.isClient() && turn === 1) || isSolo;
+        const canProcess = isMyTurn || (Network.isHost() && turn === 1 && fromNetwork);
+        
+        if (!canProcess) {
+            if (isMyTurn) this.addPvPLog("⚠️ Warte auf den Gegner...");
+            return;
+        }
 
-        // If client and it's their turn, send to host
-        if (Network.isClient() && State.pvp.currentTurn === 1) {
+        // If client, forward to host
+        if (Network.isClient()) {
             Network.sendPvPAction(type, value);
             if (type === 'text-input') document.getElementById('pvp-player-input').value = '';
             return;
         }
-        
-        // If host and not their turn, ignore local input (client must send it)
-        if (Network.isHost() && State.pvp.currentTurn === 1 && !arguments[2]) { // arguments[2] could be a 'fromNetwork' flag if we wanted to be explicit
-             // But Network handler calls it directly, so we just let it through if it's the host executing it
-        }
 
+        // Host processing logic starts here
+        const activePlayer = turn === 0 ? State.pvp.player1 : State.pvp.player2;
+        const opponent = turn === 0 ? State.pvp.player2 : State.pvp.player1;
+
+        let actionDesc = "";
         if (type === 'text-input') {
-            const val = value.toLowerCase().trim();
-            if (val === 'angreifen' || val.includes('angriff')) type = 'attack';
-            else if (val.includes('fähigkeit') || val.includes('magic')) type = 'open-abilities';
-            else if (val.includes('item') || val.includes('inventar')) type = 'open-inventory';
+            actionDesc = value.trim();
             document.getElementById('pvp-player-input').value = '';
+        } else if (type === 'attack') {
+            actionDesc = "Greift mit der Waffe an.";
+        } else if (type === 'open-abilities') {
+            actionDesc = "Nutzt eine Spezialfähigkeit.";
+        } else if (type === 'open-inventory') {
+            actionDesc = "Nutzt einen Gegenstand aus dem Inventar.";
         }
 
-        if (type === 'attack') {
-            const damage = this._calculatePvPDamage(activePlayer, opponent);
-            opponent.hp = Math.max(0, opponent.hp - damage);
-            this.addPvPLog(`⚔️ **${activePlayer.name}** greift an und verursacht **${damage} Schaden**!`);
-            Sound.play('sword');
-            
-            if (opponent.hp <= 0) {
-                this.addPvPLog(`🏆 **${activePlayer.name}** hat den Kampf gewonnen!`);
-                Sound.play('victory');
-            } else {
+        if (!actionDesc) return;
+
+        // Perform AI Mediation (Host-side)
+        this._interactWithPvPAI(activePlayer, opponent, actionDesc);
+    },
+
+    _interactWithPvPAI: async function (attacker, defender, action) {
+        if (!attacker || !defender) return;
+        
+        State.isProcessing = true;
+        this.updatePvPUI(); // Disable buttons via state
+
+        try {
+            const prompt = `
+AKTUELLER ZUG: ${attacker.name} führt folgende Aktion aus: "${action}"
+
+SPIELER 1 (Host): ${attacker === State.pvp.player1 ? 'ANGREIFER' : 'VERTEIDIGER'}
+Name: ${State.pvp.player1.name}
+HP: ${State.pvp.player1.hp} / ${State.pvp.player1.maxHp || 100}
+Stats: STR ${State.pvp.player1.attributes.STR}, DEX ${State.pvp.player1.attributes.DEX}, CON ${State.pvp.player1.attributes.CON}, INT ${State.pvp.player1.attributes.INT}
+Waffe/Ausrüstung: ${JSON.stringify(State.pvp.player1.equipment || [])}
+
+SPIELER 2 (Client): ${attacker === State.pvp.player2 ? 'ANGREIFER' : 'VERTEIDIGER'}
+Name: ${State.pvp.player2.name}
+HP: ${State.pvp.player2.hp} / ${State.pvp.player2.maxHp || 100}
+Stats: STR ${State.pvp.player2.attributes.STR}, DEX ${State.pvp.player2.attributes.DEX}, CON ${State.pvp.player2.attributes.CON}, INT ${State.pvp.player2.attributes.INT}
+Waffe/Ausrüstung: ${JSON.stringify(State.pvp.player2.equipment || [])}
+
+Beschreibe das Ergebnis dieser Aktion. Sei neutral aber dramatisch. Nutze das definierte JSON-Format.
+WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn ausgewichen wurde, nutze ein PROBE event für den Verteidiger (optional) oder beschreibe einfach den Fehlschlag.
+`;
+
+            const response = await API.generateText(prompt, { systemPrompt: PVP_SYSTEM_PROMPT });
+            const data = JSON.parse(response.match(/\{[\s\S]*\}/)[0]);
+
+            if (data.narrative) {
+                this.addPvPLog(`📖 ${data.narrative}`);
+            }
+
+            if (data.events) {
+                for (const ev of data.events) {
+                    if (ev.type === 'SCHADEN') {
+                        const target = ev.target === State.pvp.player1.name ? State.pvp.player1 : State.pvp.player2;
+                        target.hp = Math.max(0, target.hp - (ev.amount || 0));
+                        Sound.play('sword');
+                    } else if (ev.type === 'HEILUNG') {
+                        const target = ev.target === State.pvp.player1.name ? State.pvp.player1 : State.pvp.player2;
+                        target.hp = Math.min(target.maxHp || 100, target.hp + (ev.amount || 0));
+                        Sound.play('heal');
+                    } else if (ev.type === 'PVP_ENDE') {
+                        this.addPvPLog(`🎉 **${ev.winner} hat gewonnen!**`);
+                        Sound.play('victory');
+                    }
+                }
+            }
+
+            // Switch turns if no winner declared
+            const isOver = data.events?.some(e => e.type === 'PVP_ENDE') || State.pvp.player1.hp <= 0 || State.pvp.player2.hp <= 0;
+            if (!isOver) {
                 State.pvp.currentTurn = 1 - State.pvp.currentTurn;
             }
-            if (Network.isHost()) Network.broadcastState();
-        } else if (type === 'open-abilities') {
-            this.addPvPLog(`✨ ${activePlayer.name} bereitet eine Fähigkeit vor... (Noch nicht implementiert)`);
-            if (Network.isHost()) Network.broadcastState();
-        } else if (type === 'open-inventory') {
-            this.addPvPLog(`🎒 ${activePlayer.name} öffnet das Inventar... (Noch nicht implementiert)`);
-            if (Network.isHost()) Network.broadcastState();
-        }
 
-        this.updatePvPUI();
+            if (Network.isHost()) Network.broadcastState();
+        } catch (err) {
+            console.error("PvP AI Error:", err);
+            this.addPvPLog(`❌ Schiedsrichter-Fehler: ${err.message}`);
+        } finally {
+            State.isProcessing = false;
+            this.updatePvPUI();
+        }
     },
 
     _calculatePvPDamage: function (attacker, defender) {

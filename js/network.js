@@ -1211,7 +1211,7 @@ export const Network = {
             }
             case 'PVP_ACTION': {
                 if (State.sessionPhase === 'pvp_combat') {
-                    Engine.processPvPAction(msg.actionType, msg.value);
+                    Engine.processPvPAction(msg.actionType, msg.value, true);
                 }
                 break;
             }

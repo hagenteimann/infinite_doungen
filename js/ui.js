@@ -991,7 +991,6 @@ export const UI = {
             </div>` : '';
         return `
             <div class="entry-shell">
-                <img src="infinite%20dungeons.png" class="entry-logo-image" alt="Infinite Dungeons Logo">
                 
                 <div class="entry-card">
                     <div class="entry-cta-stack">
