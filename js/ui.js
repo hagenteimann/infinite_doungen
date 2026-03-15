@@ -1539,13 +1539,19 @@ export const UI = {
 
             const invMap = new Map();
             c.inventory.forEach(it => { invMap.set(it, (invMap.get(it) || 0) + 1); });
+            const hasDesignToken = (c.inventory || []).includes('Design-Token');
             document.getElementById(`inventory-list-${c.id}`).innerHTML = sanitize(Array.from(invMap.entries()).map(([it, count]) => {
                 const safeIt = it.replace(/'/g, "\\'").replace(/"/g, "&quot;");
                 const countHtml = count > 1 ? `<span class="text-amber-500 font-bold ml-1">(x${count})</span>` : '';
                 const formatted = UI.formatItemDisplay(it);
                 const titleAttr = formatted.hasEffects ? `title="${formatted.tooltip.replace(/"/g, '&quot;')}"` : '';
                 const effectIcon = formatted.hasEffects ? `<i class="fas fa-info-circle text-amber-500/70 ml-1 text-[8px]" ${titleAttr}></i>` : '';
-                return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="false" data-count="${count}" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex justify-between group transition-colors" ${titleAttr}><span>${formatted.displayName} ${effectIcon} ${countHtml}</span> <i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400 mt-0.5"></i></li>`;
+                const portrait = c.itemPortraits?.[it];
+                const portraitHtml = portrait ? `<img src="${portrait}" class="item-portrait-thumb" alt="${it}">` : '';
+                const genBtn = (hasDesignToken && !portrait && it !== 'Design-Token')
+                    ? `<button data-action="generate-item-image" data-char-id="${c.id}" data-item="${safeIt}" class="item-gen-btn opacity-0 group-hover:opacity-100" title="Bild generieren (1 Design-Token)"><i class="fas fa-palette"></i></button>`
+                    : '';
+                return `<li data-action="item-click" data-char-id="${c.id}" data-item="${safeIt}" data-equipped="false" data-count="${count}" class="bg-slate-800/50 p-1.5 rounded cursor-pointer hover:bg-slate-700 border border-slate-700/50 flex items-center justify-between group transition-colors" ${titleAttr}>${portraitHtml}<span class="flex-1">${formatted.displayName} ${effectIcon} ${countHtml}</span><span class="flex items-center gap-1">${genBtn}<i class="fas fa-hand-pointer opacity-0 group-hover:opacity-100 text-slate-400"></i></span></li>`;
             }).join('') || '<li class="text-slate-500 italic">Leer</li>');
         }
 

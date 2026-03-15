@@ -1092,6 +1092,53 @@ body {
             50% { opacity: calc(0.1 * var(--fx-light-intensity)); }
         }
 
+/* ── PvP Dice Roll ─────────────────────────────────────── */
+.pvp-dice-line {
+    display: block;
+    font-size: 0.78rem;
+    color: #fbbf24;
+    background: rgba(251,191,36,0.07);
+    border-left: 2px solid rgba(251,191,36,0.4);
+    padding: 2px 8px;
+    margin: 3px 0;
+    border-radius: 0 4px 4px 0;
+}
+.pvp-dice-icon {
+    display: inline-block;
+    animation: diceRoll 0.65s cubic-bezier(.36,.07,.19,.97);
+}
+@keyframes diceRoll {
+    0%   { transform: rotate(0deg)   scale(0.4); opacity: 0; }
+    40%  { transform: rotate(200deg) scale(1.4); opacity: 1; }
+    70%  { transform: rotate(330deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(1);   }
+}
+.pvp-roll-num  { color: #f97316; font-weight: 700; }
+.pvp-bonus     { color: #34d399; font-weight: 700; }
+.pvp-reduction { color: #f87171; font-weight: 700; }
+.pvp-total     { color: #fbbf24; font-size: 1rem; }
+
+/* ── Item Portrait + Gen Button ────────────────────────── */
+.item-portrait-thumb {
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid rgba(168,85,247,0.5);
+    box-shadow: 0 0 6px rgba(168,85,247,0.3);
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+.item-gen-btn {
+    font-size: 0.7rem;
+    color: #a78bfa;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    transition: color 0.15s;
+}
+.item-gen-btn:hover { color: #c4b5fd; }
+
 /* ── Target Cursor ─────────────────────────────────────── */
 .custom-cursor-active, .custom-cursor-active * { cursor: none !important; }
 

@@ -1686,6 +1686,9 @@ getPregameStatus() {
         State.pvp.player2 = null;
         State.pvp.combatLog = [];
         State.pvp.currentTurn = 0;
+        State.pvp.cooldowns = {};
+        State.pvp.player1Summons = [];
+        State.pvp.player2Summons = [];
 
         shell.classList.remove('hidden');
         State.sessionPhase = 'pvp_combat';
@@ -1710,6 +1713,9 @@ getPregameStatus() {
         State.pvp.player1 = null;
         State.pvp.player2 = null;
         State.pvp.combatLog = [];
+        State.pvp.cooldowns = {};
+        State.pvp.player1Summons = [];
+        State.pvp.player2Summons = [];
         State.sessionPhase = 'lobby';
         UI.updateAll();
     },
@@ -1863,32 +1869,46 @@ getPregameStatus() {
     },
 
     _renderPvPAbilities: function (hero) {
+        const playerKey = Network.isClient() ? 'player2' : 'player1';
+        const cd = State.pvp.cooldowns || {};
         const entries = PartyManager.getAbilityEntries(hero);
         const talents = hero.talents || [];
         if (entries.length === 0 && talents.length === 0) {
             return `<p class="text-slate-500 text-center py-2">Keine Fähigkeiten verfügbar.</p>`;
         }
+
+        const renderEntry = (name, color, icon) => {
+            const safe = name.replace(/"/g, '&quot;');
+            const cdLeft = cd[`${playerKey}_${name}`] || 0;
+            const onCd = cdLeft > 0;
+            const actionAttr = onCd ? '' : `data-action="pvp-select-ability" data-ability="${safe}"`;
+            const cdBadge = onCd ? ` <span class="text-[10px] text-slate-400 ml-1">(${cdLeft} Rdn)</span>` : '';
+            return `<div ${actionAttr}
+                class="text-${onCd ? 'slate' : color}-200 bg-${onCd ? 'slate' : color}-900/30 ${onCd ? 'opacity-50 cursor-not-allowed' : `hover:bg-${color}-800/60 cursor-pointer`} border border-${onCd ? 'slate' : color}-700/30 rounded p-1.5 mb-1 transition-colors">
+                <i class="fas ${icon} mr-1 text-${onCd ? 'slate' : color}-400"></i>${name}${cdBadge}
+            </div>`;
+        };
+
         let html = '';
-        if (entries.length > 0) {
+        const summonEntries = entries.filter(e => /beschwör/i.test(e.name));
+        const regularEntries = entries.filter(e => !/beschwör/i.test(e.name));
+
+        if (regularEntries.length > 0) {
             html += `<p class="text-amber-400 font-bold mb-1 uppercase tracking-wide">Fähigkeiten</p>`;
-            for (const e of entries) {
-                const safe = e.name.replace(/"/g, '&quot;');
-                const color = e.type === 'item' ? 'teal' : 'amber';
-                const icon = e.type === 'item' ? 'fa-shield-alt' : 'fa-meteor';
-                html += `<div data-action="pvp-select-ability" data-ability="${safe}"
-                    class="text-${color}-200 bg-${color}-900/30 hover:bg-${color}-800/60 border border-${color}-700/30 rounded p-1.5 mb-1 cursor-pointer transition-colors">
-                    <i class="fas ${icon} mr-1 text-${color}-400"></i>${e.name}
-                </div>`;
+            for (const e of regularEntries) {
+                html += renderEntry(e.name, e.type === 'item' ? 'teal' : 'amber', e.type === 'item' ? 'fa-shield-alt' : 'fa-meteor');
+            }
+        }
+        if (summonEntries.length > 0) {
+            html += `<p class="text-purple-400 font-bold mb-1 mt-2 uppercase tracking-wide">Beschwörungen</p>`;
+            for (const e of summonEntries) {
+                html += renderEntry(e.name, 'purple', 'fa-dragon');
             }
         }
         if (talents.length > 0) {
             html += `<p class="text-emerald-400 font-bold mb-1 mt-2 uppercase tracking-wide">Talente</p>`;
             for (const t of talents) {
-                const safe = t.replace(/"/g, '&quot;');
-                html += `<div data-action="pvp-select-ability" data-ability="${safe}"
-                    class="text-emerald-200 bg-emerald-900/30 hover:bg-emerald-800/60 border border-emerald-700/30 rounded p-1.5 mb-1 cursor-pointer transition-colors">
-                    <i class="fas fa-leaf mr-1 text-emerald-400"></i>${t}
-                </div>`;
+                html += renderEntry(t, 'emerald', 'fa-leaf');
             }
         }
         return html;
@@ -1976,29 +1996,39 @@ getPregameStatus() {
 
     _interactWithPvPAI: async function (attacker, defender, action) {
         if (!attacker || !defender) return;
-        
+
         State.isProcessing = true;
-        this.updatePvPUI(); // Disable buttons via state
+        this.updatePvPUI();
 
         try {
+            // Pre-calculate dice roll and show animation
+            const isSummonAction = /beschwör/i.test(action);
+            const diceResult = this._calculatePvPDamage(attacker, defender);
+            if (!isSummonAction) this._showDiceRoll(diceResult, attacker.name);
+
+            const attackerKey = attacker === State.pvp.player1 ? 'player1' : 'player2';
+            const defenderKey = attackerKey === 'player1' ? 'player2' : 'player1';
+            const attackerSummons = State.pvp[`${attackerKey}Summons`] || [];
+            const summonCtx = attackerSummons.length > 0
+                ? `\nBESCHWÖRUNGEN von ${attacker.name}: ${attackerSummons.map(s => `${s.name} (HP ${s.hp}/${s.maxHp})`).join(', ')}`
+                : '';
+
             const prompt = `
 AKTUELLER ZUG: ${attacker.name} führt folgende Aktion aus: "${action}"
+WÜRFELWURF (System): ${diceResult.roll} + ${diceResult.strBonus} (STR) - ${diceResult.conReduction} (ABW) = ${diceResult.total} Schaden
+→ Nutze EXAKT ${diceResult.total} im SCHADEN-Event (bei Angriffs-Aktionen).
 
-SPIELER 1 (Host): ${attacker === State.pvp.player1 ? 'ANGREIFER' : 'VERTEIDIGER'}
-Name: ${State.pvp.player1.name}
-HP: ${State.pvp.player1.hp} / ${State.pvp.player1.maxHp || 100}
-Stats: STR ${State.pvp.player1.attributes.STR}, DEX ${State.pvp.player1.attributes.DEX}, CON ${State.pvp.player1.attributes.CON}, INT ${State.pvp.player1.attributes.INT}
-Waffe/Ausrüstung: ${JSON.stringify(State.pvp.player1.equipment || [])}
+KÄMPFER 1 (${attacker === State.pvp.player1 ? 'Host' : 'Client'}): ${attacker === State.pvp.player1 ? 'ANGREIFER' : 'VERTEIDIGER'}
+Name: ${State.pvp.player1.name} | HP: ${State.pvp.player1.hp}/${State.pvp.player1.maxHp || 100}
+Stats: STR ${State.pvp.player1.attributes?.STR ?? 10}, DEX ${State.pvp.player1.attributes?.DEX ?? 10}, CON ${State.pvp.player1.attributes?.CON ?? 10}, INT ${State.pvp.player1.attributes?.INT ?? 10}
+Ausrüstung: ${(State.pvp.player1.equipment || []).join(', ') || '—'}
 
-SPIELER 2 (Client): ${attacker === State.pvp.player2 ? 'ANGREIFER' : 'VERTEIDIGER'}
-Name: ${State.pvp.player2.name}
-HP: ${State.pvp.player2.hp} / ${State.pvp.player2.maxHp || 100}
-Stats: STR ${State.pvp.player2.attributes.STR}, DEX ${State.pvp.player2.attributes.DEX}, CON ${State.pvp.player2.attributes.CON}, INT ${State.pvp.player2.attributes.INT}
-Waffe/Ausrüstung: ${JSON.stringify(State.pvp.player2.equipment || [])}
+KÄMPFER 2 (${attacker === State.pvp.player2 ? 'Host' : 'Client'}): ${attacker === State.pvp.player2 ? 'ANGREIFER' : 'VERTEIDIGER'}
+Name: ${State.pvp.player2.name} | HP: ${State.pvp.player2.hp}/${State.pvp.player2.maxHp || 100}
+Stats: STR ${State.pvp.player2.attributes?.STR ?? 10}, DEX ${State.pvp.player2.attributes?.DEX ?? 10}, CON ${State.pvp.player2.attributes?.CON ?? 10}, INT ${State.pvp.player2.attributes?.INT ?? 10}
+Ausrüstung: ${(State.pvp.player2.equipment || []).join(', ') || '—'}${summonCtx}
 
-Beschreibe das Ergebnis dieser Aktion. Sei neutral aber dramatisch. Nutze das definierte JSON-Format.
-WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn ausgewichen wurde, nutze ein PROBE event für den Verteidiger (optional) oder beschreibe einfach den Fehlschlag.
-`;
+Beschreibe das Ergebnis dramatisch im JSON-Format.`;
 
             const response = await API.generateText(prompt, PVP_SYSTEM_PROMPT);
             const match = response.match(/\{[\s\S]*\}/);
@@ -2006,7 +2036,17 @@ WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn a
             const data = JSON.parse(match[0]);
 
             if (data.narrative) {
-                this.addPvPLog(`📖 ${sanitizeStrict(data.narrative)}`);
+                // Parse [Abklingzeit: X] tag from narrative
+                const cdMatch = data.narrative.match(/\[Abklingzeit[:\s]+(\d+)\]/i);
+                if (cdMatch) {
+                    const rounds = parseInt(cdMatch[1], 10);
+                    if (!isNaN(rounds) && rounds > 0) {
+                        State.pvp.cooldowns[`${attackerKey}_${action}`] = rounds;
+                        this.addPvPLog(`⏳ <em>${action}</em> hat ${rounds} Runden Abklingzeit.`);
+                    }
+                }
+                const cleanNarrative = data.narrative.replace(/\[Abklingzeit[:\s]+\d+\]/gi, '').trim();
+                this.addPvPLog(`📖 ${sanitizeStrict(cleanNarrative)}`);
             }
 
             if (data.events) {
@@ -2021,9 +2061,8 @@ WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn a
                             const barEl = document.getElementById(isP1 ? 'pvp-p1-hp-fill' : 'pvp-p2-hp-fill');
                             if (barEl) {
                                 const r = barEl.getBoundingClientRect();
-                                const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-                                this._spawnHitParticles(cx, cy, '#f97316');
-                                this._spawnDamageNumber(cx, r.top - 4, amount, false);
+                                this._spawnHitParticles(r.left + r.width / 2, r.top + r.height / 2, '#f97316');
+                                this._spawnDamageNumber(r.left + r.width / 2, r.top - 4, amount, false);
                             }
                         }
                     } else if (ev.type === 'HEILUNG') {
@@ -2036,27 +2075,53 @@ WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn a
                             const barEl = document.getElementById(isP1 ? 'pvp-p1-hp-fill' : 'pvp-p2-hp-fill');
                             if (barEl) {
                                 const r = barEl.getBoundingClientRect();
-                                const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-                                this._spawnHitParticles(cx, cy, '#4ade80');
-                                this._spawnDamageNumber(cx, r.top - 4, amount, true);
+                                this._spawnHitParticles(r.left + r.width / 2, r.top + r.height / 2, '#4ade80');
+                                this._spawnDamageNumber(r.left + r.width / 2, r.top - 4, amount, true);
                             }
                         }
+                    } else if (ev.type === 'BESCHWÖRUNG') {
+                        const summonOwner = ev.owner === State.pvp.player1?.name ? 'player1' : 'player2';
+                        const summon = {
+                            id: crypto.randomUUID(),
+                            name: sanitizeStrict(ev.name || 'Kreatur'),
+                            hp: Math.max(1, parseInt(ev.hp, 10) || 20),
+                            maxHp: Math.max(1, parseInt(ev.hp, 10) || 20),
+                            str: Math.max(1, parseInt(ev.str, 10) || 8),
+                            con: Math.max(1, parseInt(ev.con, 10) || 5),
+                        };
+                        State.pvp[`${summonOwner}Summons`].push(summon);
+                        this.addPvPLog(`👾 <strong>${summon.name}</strong> wurde beschworen! (HP: ${summon.hp})`);
+                        Sound.play('sword');
                     } else if (ev.type === 'PVP_ENDE') {
-                        this.addPvPLog(`🎉 **${ev.winner} hat gewonnen!**`);
+                        this.addPvPLog(`🎉 <strong>${ev.winner} hat gewonnen!</strong>`);
                         Sound.play('victory');
+                        const winner = ev.winner === State.pvp.player1?.name ? State.pvp.player1 : State.pvp.player2;
+                        if (winner) {
+                            winner.inventory = winner.inventory || [];
+                            winner.inventory.push('Design-Token');
+                            this.addPvPLog(`🏆 <strong>${winner.name}</strong> erhält einen <span style="color:#a78bfa">Design-Token</span>!`);
+                        }
                     }
                 }
             }
 
-            // Switch turns if no winner declared
-            const isOver = data.events?.some(e => e.type === 'PVP_ENDE') || State.pvp.player1.hp <= 0 || State.pvp.player2.hp <= 0;
+            // Summon auto-attacks after attacker's turn
+            const myDefender = attackerKey === 'player1' ? State.pvp.player2 : State.pvp.player1;
+            this._summonAutoAttack(State.pvp[`${attackerKey}Summons`], myDefender);
+
+            // Decrement this player's cooldowns
+            this._decrementPvPCooldowns(attackerKey);
+
+            // Switch turns if no winner
+            const isOver = data.events?.some(e => e.type === 'PVP_ENDE')
+                || State.pvp.player1.hp <= 0 || State.pvp.player2.hp <= 0;
             if (!isOver) {
                 State.pvp.currentTurn = 1 - State.pvp.currentTurn;
             }
 
             if (Network.isHost()) Network.broadcastState();
         } catch (err) {
-            console.error("PvP AI Error:", err);
+            console.error('PvP AI Error:', err);
             this.addPvPLog(`❌ Schiedsrichter-Fehler: ${err.message}`);
         } finally {
             State.isProcessing = false;
@@ -2101,13 +2166,78 @@ WICHTIG: Wenn der Angriff erfolgreich ist, ziehe HP via SCHADEN event ab. Wenn a
     _calculatePvPDamage: function (attacker, defender) {
         const attAttrs = attacker.attributes || { STR: 10, DEX: 10 };
         const defAttrs = defender.attributes || { CON: 10 };
-        
-        // Simple D&D-ish math
-        const base = Math.floor(attAttrs.STR / 2) || 5;
+        const strBonus = Math.max(1, Math.floor(attAttrs.STR / 2));
         const roll = Math.floor(Math.random() * 10) + 1;
-        const reduction = Math.floor(defAttrs.CON / 4) || 0;
-        
-        return Math.max(1, base + roll - reduction);
+        const conReduction = Math.floor(defAttrs.CON / 4);
+        const total = Math.max(1, strBonus + roll - conReduction);
+        return { roll, strBonus, conReduction, total };
+    },
+
+    _showDiceRoll: function (result, attackerName) {
+        const { roll, strBonus, conReduction, total } = result;
+        const reductStr = conReduction > 0 ? ` − <span class="pvp-reduction">${conReduction}</span> (ABW)` : '';
+        this.addPvPLog(`<span class="pvp-dice-line"><span class="pvp-dice-icon">🎲</span> <strong>${attackerName}</strong>: <span class="pvp-roll-num">${roll}</span> + <span class="pvp-bonus">${strBonus}</span> (STR)${reductStr} = <strong class="pvp-total">${total} Schaden</strong></span>`);
+    },
+
+    _decrementPvPCooldowns: function (playerKey) {
+        const cd = State.pvp.cooldowns;
+        if (!cd) return;
+        for (const key of Object.keys(cd)) {
+            if (key.startsWith(playerKey + '_')) {
+                cd[key]--;
+                if (cd[key] <= 0) delete cd[key];
+            }
+        }
+    },
+
+    _summonAutoAttack: function (summons, defender) {
+        for (const summon of summons) {
+            if (summon.hp <= 0) continue;
+            const fakeAttacker = { name: summon.name, attributes: { STR: summon.str || 8, DEX: 8 } };
+            const dice = this._calculatePvPDamage(fakeAttacker, defender);
+            this._showDiceRoll(dice, summon.name);
+            defender.hp = Math.max(0, defender.hp - dice.total);
+            const isP1 = defender === State.pvp.player1;
+            const barEl = document.getElementById(isP1 ? 'pvp-p1-hp-fill' : 'pvp-p2-hp-fill');
+            if (barEl) {
+                const r = barEl.getBoundingClientRect();
+                this._spawnHitParticles(r.left + r.width / 2, r.top + r.height / 2, '#a78bfa');
+                this._spawnDamageNumber(r.left + r.width / 2, r.top - 4, dice.total, false);
+            }
+            this.addPvPLog(`👾 <strong>${summon.name}</strong> greift an!`);
+        }
+    },
+
+    generateItemImage: async function (charId, itemName) {
+        const char = State.party.find(c => c.id === charId);
+        if (!char) return;
+        const tokenIdx = (char.inventory || []).indexOf('Design-Token');
+        if (tokenIdx === -1) {
+            UI.addChatLog('System', '⚠️ Kein Design-Token im Inventar.');
+            return;
+        }
+        char.inventory.splice(tokenIdx, 1);
+        UI.updateAll();
+        UI.addChatLog('System', `🎨 Generiere Bild für "${itemName}"...`);
+        try {
+            const url = await API.generateImageWithFallbacks([
+                `Fantasy RPG item, highly detailed digital art, isolated on dark background, glowing magical aura: ${itemName}`,
+                `Fantasy item: ${itemName}`,
+                itemName
+            ]);
+            if (url) {
+                char.itemPortraits = char.itemPortraits || {};
+                char.itemPortraits[itemName] = url;
+                UI.addChatLog('System', `✅ Bild für "${itemName}" generiert!`);
+            } else {
+                char.inventory.push('Design-Token');
+                UI.addChatLog('System', '❌ Bildgenerierung fehlgeschlagen. Token zurückerstattet.');
+            }
+        } catch (e) {
+            char.inventory.push('Design-Token');
+            UI.addChatLog('System', `❌ Fehler: ${e.message}`);
+        }
+        UI.updateAll();
     },
 
     addPvPLog: function (msg) {

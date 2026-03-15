@@ -113,6 +113,7 @@ export function initEvents() {
                 if (charId) Engine.collectAllLoot(charId);
             },
             'item-click': () => Engine.handleItemClick(actionEl.dataset.charId, actionEl.dataset.item, actionEl.dataset.equipped === 'true', parseInt(actionEl.dataset.count) || 1),
+            'generate-item-image': () => { Engine.generateItemImage(actionEl.dataset.charId, actionEl.dataset.item); },
             'upgrade-stat': () => Engine.upgradeStat(actionEl.dataset.charId, actionEl.dataset.stat),
             'remove-char': () => Engine.removeCharacter(actionEl.dataset.charId),
             'export-hero': () => Engine.exportHero(actionEl.dataset.charId),

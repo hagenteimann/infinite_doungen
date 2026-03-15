@@ -48,7 +48,10 @@ export const State = {
         player1: null,
         player2: null,
         currentTurn: 0, // 0 for player1, 1 for player2
-        combatLog: []
+        combatLog: [],
+        cooldowns: {},       // { "player1_Feuerball": 2, "player2_Schlag": 1 }
+        player1Summons: [],  // [{ id, name, hp, maxHp, str, con }]
+        player2Summons: []
     }
 };
 
