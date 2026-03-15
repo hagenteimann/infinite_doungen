@@ -1823,6 +1823,102 @@ getPregameStatus() {
         this.updatePvPUI();
     },
 
+    _getLocalPvPHero: function () {
+        if (Network.isClient()) return State.pvp.player2;
+        return State.pvp.player1;
+    },
+
+    _togglePvPPanel: function (type) {
+        const abPanel = document.getElementById('pvp-abilities-panel');
+        const invPanel = document.getElementById('pvp-inventory-panel');
+        if (!abPanel || !invPanel) return;
+
+        const hero = this._getLocalPvPHero();
+        if (!hero) { this.addPvPLog('⚠️ Importiere erst deinen Helden.'); return; }
+
+        if (type === 'abilities') {
+            const wasHidden = abPanel.classList.contains('hidden');
+            invPanel.classList.add('hidden');
+            if (wasHidden) {
+                abPanel.innerHTML = this._renderPvPAbilities(hero);
+                abPanel.classList.remove('hidden');
+            } else {
+                abPanel.classList.add('hidden');
+            }
+        } else {
+            const wasHidden = invPanel.classList.contains('hidden');
+            abPanel.classList.add('hidden');
+            if (wasHidden) {
+                invPanel.innerHTML = this._renderPvPInventory(hero);
+                invPanel.classList.remove('hidden');
+            } else {
+                invPanel.classList.add('hidden');
+            }
+        }
+    },
+
+    _renderPvPAbilities: function (hero) {
+        const entries = PartyManager.getAbilityEntries(hero);
+        const talents = hero.talents || [];
+        if (entries.length === 0 && talents.length === 0) {
+            return `<p class="text-slate-500 text-center py-2">Keine Fähigkeiten verfügbar.</p>`;
+        }
+        let html = '';
+        if (entries.length > 0) {
+            html += `<p class="text-amber-400 font-bold mb-1 uppercase tracking-wide">Fähigkeiten</p>`;
+            for (const e of entries) {
+                const safe = e.name.replace(/"/g, '&quot;');
+                const color = e.type === 'item' ? 'teal' : 'amber';
+                const icon = e.type === 'item' ? 'fa-shield-alt' : 'fa-meteor';
+                html += `<div data-action="pvp-select-ability" data-ability="${safe}"
+                    class="text-${color}-200 bg-${color}-900/30 hover:bg-${color}-800/60 border border-${color}-700/30 rounded p-1.5 mb-1 cursor-pointer transition-colors">
+                    <i class="fas ${icon} mr-1 text-${color}-400"></i>${e.name}
+                </div>`;
+            }
+        }
+        if (talents.length > 0) {
+            html += `<p class="text-emerald-400 font-bold mb-1 mt-2 uppercase tracking-wide">Talente</p>`;
+            for (const t of talents) {
+                const safe = t.replace(/"/g, '&quot;');
+                html += `<div data-action="pvp-select-ability" data-ability="${safe}"
+                    class="text-emerald-200 bg-emerald-900/30 hover:bg-emerald-800/60 border border-emerald-700/30 rounded p-1.5 mb-1 cursor-pointer transition-colors">
+                    <i class="fas fa-leaf mr-1 text-emerald-400"></i>${t}
+                </div>`;
+            }
+        }
+        return html;
+    },
+
+    _renderPvPInventory: function (hero) {
+        const equipment = hero.equipment || [];
+        const inventory = hero.inventory || [];
+        if (equipment.length === 0 && inventory.length === 0) {
+            return `<p class="text-slate-500 text-center py-2">Inventar ist leer.</p>`;
+        }
+        let html = '';
+        if (equipment.length > 0) {
+            html += `<p class="text-indigo-400 font-bold mb-1 uppercase tracking-wide">Ausrüstung</p>`;
+            for (const item of equipment) {
+                const safe = item.replace(/"/g, '&quot;');
+                html += `<div data-action="pvp-use-item" data-item="${safe}"
+                    class="text-indigo-200 bg-indigo-900/30 hover:bg-indigo-800/60 border border-indigo-700/30 rounded p-1.5 mb-1 cursor-pointer transition-colors">
+                    <i class="fas fa-shield-alt mr-1 text-indigo-400"></i>${item}
+                </div>`;
+            }
+        }
+        if (inventory.length > 0) {
+            html += `<p class="text-amber-400 font-bold mb-1 mt-2 uppercase tracking-wide">Gegenstände</p>`;
+            for (const item of inventory) {
+                const safe = item.replace(/"/g, '&quot;');
+                html += `<div data-action="pvp-use-item" data-item="${safe}"
+                    class="text-amber-200 bg-amber-900/30 hover:bg-amber-800/60 border border-amber-700/30 rounded p-1.5 mb-1 cursor-pointer transition-colors">
+                    <i class="fas fa-cube mr-1 text-amber-400"></i>${item}
+                </div>`;
+            }
+        }
+        return html;
+    },
+
     processPvPAction: function (type, value = '', fromNetwork = false) {
         if (State.sessionPhase !== 'pvp_combat') return;
         if (!State.pvp.player1 || !State.pvp.player2) return;
@@ -1843,8 +1939,13 @@ getPregameStatus() {
 
         // If client, forward to host
         if (Network.isClient()) {
-            Network.sendPvPAction(type, value);
-            if (type === 'text-input') document.getElementById('pvp-player-input').value = '';
+            const inputEl = document.getElementById('pvp-player-input');
+            const inputVal = (inputEl?.value || value || '').trim();
+            const sendValue = (type === 'attack' || type === 'text-input') ? (inputVal || 'Greift mit der Waffe an.') : value;
+            Network.sendPvPAction('text-input', sendValue);
+            if (inputEl) inputEl.value = '';
+            document.getElementById('pvp-abilities-panel')?.classList.add('hidden');
+            document.getElementById('pvp-inventory-panel')?.classList.add('hidden');
             return;
         }
 
@@ -1853,15 +1954,13 @@ getPregameStatus() {
         const opponent = turn === 0 ? State.pvp.player2 : State.pvp.player1;
 
         let actionDesc = "";
-        if (type === 'text-input') {
-            actionDesc = value.trim();
-            document.getElementById('pvp-player-input').value = '';
-        } else if (type === 'attack') {
-            actionDesc = "Greift mit der Waffe an.";
-        } else if (type === 'open-abilities') {
-            actionDesc = "Nutzt eine Spezialfähigkeit.";
-        } else if (type === 'open-inventory') {
-            actionDesc = "Nutzt einen Gegenstand aus dem Inventar.";
+        if (type === 'text-input' || type === 'attack') {
+            const inputEl = document.getElementById('pvp-player-input');
+            const inputVal = (inputEl?.value || value || '').trim();
+            actionDesc = inputVal || 'Greift mit der Waffe an.';
+            if (inputEl) inputEl.value = '';
+            document.getElementById('pvp-abilities-panel')?.classList.add('hidden');
+            document.getElementById('pvp-inventory-panel')?.classList.add('hidden');
         }
 
         if (!actionDesc) return;

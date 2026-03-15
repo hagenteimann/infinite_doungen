@@ -892,7 +892,9 @@
 
         <div class="arena-middle">
             <div id="arena-fx-container"></div>
-            <div class="text-slate-600 text-[10px] tracking-[0.5em] uppercase">Arena des Schicksals</div>
+            <div class="pvp-vs-separator">
+                <span class="pvp-vs-text">⚔ VS ⚔</span>
+            </div>
         </div>
 
         <div class="arena-bottom">
@@ -907,18 +909,25 @@
         </div>
 
         <div class="arena-side-right">
-            <h3 class="cinzel text-amber-400 text-sm mb-2"><i class="fas fa-bolt mr-2"></i>Aktionen</h3>
-            <div id="pvp-turn-indicator" class="text-[10px] text-slate-400 italic mb-2 text-center">Warte auf Zug...</div>
-            <div class="pvp-actions">
-                <button data-action="pvp-attack" class="pvp-action-btn"><i class="fas fa-shredder mr-2"></i> Angriff</button>
+            <h3 class="cinzel text-amber-400 text-sm mb-3"><i class="fas fa-bolt mr-2"></i>Aktionen</h3>
+            <div id="pvp-turn-banner" class="pvp-turn-banner is-waiting mb-3">Warte auf Zug...</div>
+
+            <div id="pvp-actions-panel" class="pvp-actions hidden">
+                <div id="pvp-abilities-panel" class="hidden mb-2 bg-black/40 border border-amber-700/30 rounded-lg p-2 max-h-48 overflow-y-auto text-xs"></div>
+                <div id="pvp-inventory-panel" class="hidden mb-2 bg-black/40 border border-indigo-700/30 rounded-lg p-2 max-h-48 overflow-y-auto text-xs"></div>
                 <button data-action="pvp-open-abilities" class="pvp-action-btn"><i class="fas fa-magic mr-2"></i> Fähigkeiten</button>
                 <button data-action="pvp-open-inventory" class="pvp-action-btn"><i class="fas fa-briefcase mr-2"></i> Inventar</button>
+                <div class="pvp-input-container mt-2 mb-2">
+                    <input type="text" id="pvp-player-input" placeholder="Aktion beschreiben (optional)..." class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2.5 focus:outline-none focus:border-amber-500/70 text-sm text-slate-200">
+                </div>
+                <button data-action="pvp-attack" class="pvp-action-btn bg-amber-600/20 border-amber-500/50 text-amber-300"><i class="fas fa-fist-raised mr-2"></i> Angriff ausführen</button>
             </div>
 
-            <div class="pvp-input-container">
-                <input type="text" id="pvp-player-input" placeholder="Befehl eingeben..." class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2.5 focus:outline-none focus:border-amber-500/70 text-sm text-slate-200">
+            <div id="pvp-waiting-state" class="pvp-waiting-state hidden">
+                <i class="fas fa-hourglass-half text-2xl"></i>
+                <span id="pvp-waiting-text">Gegner ist am Zug...</span>
             </div>
-            
+
             <button data-action="close-pvp-arena" class="mt-auto text-[10px] text-red-400/50 hover:text-red-400 transition-colors py-2"><i class="fas fa-door-open mr-1"></i> Arena verlassen</button>
         </div>
     </div>

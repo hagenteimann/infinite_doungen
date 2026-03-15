@@ -187,8 +187,24 @@ export function initEvents() {
             'open-pvp-arena': () => Engine.showPvPScreen(),
             'close-pvp-arena': () => Engine.closePvPArena(),
             'pvp-attack': () => Engine.processPvPAction('attack'),
-            'pvp-open-abilities': () => Engine.processPvPAction('open-abilities'),
-            'pvp-open-inventory': () => Engine.processPvPAction('open-inventory'),
+            'pvp-open-abilities': () => Engine._togglePvPPanel('abilities'),
+            'pvp-open-inventory': () => Engine._togglePvPPanel('inventory'),
+            'pvp-select-ability': () => {
+                const ability = actionEl.dataset.ability;
+                if (!ability) return;
+                const input = document.getElementById('pvp-player-input');
+                if (input) input.value = ability;
+                document.getElementById('pvp-abilities-panel')?.classList.add('hidden');
+                input?.focus();
+            },
+            'pvp-use-item': () => {
+                const item = actionEl.dataset.item;
+                if (!item) return;
+                const input = document.getElementById('pvp-player-input');
+                if (input) input.value = `Nutzt ${item}`;
+                document.getElementById('pvp-inventory-panel')?.classList.add('hidden');
+                input?.focus();
+            },
         };
 
         ACTIONS[action]?.();
