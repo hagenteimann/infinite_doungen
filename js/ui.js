@@ -1284,7 +1284,7 @@ export const UI = {
         
         try {
             const prompt = `Fantasy portrait of a ${cls} named ${name}. Appearance: ${app}. Premium D&D art style, highly detailed.`;
-            const url = await Engine.generatePortrait({ name, class: cls, appearance: app });
+            const url = await Engine.generatePortrait({ name, class: cls, appearance: app }, apiKey);
             if (url) {
                 this._generatorState.portrait = url;
                 this.updateGeneratorUI();

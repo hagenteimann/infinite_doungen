@@ -1724,11 +1724,13 @@ body.session-startscreen .thinking-status-chip {
 
 .entry-shell {
     position: relative;
-    min-height: 100%;
+    min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 2rem 1rem;
+    gap: 1.5rem;
 }
 
 .entry-card,
@@ -1762,8 +1764,8 @@ body.session-startscreen .thinking-status-chip {
 
 .entry-logo-image {
     display: block;
-    width: min(100%, 28rem);
-    margin: -6rem auto 1.5rem;
+    width: min(100%, 22rem);
+    margin: 0 auto;
     object-fit: contain;
     filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 20px rgba(251, 191, 36, 0.2));
     position: relative;
@@ -1771,7 +1773,7 @@ body.session-startscreen .thinking-status-chip {
 }
 
 .entry-generator-card {
-    margin-top: 4rem;
+    margin-top: 0;
     width: min(100%, 36rem);
     border-radius: 1.5rem;
     border: 1px solid rgba(255, 255, 255, 0.08);

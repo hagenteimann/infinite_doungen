@@ -1130,11 +1130,11 @@ getPregameStatus() {
     },
 
 
-    generatePortraitForPrompts: async function (prompts) {
-        return API.generateImageWithFallbacks(prompts);
+    generatePortraitForPrompts: async function (prompts, apiKey = null) {
+        return API.generateImageWithFallbacks(prompts, { apiKey });
     },
 
-    generatePortrait: async function (charData = null) {
+    generatePortrait: async function (charData = null, customApiKey = null) {
         const a = charData ? charData.appearance : DOM.newAppearance.value;
         const c = charData ? charData.class : DOM.newClass.value;
         
@@ -1159,7 +1159,7 @@ getPregameStatus() {
             return;
         }
 
-        const pData = await this.generatePortraitForPrompts(prompts);
+        const pData = await this.generatePortraitForPrompts(prompts, customApiKey);
         
         if (!charData) {
             State.tempPortraitData = pData;
