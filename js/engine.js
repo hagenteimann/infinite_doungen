@@ -1674,11 +1674,9 @@ getPregameStatus() {
             return;
         }
         
-        // If not connected, host a room first
+        // If not connected, host a room first (name will be updated on hero import)
         if (!Network.isConnected()) {
-            const name = prompt("Dein Name für die Arena:", State.localPlayerName || "Held");
-            if (!name) return;
-            Network.host(name);
+            Network.host(State.localPlayerName || 'Held');
         }
 
         // Reset PvP state for a new session
@@ -1785,9 +1783,11 @@ getPregameStatus() {
                     if (Network.isConnected()) {
                         if (Network.isHost()) {
                             State.pvp.player1 = hero;
+                            Network.playerName = hero.name;
                             this.addPvPLog(`✅ Dein Held (${hero.name}) geladen!`);
                             Network.broadcastState();
                         } else {
+                            Network.playerName = hero.name;
                             Network.sendPvPHero(hero);
                             this.addPvPLog(`✅ Held (${hero.name}) gesendet! Warte auf Host...`);
                         }
