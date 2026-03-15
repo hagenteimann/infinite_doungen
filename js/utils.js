@@ -122,6 +122,22 @@ export const Utils = {
             .sort((a, b) => b.score - a.score || a.normalizedLength - b.normalizedLength);
 
         return scored[0]?.item;
+    },
+    stripMarkupText: function (text) {
+        return String(text || '')
+            .replace(/<br\s*\/?>/gi, ' ')
+            .replace(/<strong[^>]*>.*?<\/strong>/gi, match => match.replace(/<[^>]+>/g, ''))
+            .replace(/<[^>]+>/g, '')
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/&amp;/gi, '&')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#39;/gi, "'")
+            .replace(/^[::][^\s]+\s+/g, '')
+            .replace(/^[-*]\s*/g, '')
+            .replace(/\s+[|>]+\s*/g, ' ')
+            .replace(/^(?:[\p{Extended_Pictographic}\p{Emoji_Presentation}\u2600-\u27BF]\s*)+/gu, '')
+            .replace(/\s+/g, ' ')
+            .trim();
     }
 };
 

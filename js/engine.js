@@ -24,7 +24,7 @@ export const Engine = {
 
     _requireHost(actionName) {
         if (Network.isClient() && Network.isConnected()) {
-            UI.addChatLog('System', `**${actionName}** ist nur f??r den Host verf??gbar.`);
+            UI.addChatLog('System', `**${actionName}** ist nur für den Host verfügbar.`);
             return true;
         }
         return false;
@@ -248,25 +248,13 @@ export const Engine = {
     },
 
     _sanitizeSuggestionText(text) {
-        let cleaned = repairDisplayText(String(text || ''))
-            .replace(/<br\s*\/?>/gi, ' ')
-            .replace(/<strong[^>]*>.*?<\/strong>/gi, match => match.replace(/<[^>]+>/g, ''))
-            .replace(/<[^>]+>/g, '')
-            .replace(/&nbsp;/gi, ' ')
-            .replace(/&amp;/gi, '&')
-            .replace(/&quot;/gi, '"')
-            .replace(/&#39;/gi, "'")
-            .replace(/^[::][^\s]+\s+/g, '')
-            .replace(/^[-*]\s*/g, '')
-            .replace(/\s+[|>]+\s*/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
+        let cleaned = Utils.stripMarkupText(repairDisplayText(String(text || '')));
 
         const firstColon = cleaned.indexOf(':');
         if (firstColon !== -1) {
             const title = cleaned.slice(0, firstColon).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             if (title) {
-                const titlePattern = new RegExp(`${title}\s*:`, 'gi');
+                const titlePattern = new RegExp(`${title}\\s*:`, 'gi');
                 const matches = [...cleaned.matchAll(titlePattern)];
                 if (matches.length > 1) {
                     cleaned = cleaned.slice(matches[matches.length - 1].index).trim();
@@ -274,7 +262,7 @@ export const Engine = {
             }
         }
 
-        return cleaned.replace(/^(?:[\p{Extended_Pictographic}\p{Emoji_Presentation}\u2600-\u27BF]\s*)+/gu, '').trim();
+        return cleaned;
     },
     _getSuggestionMeta(text) {
         // First strip any existing HTML tags to avoid processing `<strong class=...>`

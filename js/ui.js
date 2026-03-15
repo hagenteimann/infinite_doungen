@@ -240,22 +240,8 @@ export const UI = {
     },
     selectOption: function (t) {
         this.clearSuggestions();
-        const optionText = repairDisplayText(String(t || ''));
-        const normalized = optionText
-            .replace(/<br\s*\/?>/gi, ' ')
-            .replace(/<strong[^>]*>.*?<\/strong>/gi, match => match.replace(/<[^>]+>/g, ''))
-            .replace(/<[^>]+>/g, '')
-            .replace(/&nbsp;/gi, ' ')
-            .replace(/&amp;/gi, '&')
-            .replace(/&quot;/gi, '"')
-            .replace(/&#39;/gi, "'")
-            .replace(/^[::][^\s]+\s+/g, '')
-            .replace(/^[-*]\s*/g, '')
-            .replace(/\s+[|>]+\s*/g, ' ')
-            .replace(/^(?:[\p{Extended_Pictographic}\p{Emoji_Presentation}\u2600-\u27BF]\s*)+/gu, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-        DOM.playerInput.value = normalized.replace(/<[^>]+>/g, '').trim();
+        const normalized = Utils.stripMarkupText(repairDisplayText(String(t || '')));
+        DOM.playerInput.value = normalized;
         DOM.playerInput.focus();
     },
 

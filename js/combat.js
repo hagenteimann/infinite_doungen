@@ -28,7 +28,7 @@ export const CombatManager = {
         const e = { id: Utils.generateId(), name, hp, maxHp: hp, desc, loggedDefeat: false, portrait: "" };
         State.activeEnemies.push(e); UI.updateAll();
 
-        if (wasEmpty && State.activeEnemies.length > 0) {
+        if (wasEmpty) {
             const summoners = State.party.filter(p => {
                 if (p.isSummon) return false;
                 let hasSummon = false;

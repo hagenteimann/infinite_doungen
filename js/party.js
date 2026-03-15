@@ -146,14 +146,7 @@ export const PartyManager = {
         let bonusStat;
         while (char.xp >= needed) {
             char.xp -= needed; char.level++; char.statPoints += STAT_POINTS_PER_LEVEL;
-            const classBonusMap = {
-                'Krieger':    char.level % 2 === 0 ? 'STR' : 'CON',
-                'Waldläufer': 'DEX',
-                'Magier':     'INT',
-                'Schurke':    char.level % 2 === 0 ? 'DEX' : 'STR',
-                'Kleriker':   char.level % 2 === 0 ? 'INT' : 'CON'
-            };
-            bonusStat = classBonusMap[char.class];
+            bonusStat = { 'Krieger': char.level % 2 === 0 ? 'STR' : 'CON', 'Waldläufer': 'DEX', 'Magier': 'INT', 'Schurke': char.level % 2 === 0 ? 'DEX' : 'STR', 'Kleriker': char.level % 2 === 0 ? 'INT' : 'CON' }[char.class];
             if (bonusStat && char.attributes[bonusStat] !== undefined) {
                 char.attributes[bonusStat]++;
             }
