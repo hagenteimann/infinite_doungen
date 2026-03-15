@@ -1,4 +1,4 @@
-import { CONFIG, PRESETS, TALENT_TREES } from './prompts.js';
+import { CONFIG, PRESETS, TALENT_TREES, PVP_SYSTEM_PROMPT } from './prompts.js';
 import { State, dispatch } from './state.js';
 import { TTS, DOM, UIBuilders, UI } from './ui.js';
 import { Weather } from './features.js';
@@ -230,6 +230,10 @@ export const Engine = {
         if (provider === 'openrouter') Utils.safeStorageSet('api_model_or_text', modelText || 'arcee-ai/trinity-large-preview:free');
 
         const mode = State.pendingApiMode;
+        if (mode === 'pvp') {
+            this.showPvPScreen();
+            return;
+        }
         if (mode === 'host') {
             const started = Network.host(State.localPlayerName);
             if (started === false) return;
@@ -1660,8 +1664,13 @@ getPregameStatus() {
         if (!shell) return;
         
         // Only the host needs an API key (the host mediates combat)
-        if (Network.isHost() && !API.getKey()) {
-            UI.showApiGate();
+        if (!API.getKey()) {
+            State.pendingApiMode = 'pvp';
+            State.selectedApiProvider = State.selectedApiProvider || API.getProvider();
+            State.pendingApiKeyValue = API.getKey(State.selectedApiProvider) || '';
+            State.pendingApiModelText = State.selectedApiProvider === 'openrouter' ? (API.getOrModelText() || 'arcee-ai/trinity-large-preview:free') : '';
+            State.sessionPhase = 'api_gate';
+            UI.updateAll();
             return;
         }
         
