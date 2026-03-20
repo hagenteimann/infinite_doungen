@@ -183,6 +183,12 @@ export function initEvents() {
             'gen-export-hero': () => UI.exportGeneratorHero(),
             'gen-finalize-hero': () => UI.finalizeGeneratorHero(),
 
+            // Standard-Held
+            'load-default-hero': () => { Engine.loadDefaultHero(); UI.showToast('Held geladen!'); document.getElementById('hero-details-modal')?.classList.add('hidden'); },
+            'change-default-hero': () => { document.getElementById('hero-details-modal')?.classList.add('hidden'); UI.showHeroGenerator(); },
+            'show-default-hero-details': () => UI.showDefaultHeroDetails(),
+            'close-hero-details-modal': () => document.getElementById('hero-details-modal')?.classList.add('hidden'),
+
             // PvP Arena
             'open-pvp-arena': () => Engine.showPvPScreen(),
             'close-pvp-arena': () => Engine.closePvPArena(),

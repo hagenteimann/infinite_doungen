@@ -24,6 +24,7 @@ export const CAMP_REDUCTION_WITHOUT_FOOD = 8;
 
 export const AUTO_SAVE_KEY = 'infiniteDungeon_autosave';
 export const HERO_ROSTER_KEY = 'infiniteDungeon_heroRoster';
+export const DEFAULT_HERO_KEY = 'infiniteDungeon_defaultHero';
 
 export const API_RETRY_COUNT = 5;
 export const CLAUDE_MAX_TOKENS = 4096;

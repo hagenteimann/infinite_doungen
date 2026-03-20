@@ -14,7 +14,7 @@ import {
     EQUIPMENT_LIMIT, ABILITY_LIMIT, SUMMON_COOLDOWN,
     CHAT_HISTORY_MAX, CHAT_HISTORY_CHAR_LIMIT, CHAT_CONTEXT_CHAR_LIMIT,
     FATIGUE_MAX, CAMP_REDUCTION_WITH_FOOD, CAMP_REDUCTION_WITHOUT_FOOD,
-    AUTO_SAVE_KEY, HERO_ROSTER_KEY, JOURNAL_MAX_ENTRIES,
+    AUTO_SAVE_KEY, HERO_ROSTER_KEY, DEFAULT_HERO_KEY, JOURNAL_MAX_ENTRIES,
     FATE_BOSS_THRESHOLD, FATE_DARK_THRESHOLD, FATE_UNREST_THRESHOLD,
 } from './constants.js';
 
@@ -158,6 +158,13 @@ export const Engine = {
         State.sessionPhase = 'pregame';
         State.pendingApiMode = null;
         this._syncLocalProfile({ isReady: false });
+
+        // Standard-Held vorladen wenn noch kein Held ausgewählt
+        const localKey = this._getResolvedLocalPlayerName();
+        if (!State.playerProfiles?.[localKey]?.heroId) {
+            this.loadDefaultHero();
+        }
+
         UI.toggleViews(false);
         UI.updateAll();
     },
@@ -315,6 +322,7 @@ export const Engine = {
         if (!hero) return;
         const localKey = this._getResolvedLocalPlayerName();
         const h = Utils.sanitizeCharacter({ ...hero, id: Utils.generateId() });
+        this.saveDefaultHero(h);
         if (Network.isClient() && Network.isConnected()) {
             this._syncLocalProfile({ heroId: h.id, heroName: h.name, isReady: false });
             Network.sendCharacterCreate(h);
@@ -340,6 +348,28 @@ export const Engine = {
         const roster = this.getHeroRoster().filter(h => h.id !== rosterId);
         Utils.safeStorageSet(HERO_ROSTER_KEY, JSON.stringify(roster));
         UI.updateAll();
+    },
+
+    getDefaultHero() {
+        try {
+            const raw = Utils.safeStorageGet(DEFAULT_HERO_KEY);
+            return raw ? Utils.sanitizeCharacter(JSON.parse(raw)) : null;
+        } catch { return null; }
+    },
+
+    saveDefaultHero(char) {
+        if (!char || char.isNPC || char.isSummon) return;
+        Utils.safeStorageSet(DEFAULT_HERO_KEY, JSON.stringify(char));
+    },
+
+    loadDefaultHero() {
+        const hero = this.getDefaultHero();
+        if (!hero) return false;
+        this._ensureSessionIdentity();
+        const h = Utils.sanitizeCharacter({ ...hero, id: Utils.generateId() });
+        dispatch({ type: 'ADD_PARTY_MEMBER', character: h });
+        this._syncLocalProfile({ heroId: h.id, heroName: h.name, isReady: false });
+        return true;
     },
 
 getPregameStatus() {
@@ -1193,6 +1223,7 @@ getPregameStatus() {
         const tempChar = { id: Utils.generateId(), name, class: cls, level: 1, hp: 20, maxHp: 20, attributes: attrs, equipment: [] };
         const startHp = PartyManager.getEffectiveMaxHp(tempChar);
         const charData = Utils.sanitizeCharacter({ ...tempChar, hp: startHp, maxHp: startHp, portrait: State.tempPortraitData, imagePrompt: State.tempImagePrompt, inventory: [DOM.startItem.value], isNPC: false });
+        this.saveDefaultHero(charData);
         if (Network.isClient() && Network.isConnected()) {
             this._syncLocalProfile({ heroId: charData.id, heroName: charData.name, isReady: false });
             Network.sendCharacterCreate(charData);
@@ -1642,6 +1673,7 @@ getPregameStatus() {
                 h = repairStoredText(validateHeroData(h));
                 h.id = Utils.generateId();
                 const hero = Utils.sanitizeCharacter(h);
+                this.saveDefaultHero(hero);
                 if (Network.isClient() && Network.isConnected()) {
                     this._syncLocalProfile({ heroId: hero.id, heroName: hero.name, isReady: false });
                     Network.sendCharacterCreate(hero);
@@ -1703,6 +1735,21 @@ getPregameStatus() {
         State.pvp.player1Summons = [];
         State.pvp.player2Summons = [];
 
+        // Standard-Held automatisch als P1 vorladen
+        const defaultHero = this.getDefaultHero();
+        if (defaultHero) {
+            const h = Utils.sanitizeCharacter({ ...defaultHero, id: Utils.generateId() });
+            h.hp = h.maxHp; // Volle HP im PvP
+            if (Network.isConnected()) {
+                if (Network.isHost()) {
+                    State.pvp.player1 = h;
+                    Network.playerName = h.name;
+                }
+            } else {
+                State.pvp.player1 = h;
+            }
+        }
+
         shell.classList.remove('hidden');
         State.sessionPhase = 'pvp_combat';
         this._startArenaParticles();
@@ -1751,7 +1798,7 @@ getPregameStatus() {
 
         if (isHost) {
             if (!p1) btns += `<button id="pvp-import-p1" class="pvp-action-btn bg-amber-600/50"><i class="fas fa-upload mr-2"></i> Meinen Helden laden (P1)</button>`;
-            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Dein Held bereit: ${p1.name}</div>`;
+            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Dein Held bereit: ${p1.name}</div><button id="pvp-import-p1" class="pvp-action-btn bg-slate-700/50 text-xs mt-1"><i class="fas fa-exchange-alt mr-1"></i> Anderen Helden wählen</button>`;
 
             if (!p2) btns += `<div class="text-slate-500 text-xs italic">Warte auf Gegner...</div>`;
             else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> Gegner bereit: ${p2.name}</div>`;
@@ -1765,7 +1812,7 @@ getPregameStatus() {
             // Solo fallback
             btns += `<div class="flex flex-col gap-2">`;
             if (!p1) btns += `<button id="pvp-import-p1" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 1 laden</button>`;
-            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> ${p1.name} bereit</div>`;
+            else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> ${p1.name} bereit</div><button id="pvp-import-p1" class="pvp-action-btn bg-slate-700/50 text-xs"><i class="fas fa-exchange-alt mr-1"></i> Anderen Helden wählen</button>`;
             if (!p2) btns += `<button id="pvp-import-p2" class="pvp-action-btn"><i class="fas fa-upload mr-2"></i> Held 2 laden</button>`;
             else btns += `<div class="text-green-400 text-xs font-bold"><i class="fas fa-check mr-1"></i> ${p2.name} bereit</div>`;
             btns += `</div>`;

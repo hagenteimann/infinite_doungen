@@ -6,6 +6,7 @@
     <!-- HTML & META DATEN                          -->
     <!-- ========================================== -->
     <meta charset="UTF-8">
+    <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Infinite Dungeons - D&D Simulator Pro</title>
     <link rel="icon" href="/infinite_doungen/assets/infinite%20dungeons-DCW6I67X.png" type="image/png">
@@ -18,8 +19,8 @@
     <!-- ========================================== -->
     <!-- CSS STYLES                                 -->
     <!-- ========================================== -->
-  <script type="module" crossorigin src="/infinite_doungen/assets/index-erHXufvo.js"></script>
-  <link rel="stylesheet" crossorigin href="/infinite_doungen/assets/index-D59esf1O.css">
+  <script type="module" crossorigin src="/infinite_doungen/assets/index-B2XJ8GtD.js"></script>
+  <link rel="stylesheet" crossorigin href="/infinite_doungen/assets/index-VD6pxtBa.css">
 </head>
 
 <body class="flex flex-col overflow-hidden" style="height: 100dvh">
@@ -331,75 +332,119 @@
     <!-- MODALS                                     -->
     <!-- ========================================== -->
 
-    <!-- Charakter Creator Modal -->
-    <div id="creator-modal"
-        class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-        <div
-            class="bg-slate-800/95 backdrop-blur-xl border border-purple-500/50 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-[0_0_40px_rgba(168,85,247,0.2)]">
-            <h2
-                class="cinzel text-2xl text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200 text-center drop-shadow-md">
-                Neuer Abenteurer</h2>
-            <div class="flex gap-2 overflow-x-auto pb-3 border-b border-white/10 custom-scrollbar">
-                <button data-action="apply-preset" data-preset="Gimli"
-                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Gimli</button>
-                <button data-action="apply-preset" data-preset="Legolas"
-                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Legolas</button>
-                <button data-action="apply-preset" data-preset="Gandalf"
-                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Gandalf</button>
-                <button data-action="apply-preset" data-preset="Hagen"
-                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Hagen</button>
-                <button data-action="apply-preset" data-preset="Ben der Starke"
-                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Ben</button>
-                <button data-action="apply-preset" data-preset="Jos&#233;"
-                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Jos&#233;</button>
+    <!-- Hero Generator Modal -->
+    <div id="hero-generator-modal"
+        class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-[150] flex items-center justify-center p-4">
+        <div class="bg-slate-900/95 border border-amber-500/30 p-8 rounded-[2rem] gen-modal-content max-h-[90vh] overflow-y-auto custom-scrollbar shadow-[0_0_60px_rgba(245,158,11,0.15)]">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="cinzel text-2xl text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">
+                    Helden-Generator</h2>
+                <button data-action="close-generator" class="text-slate-500 hover:text-white transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-1.5">
-                    <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Name</label>
-                    <input type="text" id="new-name"
-                        class="w-full bg-black/50 p-2.5 rounded-lg border border-white/10 focus:border-amber-500/50 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Left: Info & Stats -->
+                <div class="space-y-6">
+                    <div>
+                        <label class="gen-stat-label">Google Gemini API-Key</label>
+                        <input type="password" id="gen-api-key" class="gen-api-key-input" placeholder="AIzaSy...">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="gen-stat-label">Name</label>
+                            <input type="text" id="gen-name" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500/50">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="gen-stat-label">Klasse</label>
+                            <select id="gen-class" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500/50 cursor-pointer">
+                                <option>Krieger</option>
+                                <option>Magier</option>
+                                <option>Schurke</option>
+                                <option>Waldläufer</option>
+                                <option>Kleriker</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="gen-stat-label">Aussehen & Hintergrund</label>
+                        <textarea id="gen-appearance" rows="3" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-amber-500/50" placeholder="Beschreibe deinen Helden..."></textarea>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="gen-stat-label">Attribute</label>
+                            <span class="gen-points-badge" id="gen-points-left">Punkte: 20</span>
+                        </div>
+                        <div class="gen-stats-grid">
+                            <!-- STR -->
+                            <div class="gen-stat-box">
+                                <div class="gen-stat-label">STR</div>
+                                <div class="gen-stat-value" id="val-STR">10</div>
+                                <div class="gen-stat-controls">
+                                    <button data-action="gen-stat-minus" data-stat="STR" class="gen-stat-btn"><i class="fas fa-minus"></i></button>
+                                    <button data-action="gen-stat-plus" data-stat="STR" class="gen-stat-btn"><i class="fas fa-plus"></i></button>
+                                </div>
+                            </div>
+                            <!-- DEX -->
+                            <div class="gen-stat-box">
+                                <div class="gen-stat-label">DEX</div>
+                                <div class="gen-stat-value" id="val-DEX">10</div>
+                                <div class="gen-stat-controls">
+                                    <button data-action="gen-stat-minus" data-stat="DEX" class="gen-stat-btn"><i class="fas fa-minus"></i></button>
+                                    <button data-action="gen-stat-plus" data-stat="DEX" class="gen-stat-btn"><i class="fas fa-plus"></i></button>
+                                </div>
+                            </div>
+                            <!-- INT -->
+                            <div class="gen-stat-box">
+                                <div class="gen-stat-label">INT</div>
+                                <div class="gen-stat-value" id="val-INT">10</div>
+                                <div class="gen-stat-controls">
+                                    <button data-action="gen-stat-minus" data-stat="INT" class="gen-stat-btn"><i class="fas fa-minus"></i></button>
+                                    <button data-action="gen-stat-plus" data-stat="INT" class="gen-stat-btn"><i class="fas fa-plus"></i></button>
+                                </div>
+                            </div>
+                            <!-- CON -->
+                            <div class="gen-stat-box">
+                                <div class="gen-stat-label">CON</div>
+                                <div class="gen-stat-value" id="val-CON">10</div>
+                                <div class="gen-stat-controls">
+                                    <button data-action="gen-stat-minus" data-stat="CON" class="gen-stat-btn"><i class="fas fa-minus"></i></button>
+                                    <button data-action="gen-stat-plus" data-stat="CON" class="gen-stat-btn"><i class="fas fa-plus"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="space-y-1.5">
-                    <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Klasse</label>
-                    <select id="new-class"
-                        class="w-full bg-black/50 p-2.5 rounded-lg border border-white/10 focus:border-amber-500/50 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner cursor-pointer">
-                        <option class="bg-slate-900">Krieger</option>
-                        <option class="bg-slate-900">Magier</option>
-                        <option class="bg-slate-900">Schurke</option>
-                        <option class="bg-slate-900">Waldläufer</option>
-                        <option class="bg-slate-900">Kleriker</option>
-                    </select>
+
+                <!-- Right: Portrait & Actions -->
+                <div class="flex flex-col items-center justify-center p-6 bg-black/20 rounded-2xl border border-white/5 shadow-inner">
+                    <div class="gen-portrait-preview" id="gen-portrait-container">
+                        <img id="gen-portrait-img" src="" class="w-full h-full object-cover hidden">
+                        <div id="gen-portrait-placeholder" class="w-full h-full flex items-center justify-center text-slate-700">
+                            <i class="fas fa-user-shield text-5xl opacity-20"></i>
+                        </div>
+                    </div>
+                    
+                    <button data-action="gen-portrait" id="btn-gen-portrait" class="w-full bg-blue-600/80 hover:bg-blue-500 py-4 rounded-xl font-bold text-sm text-white shadow-lg transition-all mb-4 flex items-center justify-center gap-2">
+                        <i class="fas fa-magic"></i> Portrait generieren
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-3 w-full">
+                        <button data-action="gen-export-hero" class="bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold text-xs text-slate-300 transition-all border border-white/5 flex items-center justify-center gap-2">
+                            <i class="fas fa-file-export"></i> Export
+                        </button>
+                        <button data-action="gen-finalize-hero" class="bg-amber-600 hover:bg-amber-500 py-3 rounded-xl font-bold text-xs text-white shadow-[0_0_20px_rgba(217,119,6,0.3)] transition-all flex items-center justify-center gap-2">
+                            <i class="fas fa-check-circle"></i> Fertigstellen
+                        </button>
+                    </div>
+                    
+                    <p class="text-[9px] text-slate-500 mt-6 text-center italic">Der Held kann nach dem Fertigstellen direkt in das Abenteuer übernommen oder als JSON exportiert werden.</p>
                 </div>
             </div>
-            <div class="space-y-1.5">
-                <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Aussehen</label>
-                <textarea id="new-appearance" rows="2"
-                    class="w-full bg-black/50 p-2.5 rounded-lg border border-white/10 focus:border-amber-500/50 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner placeholder-slate-600"
-                    placeholder="Beschreibe deinen Helden..."></textarea>
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Start-Item</label>
-                <select id="start-item"
-                    class="w-full bg-black/50 p-2.5 rounded-lg border border-white/10 focus:border-amber-500/50 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner cursor-pointer">
-                    <option value="Heiltrank" class="bg-slate-900">Heiltrank</option>
-                    <option value="Schmuckstein" class="bg-slate-900">Schmuckstein</option>
-                    <option value="Dietrich" class="bg-slate-900">Dietrich</option>
-                </select>
-            </div>
-            <div id="portrait-preview" class="flex justify-center hidden mt-3">
-                <img id="generated-portrait" src=""
-                    class="w-32 h-32 object-cover rounded-xl border-2 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-            </div>
-            <div class="flex gap-3 mt-5 pt-2 border-t border-white/5">
-                <button id="gen-img-btn" data-action="gen-portrait"
-                    class="flex-1 bg-blue-600/80 hover:bg-blue-500 py-3 rounded-xl border border-blue-400/50 font-bold text-xs shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all duration-300 text-white flex items-center justify-center gap-2"><i
-                        class="fas fa-sparkles text-blue-200"></i> Porträt</button>
-                <button id="save-char-btn" data-action="finalize-char"
-                    class="flex-1 bg-amber-600/80 hover:bg-amber-500 py-3 rounded-xl border border-amber-500/50 font-bold text-xs shadow-[0_0_15px_rgba(217,119,6,0.4)] hover:shadow-[0_0_20px_rgba(245,158,11,0.6)] opacity-50 transition-all duration-300 disabled:shadow-none text-white flex items-center justify-center gap-2"
-                    disabled><i class="fas fa-check text-amber-200"></i> Speichern</button>
-            </div>
-            <button data-action="close-creator"
-                class="w-full text-slate-500 hover:text-slate-300 transition-colors text-xs py-2 mt-2 font-medium">Abbrechen</button>
         </div>
     </div>
 
@@ -827,6 +872,66 @@
     <!-- ========================================== -->
     <!-- JAVASCRIPT APPLICATION LOGIC               -->
     <!-- ========================================== -->
+    <!-- PvP Arena Template -->
+    <div id="pvp-arena-shell" class="hidden arena-shell fade-in">
+        <div class="arena-side-left">
+            <h3 class="cinzel text-amber-400 text-sm mb-2"><i class="fas fa-scroll mr-2"></i>Kampf-Log</h3>
+            <div id="pvp-room-display" class="text-[10px] text-slate-500 mb-2 px-1 hidden">Raum-Code: <span id="pvp-room-code" class="text-amber-400 font-bold"></span></div>
+            <div id="pvp-log" class="arena-log custom-scrollbar"></div>
+        </div>
+
+        <div class="arena-top">
+            <div id="pvp-card-p2" class="pvp-hero-card">
+                <img id="pvp-p2-portrait" src="" class="pvp-hero-portrait" alt="">
+                <div id="pvp-p2-name" class="cinzel text-slate-200 text-lg">Gegner</div>
+                <div class="pvp-hp-container">
+                    <div class="pvp-hp-bar"><div id="pvp-p2-hp-fill" class="pvp-hp-fill" style="width: 100%"></div></div>
+                    <div id="pvp-p2-hp-text" class="text-[10px] text-slate-400 mt-1">100 / 100 HP</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arena-middle">
+            <div id="arena-fx-container"></div>
+            <div class="pvp-vs-separator">
+                <span class="pvp-vs-text">⚔ VS ⚔</span>
+            </div>
+        </div>
+
+        <div class="arena-bottom">
+            <div id="pvp-card-p1" class="pvp-hero-card">
+                <img id="pvp-p1-portrait" src="" class="pvp-hero-portrait" alt="">
+                <div id="pvp-p1-name" class="cinzel text-slate-200 text-lg">Held</div>
+                <div class="pvp-hp-container">
+                    <div class="pvp-hp-bar"><div id="pvp-p1-hp-fill" class="pvp-hp-fill" style="width: 100%"></div></div>
+                    <div id="pvp-p1-hp-text" class="text-[10px] text-slate-400 mt-1">100 / 100 HP</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arena-side-right">
+            <h3 class="cinzel text-amber-400 text-sm mb-3"><i class="fas fa-bolt mr-2"></i>Aktionen</h3>
+            <div id="pvp-turn-banner" class="pvp-turn-banner is-waiting mb-3">Warte auf Zug...</div>
+
+            <div id="pvp-actions-panel" class="pvp-actions hidden">
+                <div id="pvp-abilities-panel" class="hidden mb-2 bg-black/40 border border-amber-700/30 rounded-lg p-2 max-h-48 overflow-y-auto text-xs"></div>
+                <div id="pvp-inventory-panel" class="hidden mb-2 bg-black/40 border border-indigo-700/30 rounded-lg p-2 max-h-48 overflow-y-auto text-xs"></div>
+                <button data-action="pvp-open-abilities" class="pvp-action-btn"><i class="fas fa-magic mr-2"></i> Fähigkeiten</button>
+                <button data-action="pvp-open-inventory" class="pvp-action-btn"><i class="fas fa-briefcase mr-2"></i> Inventar</button>
+                <div class="pvp-input-container mt-2 mb-2">
+                    <input type="text" id="pvp-player-input" placeholder="Aktion beschreiben (optional)..." class="w-full bg-black/50 border border-slate-700/50 rounded-lg p-2.5 focus:outline-none focus:border-amber-500/70 text-sm text-slate-200">
+                </div>
+                <button data-action="pvp-attack" class="pvp-action-btn bg-amber-600/20 border-amber-500/50 text-amber-300"><i class="fas fa-fist-raised mr-2"></i> Angriff ausführen</button>
+            </div>
+
+            <div id="pvp-waiting-state" class="pvp-waiting-state hidden">
+                <i class="fas fa-hourglass-half text-2xl"></i>
+                <span id="pvp-waiting-text">Gegner ist am Zug...</span>
+            </div>
+
+            <button data-action="close-pvp-arena" class="mt-auto text-[10px] text-red-400/50 hover:text-red-400 transition-colors py-2"><i class="fas fa-door-open mr-1"></i> Arena verlassen</button>
+        </div>
+    </div>
 </body>
 
 </html>

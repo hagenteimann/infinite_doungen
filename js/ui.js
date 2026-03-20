@@ -1012,17 +1012,52 @@ export const UI = {
                     </div>
                 </div>
 
-                <!-- Hero Generator Section -->
-                <div class="entry-generator-card">
-                    <div class="generator-portrait-circle">
-                         <i class="fas fa-user-shield"></i>
-                    </div>
-                    <h3 class="cinzel text-amber-400 text-sm mb-1">Helden-Generator</h3>
-                    <p class="text-[10px] text-slate-400 mb-4 px-4">Erstelle deinen eigenen Helden mit KI-Unterstützung und exportiere ihn.</p>
-                    <button type="button" data-action="open-hero-generator" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2.5 text-xs text-slate-200 transition-all">
-                        <i class="fas fa-plus-circle mr-1 text-amber-500"></i> Helden generieren
-                    </button>
-                </div>
+                <!-- Hero Generator / Standard-Held Section -->
+                ${(() => {
+                    const defaultHero = Engine.getDefaultHero();
+                    if (defaultHero) {
+                        const portraitHtml = defaultHero.portrait
+                            ? `<img src="${defaultHero.portrait}" alt="${repairDisplayText(defaultHero.name)}" class="w-14 h-14 rounded-full object-cover border-2 border-amber-500/50 shadow-lg">`
+                            : `<div class="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center border-2 border-amber-500/30"><i class="fas fa-shield-halved text-amber-500 text-xl"></i></div>`;
+                        const attrs = defaultHero.attributes || {};
+                        const attrsHtml = Object.entries(attrs).map(([k, v]) => `<span class="text-[9px] text-slate-400"><span class="text-amber-400 font-bold">${k}</span>${v}</span>`).join(' ');
+                        return `<div class="entry-generator-card">
+                            <div class="flex items-center gap-3 mb-3">
+                                ${portraitHtml}
+                                <div class="text-left">
+                                    <div class="text-amber-400 font-bold text-sm cinzel">${repairDisplayText(defaultHero.name)}</div>
+                                    <div class="text-slate-400 text-[10px]">${repairDisplayText(defaultHero.class || 'Held')} · Lv.${defaultHero.level || 1}</div>
+                                    <div class="text-slate-300 text-[10px]">HP ${defaultHero.hp ?? defaultHero.maxHp ?? '?'}/${defaultHero.maxHp ?? '?'}</div>
+                                    <div class="flex gap-1 flex-wrap mt-0.5">${attrsHtml}</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" data-action="load-default-hero" class="flex-1 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-xl py-2 text-xs text-amber-300 transition-all">
+                                    <i class="fas fa-play mr-1"></i> Laden
+                                </button>
+                                <button type="button" data-action="show-default-hero-details" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2 text-xs text-slate-200 transition-all">
+                                    <i class="fas fa-info-circle mr-1"></i> Details
+                                </button>
+                                <button type="button" data-action="change-default-hero" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2 text-xs text-slate-200 transition-all">
+                                    <i class="fas fa-edit mr-1"></i> Ändern
+                                </button>
+                            </div>
+                            <button type="button" data-action="open-hero-generator" class="w-full mt-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2 text-xs text-slate-400 transition-all">
+                                <i class="fas fa-plus-circle mr-1 text-amber-500/60"></i> Neuen Helden generieren
+                            </button>
+                        </div>`;
+                    }
+                    return `<div class="entry-generator-card">
+                        <div class="generator-portrait-circle">
+                             <i class="fas fa-user-shield"></i>
+                        </div>
+                        <h3 class="cinzel text-amber-400 text-sm mb-1">Helden-Generator</h3>
+                        <p class="text-[10px] text-slate-400 mb-4 px-4">Erstelle deinen eigenen Helden mit KI-Unterstützung und exportiere ihn.</p>
+                        <button type="button" data-action="open-hero-generator" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2.5 text-xs text-slate-200 transition-all">
+                            <i class="fas fa-plus-circle mr-1 text-amber-500"></i> Helden generieren
+                        </button>
+                    </div>`;
+                })()}
 
                 <p class="entry-footnote">Als Client brauchst du keinen API-Key - Anfragen laufen ueber den Host.</p>
                 ${apiOverlay}
@@ -1237,6 +1272,75 @@ export const UI = {
         DOM.heroGeneratorModal.classList.add('hidden');
     },
 
+    showDefaultHeroDetails: function () {
+        const hero = Engine.getDefaultHero();
+        if (!hero) { this.showToast('Kein Standard-Held gespeichert.'); return; }
+
+        let modal = document.getElementById('hero-details-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'hero-details-modal';
+            modal.className = 'fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4';
+            document.body.appendChild(modal);
+        }
+
+        const portraitHtml = hero.portrait
+            ? `<img src="${hero.portrait}" alt="${repairDisplayText(hero.name)}" class="w-24 h-24 rounded-2xl object-cover border-2 border-amber-500/50 shadow-lg mx-auto mb-3">`
+            : `<div class="w-24 h-24 rounded-2xl bg-slate-800 flex items-center justify-center border-2 border-amber-500/30 mx-auto mb-3"><i class="fas fa-shield-halved text-amber-500 text-3xl"></i></div>`;
+
+        const attrs = hero.attributes || {};
+        const attrsHtml = Object.entries(attrs).map(([k, v]) => `
+            <div class="bg-black/30 rounded-lg p-2 text-center">
+                <div class="text-amber-400 font-bold text-xs">${k}</div>
+                <div class="text-white text-sm font-bold">${v}</div>
+            </div>`).join('');
+
+        const inv = Array.isArray(hero.inventory) ? hero.inventory : [];
+        const invHtml = inv.length
+            ? inv.map(it => `<span class="bg-slate-700/60 border border-white/10 rounded px-2 py-0.5 text-[10px] text-slate-300">${repairDisplayText(it)}</span>`).join('')
+            : '<span class="text-slate-500 text-xs">Leer</span>';
+
+        const eq = Array.isArray(hero.equipment) ? hero.equipment : [];
+        const eqHtml = eq.length
+            ? eq.map(it => `<span class="bg-amber-900/40 border border-amber-500/20 rounded px-2 py-0.5 text-[10px] text-amber-300">${repairDisplayText(it)}</span>`).join('')
+            : '<span class="text-slate-500 text-xs">Keine</span>';
+
+        modal.innerHTML = sanitize(`
+            <div class="bg-slate-900/95 border border-amber-500/30 rounded-2xl p-6 max-w-sm w-full shadow-[0_0_40px_rgba(245,158,11,0.15)] max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="cinzel text-amber-400 text-lg">Mein Held</h2>
+                    <button data-action="close-hero-details-modal" class="text-slate-500 hover:text-white transition-colors"><i class="fas fa-times text-lg"></i></button>
+                </div>
+                ${portraitHtml}
+                <div class="text-center mb-4">
+                    <div class="cinzel text-white font-bold text-xl">${repairDisplayText(hero.name)}</div>
+                    <div class="text-slate-400 text-sm">${repairDisplayText(hero.class || 'Held')} · Level ${hero.level || 1}</div>
+                    <div class="text-slate-300 text-sm mt-1">HP <span class="text-amber-400 font-bold">${hero.hp ?? hero.maxHp ?? '?'}</span>/<span class="text-amber-400 font-bold">${hero.maxHp ?? '?'}</span></div>
+                </div>
+                <div class="grid grid-cols-4 gap-2 mb-4">${attrsHtml}</div>
+                <div class="mb-3">
+                    <div class="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Inventar</div>
+                    <div class="flex flex-wrap gap-1">${invHtml}</div>
+                </div>
+                <div class="mb-4">
+                    <div class="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Ausrüstung</div>
+                    <div class="flex flex-wrap gap-1">${eqHtml}</div>
+                </div>
+                <div class="flex gap-2">
+                    <button data-action="load-default-hero" class="flex-1 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-xl py-2.5 text-xs text-amber-300 transition-all">
+                        <i class="fas fa-play mr-1"></i> Laden
+                    </button>
+                    <button data-action="change-default-hero" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2.5 text-xs text-slate-200 transition-all">
+                        <i class="fas fa-edit mr-1"></i> Ändern
+                    </button>
+                    <button data-action="close-hero-details-modal" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2.5 text-xs text-slate-400 transition-all">
+                        <i class="fas fa-times mr-1"></i> Schließen
+                    </button>
+                </div>
+            </div>`);
+        modal.classList.remove('hidden');
+    },
+
     updateGeneratorUI: function () {
         DOM.genPointsLeft.innerText = `Punkte: ${this._generatorState.points}`;
         for (const [stat, val] of Object.entries(this._generatorState.stats)) {
@@ -1356,6 +1460,7 @@ export const UI = {
         } else {
             console.log("Generated Hero:", hero);
         }
+        Engine.saveDefaultHero(hero);
 
         this.showToast(`${name} wurde erstellt!`);
         this.closeHeroGenerator();
