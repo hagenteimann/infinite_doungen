@@ -1348,6 +1348,7 @@ export const UI = {
 
         // If we have an active game, add to party
         if (State.party) {
+            Engine._ensureSessionIdentity(); // Sicherstellt dass localPlayerName gesetzt ist bevor wir das Profil speichern
             dispatch({ type: 'ADD_PARTY_MEMBER', character: hero });
             Engine._syncLocalProfile({ heroId: hero.id, heroName: hero.name, isReady: false });
         } else {
