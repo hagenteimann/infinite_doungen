@@ -1330,21 +1330,23 @@ export const UI = {
             return;
         }
 
-        const hero = {
+        const conBonus = (this._generatorState.stats.CON || 10) - 10;
+        const hero = Utils.sanitizeCharacter({
             id: crypto.randomUUID(),
             name,
             class: cls,
             appearance: app,
             portrait: this._generatorState.portrait,
             level: 1,
-            hp: 20 + (this._generatorState.stats.CON - 10),
-            maxHp: 20 + (this._generatorState.stats.CON - 10),
+            hp: 20 + conBonus,
+            maxHp: 20 + conBonus,
             xp: 0,
-            stats: { ...this._generatorState.stats },
-            inventory: ["Heiltrank"],
+            attributes: { ...this._generatorState.stats },
+            inventory: ['Heiltrank'],
             abilities: [],
-            equipment: { weapon: null, armor: null, accessory: null }
-        };
+            equipment: [],
+            isNPC: false,
+        });
 
         // If we have an active game, add to party
         if (State.party) {
