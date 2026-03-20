@@ -374,6 +374,9 @@ export const Engine = {
         if (!hero) return false;
         this._ensureSessionIdentity();
         const h = Utils.sanitizeCharacter({ ...hero, id: Utils.generateId() });
+        const localKey = this._getResolvedLocalPlayerName();
+        const oldHeroId = State.playerProfiles?.[localKey]?.heroId;
+        if (oldHeroId) dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: oldHeroId });
         dispatch({ type: 'ADD_PARTY_MEMBER', character: h });
         this._syncLocalProfile({ heroId: h.id, heroName: h.name, isReady: false });
         return true;
