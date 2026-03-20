@@ -353,7 +353,14 @@ export const Engine = {
     getDefaultHero() {
         try {
             const raw = Utils.safeStorageGet(DEFAULT_HERO_KEY);
-            return raw ? Utils.sanitizeCharacter(JSON.parse(raw)) : null;
+            if (raw) return Utils.sanitizeCharacter(JSON.parse(raw));
+            // Fallback: ersten Roster-Helden nehmen und als Standard speichern
+            const roster = this.getHeroRoster();
+            if (roster.length > 0) {
+                this.saveDefaultHero(roster[0]);
+                return Utils.sanitizeCharacter(roster[0]);
+            }
+            return null;
         } catch { return null; }
     },
 
