@@ -1306,8 +1306,8 @@ export const UI = {
             ? inv.map((it, i) => `
                 <div class="flex items-center gap-1 bg-slate-700/60 border border-white/10 rounded px-2 py-1 text-[10px] text-slate-300 w-full">
                     <span class="flex-1 truncate">${repairDisplayText(it)}</span>
-                    <button data-action="hero-details-item-up" data-source="inventory" data-index="${i}" class="text-slate-400 hover:text-white px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
-                    <button data-action="hero-details-item-down" data-source="inventory" data-index="${i}" class="text-slate-400 hover:text-white px-0.5" ${i === inv.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
+                    <button data-action="hero-details-item-up" data-source="inventory" data-index="${i}" class="text-slate-400 ${i === 0 ? '' : 'hover:text-white'} px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
+                    <button data-action="hero-details-item-down" data-source="inventory" data-index="${i}" class="text-slate-400 ${i === inv.length - 1 ? '' : 'hover:text-white'} px-0.5" ${i === inv.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
                     <button data-action="hero-details-item-equip" data-index="${i}" class="text-amber-400 hover:text-amber-300 px-0.5" title="Ausrüsten">⚔</button>
                     <button data-action="hero-details-item-remove" data-source="inventory" data-index="${i}" class="text-red-400 hover:text-red-300 px-0.5" title="Entfernen">🗑</button>
                 </div>`).join('')
@@ -1318,8 +1318,8 @@ export const UI = {
             ? eq.map((it, i) => `
                 <div class="flex items-center gap-1 bg-amber-900/40 border border-amber-500/20 rounded px-2 py-1 text-[10px] text-amber-300 w-full">
                     <span class="flex-1 truncate">${repairDisplayText(it)}</span>
-                    <button data-action="hero-details-item-up" data-source="equipment" data-index="${i}" class="text-amber-400/60 hover:text-amber-300 px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
-                    <button data-action="hero-details-item-down" data-source="equipment" data-index="${i}" class="text-amber-400/60 hover:text-amber-300 px-0.5" ${i === eq.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
+                    <button data-action="hero-details-item-up" data-source="equipment" data-index="${i}" class="${i === 0 ? 'text-amber-400/30' : 'text-amber-400/60 hover:text-amber-300'} px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
+                    <button data-action="hero-details-item-down" data-source="equipment" data-index="${i}" class="${i === eq.length - 1 ? 'text-amber-400/30' : 'text-amber-400/60 hover:text-amber-300'} px-0.5" ${i === eq.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
                     <button data-action="hero-details-item-unequip" data-index="${i}" class="text-slate-300 hover:text-white px-0.5" title="Ablegen">📦</button>
                     <button data-action="hero-details-item-remove" data-source="equipment" data-index="${i}" class="text-red-400 hover:text-red-300 px-0.5" title="Entfernen">🗑</button>
                 </div>`).join('')
