@@ -1288,21 +1288,41 @@ export const UI = {
             ? `<img src="${hero.portrait}" alt="${repairDisplayText(hero.name)}" class="w-24 h-24 rounded-2xl object-cover border-2 border-amber-500/50 shadow-lg mx-auto mb-3">`
             : `<div class="w-24 h-24 rounded-2xl bg-slate-800 flex items-center justify-center border-2 border-amber-500/30 mx-auto mb-3"><i class="fas fa-shield-halved text-amber-500 text-3xl"></i></div>`;
 
+        const statPoints = hero.statPoints || 0;
+        const statPointsBadge = statPoints > 0
+            ? `<div class="text-center mb-2"><span class="bg-green-600/80 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">${statPoints} Stat-Punkt${statPoints > 1 ? 'e' : ''} verfügbar!</span></div>`
+            : '';
+
         const attrs = hero.attributes || {};
         const attrsHtml = Object.entries(attrs).map(([k, v]) => `
             <div class="bg-black/30 rounded-lg p-2 text-center">
                 <div class="text-amber-400 font-bold text-xs">${k}</div>
                 <div class="text-white text-sm font-bold">${v}</div>
+                ${statPoints > 0 ? `<button data-action="hero-details-upgrade-stat" data-stat="${k}" class="mt-1 bg-green-700 hover:bg-green-600 text-white w-5 h-5 rounded text-xs font-bold transition-colors">+</button>` : ''}
             </div>`).join('');
 
         const inv = Array.isArray(hero.inventory) ? hero.inventory : [];
         const invHtml = inv.length
-            ? inv.map(it => `<span class="bg-slate-700/60 border border-white/10 rounded px-2 py-0.5 text-[10px] text-slate-300">${repairDisplayText(it)}</span>`).join('')
+            ? inv.map((it, i) => `
+                <div class="flex items-center gap-1 bg-slate-700/60 border border-white/10 rounded px-2 py-1 text-[10px] text-slate-300 w-full">
+                    <span class="flex-1 truncate">${repairDisplayText(it)}</span>
+                    <button data-action="hero-details-item-up" data-source="inventory" data-index="${i}" class="text-slate-400 hover:text-white px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
+                    <button data-action="hero-details-item-down" data-source="inventory" data-index="${i}" class="text-slate-400 hover:text-white px-0.5" ${i === inv.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
+                    <button data-action="hero-details-item-equip" data-index="${i}" class="text-amber-400 hover:text-amber-300 px-0.5" title="Ausrüsten">⚔</button>
+                    <button data-action="hero-details-item-remove" data-source="inventory" data-index="${i}" class="text-red-400 hover:text-red-300 px-0.5" title="Entfernen">🗑</button>
+                </div>`).join('')
             : '<span class="text-slate-500 text-xs">Leer</span>';
 
         const eq = Array.isArray(hero.equipment) ? hero.equipment : [];
         const eqHtml = eq.length
-            ? eq.map(it => `<span class="bg-amber-900/40 border border-amber-500/20 rounded px-2 py-0.5 text-[10px] text-amber-300">${repairDisplayText(it)}</span>`).join('')
+            ? eq.map((it, i) => `
+                <div class="flex items-center gap-1 bg-amber-900/40 border border-amber-500/20 rounded px-2 py-1 text-[10px] text-amber-300 w-full">
+                    <span class="flex-1 truncate">${repairDisplayText(it)}</span>
+                    <button data-action="hero-details-item-up" data-source="equipment" data-index="${i}" class="text-amber-400/60 hover:text-amber-300 px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
+                    <button data-action="hero-details-item-down" data-source="equipment" data-index="${i}" class="text-amber-400/60 hover:text-amber-300 px-0.5" ${i === eq.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
+                    <button data-action="hero-details-item-unequip" data-index="${i}" class="text-slate-300 hover:text-white px-0.5" title="Ablegen">📦</button>
+                    <button data-action="hero-details-item-remove" data-source="equipment" data-index="${i}" class="text-red-400 hover:text-red-300 px-0.5" title="Entfernen">🗑</button>
+                </div>`).join('')
             : '<span class="text-slate-500 text-xs">Keine</span>';
 
         modal.innerHTML = sanitize(`
@@ -1317,14 +1337,15 @@ export const UI = {
                     <div class="text-slate-400 text-sm">${repairDisplayText(hero.class || 'Held')} · Level ${hero.level || 1}</div>
                     <div class="text-slate-300 text-sm mt-1">HP <span class="text-amber-400 font-bold">${hero.hp ?? hero.maxHp ?? '?'}</span>/<span class="text-amber-400 font-bold">${hero.maxHp ?? '?'}</span></div>
                 </div>
+                ${statPointsBadge}
                 <div class="grid grid-cols-4 gap-2 mb-4">${attrsHtml}</div>
                 <div class="mb-3">
                     <div class="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Inventar</div>
-                    <div class="flex flex-wrap gap-1">${invHtml}</div>
+                    <div class="flex flex-col gap-1">${invHtml}</div>
                 </div>
                 <div class="mb-4">
                     <div class="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Ausrüstung</div>
-                    <div class="flex flex-wrap gap-1">${eqHtml}</div>
+                    <div class="flex flex-col gap-1">${eqHtml}</div>
                 </div>
                 <div class="flex gap-2">
                     <button data-action="load-default-hero" class="flex-1 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-xl py-2.5 text-xs text-amber-300 transition-all">
