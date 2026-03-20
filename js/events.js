@@ -79,7 +79,7 @@ export function initEvents() {
             'hide-details': () => UI.hideDetails(),
             'gen-journal': () => Engine.generateJournalEntry(),
             'leave-merchant': () => Engine.leaveMerchant(),
-            'gen-portrait': () => Engine.generatePortrait(),
+            'gen-portrait': () => UI.genPortrait(),
             'finalize-char': () => Engine.finalizeCharacter(),
             'close-creator': () => UI.closeCreator(),
             'submit-dice': () => Engine.submitManualDiceRoll(),
@@ -180,7 +180,6 @@ export function initEvents() {
             'close-generator': () => UI.closeHeroGenerator(),
             'gen-stat-plus': () => UI.changeGeneratorStat(actionEl.dataset.stat, 1),
             'gen-stat-minus': () => UI.changeGeneratorStat(actionEl.dataset.stat, -1),
-            // Re-using gen-portrait for the generator specifically
             'gen-export-hero': () => UI.exportGeneratorHero(),
             'gen-finalize-hero': () => UI.finalizeGeneratorHero(),
 
