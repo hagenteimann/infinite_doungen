@@ -3,6 +3,7 @@ import { Engine } from './engine.js';
 import { Network } from './network.js';
 import { State } from './state.js';
 import { PartyManager } from './party.js';
+import { EQUIPMENT_LIMIT } from './constants.js';
 
 export function initEvents() {
     document.addEventListener('click', (e) => {
@@ -188,6 +189,104 @@ export function initEvents() {
             'change-default-hero': () => { document.getElementById('hero-details-modal')?.classList.add('hidden'); UI.showHeroGenerator(); },
             'show-default-hero-details': () => UI.showDefaultHeroDetails(),
             'close-hero-details-modal': () => document.getElementById('hero-details-modal')?.classList.add('hidden'),
+
+            // Hero-Details: Stat-Upgrade
+            'hero-details-upgrade-stat': () => {
+                const stat = actionEl.dataset.stat;
+                if (!stat) return;
+                const hero = Engine.getDefaultHero();
+                if (!hero || !hero.statPoints || hero.statPoints <= 0) return;
+                hero.attributes = hero.attributes || {};
+                hero.attributes[stat] = (hero.attributes[stat] || 0) + 1;
+                hero.statPoints -= 1;
+                Engine.saveDefaultHero(hero);
+                UI.showDefaultHeroDetails();
+            },
+
+            // Hero-Details: Item nach oben
+            'hero-details-item-up': () => {
+                const source = actionEl.dataset.source;
+                const idx = parseInt(actionEl.dataset.index, 10);
+                if (!source || isNaN(idx) || idx <= 0) return;
+                const hero = Engine.getDefaultHero();
+                if (!hero) return;
+                const arr = source === 'inventory' ? hero.inventory : hero.equipment;
+                if (!Array.isArray(arr) || idx >= arr.length) return;
+                [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+                Engine.saveDefaultHero(hero);
+                UI.showDefaultHeroDetails();
+            },
+
+            // Hero-Details: Item nach unten
+            'hero-details-item-down': () => {
+                const source = actionEl.dataset.source;
+                const idx = parseInt(actionEl.dataset.index, 10);
+                if (!source || isNaN(idx) || idx < 0) return;
+                const hero = Engine.getDefaultHero();
+                if (!hero) return;
+                const arr = source === 'inventory' ? hero.inventory : hero.equipment;
+                if (!Array.isArray(arr) || idx >= arr.length - 1) return;
+                [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+                Engine.saveDefaultHero(hero);
+                UI.showDefaultHeroDetails();
+            },
+
+            // Hero-Details: Item ausrüsten (inventory → equipment)
+            'hero-details-item-equip': () => {
+                const idx = parseInt(actionEl.dataset.index, 10);
+                if (isNaN(idx) || idx < 0) return;
+                const hero = Engine.getDefaultHero();
+                if (!hero) return;
+                const inv = Array.isArray(hero.inventory) ? hero.inventory : [];
+                const eq = Array.isArray(hero.equipment) ? hero.equipment : [];
+                if (idx >= inv.length) return;
+                if (eq.length >= EQUIPMENT_LIMIT) { UI.showToast(`Max. ${EQUIPMENT_LIMIT} Ausrüstungsgegenstände.`); return; }
+                const [item] = inv.splice(idx, 1);
+                eq.push(item);
+                hero.inventory = inv;
+                hero.equipment = eq;
+                Engine.saveDefaultHero(hero);
+                UI.showDefaultHeroDetails();
+            },
+
+            // Hero-Details: Ausrüstung ablegen (equipment → inventory)
+            'hero-details-item-unequip': () => {
+                const idx = parseInt(actionEl.dataset.index, 10);
+                if (isNaN(idx) || idx < 0) return;
+                const hero = Engine.getDefaultHero();
+                if (!hero) return;
+                const inv = Array.isArray(hero.inventory) ? hero.inventory : [];
+                const eq = Array.isArray(hero.equipment) ? hero.equipment : [];
+                if (idx >= eq.length) return;
+                const [item] = eq.splice(idx, 1);
+                inv.push(item);
+                hero.inventory = inv;
+                hero.equipment = eq;
+                Engine.saveDefaultHero(hero);
+                UI.showDefaultHeroDetails();
+            },
+
+            // Hero-Details: Item entfernen
+            'hero-details-item-remove': () => {
+                const source = actionEl.dataset.source;
+                const idx = parseInt(actionEl.dataset.index, 10);
+                if (!source || isNaN(idx) || idx < 0) return;
+                const hero = Engine.getDefaultHero();
+                if (!hero) return;
+                if (source === 'inventory') {
+                    const inv = Array.isArray(hero.inventory) ? hero.inventory : [];
+                    if (idx >= inv.length) return;
+                    inv.splice(idx, 1);
+                    hero.inventory = inv;
+                } else {
+                    const eq = Array.isArray(hero.equipment) ? hero.equipment : [];
+                    if (idx >= eq.length) return;
+                    eq.splice(idx, 1);
+                    hero.equipment = eq;
+                }
+                Engine.saveDefaultHero(hero);
+                UI.showDefaultHeroDetails();
+            },
 
             // PvP Arena
             'open-pvp-arena': () => Engine.showPvPScreen(),
