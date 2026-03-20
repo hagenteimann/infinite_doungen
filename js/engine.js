@@ -741,6 +741,8 @@ getPregameStatus() {
     },
 
     camp: function () {
+        if (State.isProcessing) return;
+        if (State.party.every(p => p.hp <= 0)) { UI.showToast('Deine Party ist kampfunfähig!'); return; }
         const hasProvisions = State.party.some(p =>
             p.inventory.some(it => ['ration', 'proviant', 'nahrung', 'brot', 'fleisch', 'wein', 'heiltrank', 'mahlzeit', 'vorrat'].some(food => it.toLowerCase().includes(food)))
         );
@@ -762,6 +764,7 @@ getPregameStatus() {
         const char = State.party.find(p => p.id === charId);
         if (!char || char.pendingTalentPoints <= 0) return;
         if (!char.talents) char.talents = [];
+        if (char.talents.includes(talentName)) return;
         char.talents.push(talentName);
         char.pendingTalentPoints--;
         Sound.play('levelup');
@@ -1183,7 +1186,7 @@ getPregameStatus() {
 
     finalizeCharacter: function () {
         const localKey = this._getResolvedLocalPlayerName();
-        const name = DOM.newName.value; const cls = DOM.newClass.value;
+        const name = DOM.newName.value.trim(); if (!name) { UI.showToast('Bitte gib einen Namen ein!'); return; } const cls = DOM.newClass.value;
         const preset = PRESETS[name]; const attrs = preset ? { ...preset.attributes } : { STR: 10, DEX: 10, INT: 10, CON: 10 };
         const tempChar = { id: Utils.generateId(), name, class: cls, level: 1, hp: 20, maxHp: 20, attributes: attrs, equipment: [] };
         const startHp = PartyManager.getEffectiveMaxHp(tempChar);
@@ -1357,6 +1360,7 @@ getPregameStatus() {
         const cid = DOM.itemActionCid.value;
         const itemName = DOM.itemActionName.value;
         const c = State.party.find(p => p.id === cid);
+        if (!c) return;
         DOM.itemActionModal.classList.add('hidden');
         DOM.playerInput.value = `Nutzt ${amt > 1 ? amt + 'x ' : ''}${itemName} `;
         State.actingChar = c.name;
@@ -1572,7 +1576,7 @@ getPregameStatus() {
         UI.showDetails(cid);
         UI.updateAll();
     },
-    removeCharacter: function (id) { const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); } },
+    removeCharacter: function (id) { if (State.party.length <= 1) { UI.showToast('Du brauchst mindestens einen Helden!'); return; } const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); } },
     exportHero: function (id) { const c = State.party.find(p => p.id === id); if (!c) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(c)], { type: 'application/json' })); a.download = `Hero_${c.name}.json`; document.body.appendChild(a); a.click(); },
     bulkExportHeroes: async function () {
         const heroes = State.party.filter(p => !p.isSummon);
