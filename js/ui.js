@@ -1193,7 +1193,10 @@ export const UI = {
                 </div>
             </div>`;
     },
-    showCreator: function () { DOM.creatorModal.classList.remove('hidden'); },
+    showCreator: function () {
+        DOM.creatorModal.classList.remove('hidden');
+        setTimeout(() => DOM.newName?.focus(), 100);
+    },
     showAbilityReplaceModal: function (charId, newAbility) {
         const c = State.party.find(p => p.id === charId);
         if (!c) return;
@@ -1290,6 +1293,7 @@ export const UI = {
             // Temporarily set the key for generation if provided
             if (!State.apiKeys) State.apiKeys = {};
             State.apiKeys.gemini = apiKey;
+            State.imageQuotaExceeded = false;
         }
 
         DOM.btnGenPortrait.disabled = true;
