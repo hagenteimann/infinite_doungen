@@ -1296,9 +1296,9 @@ export const UI = {
         const attrs = hero.attributes || {};
         const attrsHtml = Object.entries(attrs).map(([k, v]) => `
             <div class="bg-black/30 rounded-lg p-2 text-center">
-                <div class="text-amber-400 font-bold text-xs">${k}</div>
-                <div class="text-white text-sm font-bold">${v}</div>
-                ${statPoints > 0 ? `<button data-action="hero-details-upgrade-stat" data-stat="${k}" class="mt-1 bg-green-700 hover:bg-green-600 text-white w-5 h-5 rounded text-xs font-bold transition-colors">+</button>` : ''}
+                <div class="text-amber-400 font-bold text-xs">${repairDisplayText(k)}</div>
+                <div class="text-white text-sm font-bold">${repairDisplayText(String(v))}</div>
+                ${statPoints > 0 ? `<button data-action="hero-details-upgrade-stat" data-stat="${repairDisplayText(k)}" class="mt-1 bg-green-700 hover:bg-green-600 text-white w-5 h-5 rounded text-xs font-bold transition-colors">+</button>` : ''}
             </div>`).join('');
 
         const inv = Array.isArray(hero.inventory) ? hero.inventory : [];
