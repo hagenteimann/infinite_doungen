@@ -26,6 +26,7 @@ const TRUSTED = {
     'data-safe-id', 'data-merchant-name', 'data-entity-type', 'data-entity-id',
     'data-name', 'data-roll-id', 'data-item-ability', 'data-ability-source', 'data-text', 'data-preset',
     'data-tab', 'data-stat', 'data-player', 'data-room', 'data-provider', 'data-option',
+    'data-source', 'data-index',
     'value', 'id', 'src', 'min', 'max', 'type', 'disabled',
     'selected', 'placeholder', 'aria-hidden', 'maxlength', 'checked', 'for', 'readonly'
   ],
