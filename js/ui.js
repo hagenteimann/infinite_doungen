@@ -1339,29 +1339,58 @@ export const UI = {
                 activeSetsHtml += `<div class="bg-indigo-900/40 border border-indigo-500/50 rounded p-1.5 mb-2 shadow-inner"><span class="text-indigo-300 font-bold text-[9px] uppercase"><i class="fas fa-layer-group text-indigo-400 mr-1"></i> Set-Bonus: ${repairDisplayText(set.name)} (${count}/${set.pieces.length})</span><div class="text-indigo-200 text-[8px] mt-0.5">${bonusDesc}</div></div>`;
             }
         });
+        // Equipment konsolidiert: gleiche Items zusammenfassen
+        const eqConsolidated = new Map();
+        eqArr.forEach((it, i) => {
+            if (!eqConsolidated.has(it)) eqConsolidated.set(it, { firstIdx: i, lastIdx: i, count: 0 });
+            const e = eqConsolidated.get(it);
+            e.lastIdx = i;
+            e.count++;
+        });
+        const eqEntries = Array.from(eqConsolidated.entries());
         const eqItemsHtml = eqArr.length
-            ? eqArr.map((it, i) => `<li class="bg-indigo-900/30 p-1.5 rounded border border-indigo-700/50 flex items-center justify-between gap-1">
-                <span class="text-indigo-200 text-[10px] flex-1 truncate">${repairDisplayText(it)}</span>
-                <div class="flex gap-0.5 shrink-0">
-                    <button data-action="hero-details-item-up" data-source="equipment" data-index="${i}" class="${i === 0 ? 'text-indigo-400/30' : 'text-indigo-400/60 hover:text-indigo-200'} text-[10px] px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
-                    <button data-action="hero-details-item-down" data-source="equipment" data-index="${i}" class="${i === eqArr.length - 1 ? 'text-indigo-400/30' : 'text-indigo-400/60 hover:text-indigo-200'} text-[10px] px-0.5" ${i === eqArr.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
-                    <button data-action="hero-details-item-unequip" data-index="${i}" class="text-slate-400 hover:text-white text-[10px] px-0.5" title="Ablegen">📦</button>
-                    <button data-action="hero-details-item-remove" data-source="equipment" data-index="${i}" class="text-red-400/70 hover:text-red-300 text-[10px] px-0.5" title="Entfernen">🗑</button>
-                </div></li>`).join('')
+            ? eqEntries.map(([it, { firstIdx, lastIdx, count }]) => {
+                const countHtml = count > 1 ? `<span class="text-indigo-400 font-bold ml-1 text-[9px]">(x${count})</span>` : '';
+                const reorderBtns = count === 1
+                    ? `<button data-action="hero-details-item-up" data-source="equipment" data-index="${firstIdx}" class="${firstIdx === 0 ? 'text-indigo-400/30' : 'text-indigo-400/60 hover:text-indigo-200'} text-[10px] px-0.5" ${firstIdx === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
+                       <button data-action="hero-details-item-down" data-source="equipment" data-index="${firstIdx}" class="${firstIdx === eqArr.length - 1 ? 'text-indigo-400/30' : 'text-indigo-400/60 hover:text-indigo-200'} text-[10px] px-0.5" ${firstIdx === eqArr.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>`
+                    : '';
+                return `<li class="bg-indigo-900/30 p-1.5 rounded border border-indigo-700/50 flex items-center justify-between gap-1">
+                    <span class="text-indigo-200 text-[10px] flex-1 truncate">${repairDisplayText(it)}${countHtml}</span>
+                    <div class="flex gap-0.5 shrink-0">
+                        ${reorderBtns}
+                        <button data-action="hero-details-item-unequip" data-index="${firstIdx}" class="text-slate-400 hover:text-white text-[10px] px-0.5" title="Ablegen">📦</button>
+                        <button data-action="hero-details-item-remove" data-source="equipment" data-index="${lastIdx}" class="text-red-400/70 hover:text-red-300 text-[10px] px-0.5" title="Entfernen">🗑</button>
+                    </div></li>`;
+            }).join('')
             : '<li class="text-slate-500 italic text-[10px]">Nichts ausgerüstet</li>';
         const equipmentHtml = `<div><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-indigo-300">AUSRÜSTUNG</h4>${activeSetsHtml}<ul class="text-[10px] space-y-1.5">${eqItemsHtml}</ul></div>`;
 
-        // Inventar
+        // Inventar konsolidiert: gleiche Items zusammenfassen
         const invArr = Array.isArray(hero.inventory) ? hero.inventory : [];
+        const invConsolidated = new Map();
+        invArr.forEach((it, i) => {
+            if (!invConsolidated.has(it)) invConsolidated.set(it, { firstIdx: i, lastIdx: i, count: 0 });
+            const e = invConsolidated.get(it);
+            e.lastIdx = i;
+            e.count++;
+        });
+        const invEntries = Array.from(invConsolidated.entries());
         const invItemsHtml = invArr.length
-            ? invArr.map((it, i) => `<li class="bg-slate-800/50 p-1.5 rounded border border-slate-700/50 flex items-center justify-between gap-1">
-                <span class="flex-1 text-[10px] truncate">${repairDisplayText(it)}</span>
-                <div class="flex gap-0.5 shrink-0">
-                    <button data-action="hero-details-item-up" data-source="inventory" data-index="${i}" class="${i === 0 ? 'text-slate-600' : 'text-slate-400 hover:text-white'} text-[10px] px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
-                    <button data-action="hero-details-item-down" data-source="inventory" data-index="${i}" class="${i === invArr.length - 1 ? 'text-slate-600' : 'text-slate-400 hover:text-white'} text-[10px] px-0.5" ${i === invArr.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
-                    <button data-action="hero-details-item-equip" data-index="${i}" class="text-amber-400/70 hover:text-amber-300 text-[10px] px-0.5" title="Ausrüsten">⚔</button>
-                    <button data-action="hero-details-item-remove" data-source="inventory" data-index="${i}" class="text-red-400/70 hover:text-red-300 text-[10px] px-0.5" title="Entfernen">🗑</button>
-                </div></li>`).join('')
+            ? invEntries.map(([it, { firstIdx, lastIdx, count }]) => {
+                const countHtml = count > 1 ? `<span class="text-amber-500 font-bold ml-1 text-[9px]">(x${count})</span>` : '';
+                const reorderBtns = count === 1
+                    ? `<button data-action="hero-details-item-up" data-source="inventory" data-index="${firstIdx}" class="${firstIdx === 0 ? 'text-slate-600' : 'text-slate-400 hover:text-white'} text-[10px] px-0.5" ${firstIdx === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
+                       <button data-action="hero-details-item-down" data-source="inventory" data-index="${firstIdx}" class="${firstIdx === invArr.length - 1 ? 'text-slate-600' : 'text-slate-400 hover:text-white'} text-[10px] px-0.5" ${firstIdx === invArr.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>`
+                    : '';
+                return `<li class="bg-slate-800/50 p-1.5 rounded border border-slate-700/50 flex items-center justify-between gap-1">
+                    <span class="flex-1 text-[10px] truncate">${repairDisplayText(it)}${countHtml}</span>
+                    <div class="flex gap-0.5 shrink-0">
+                        ${reorderBtns}
+                        <button data-action="hero-details-item-equip" data-index="${firstIdx}" class="text-amber-400/70 hover:text-amber-300 text-[10px] px-0.5" title="Ausrüsten">⚔</button>
+                        <button data-action="hero-details-item-remove" data-source="inventory" data-index="${lastIdx}" class="text-red-400/70 hover:text-red-300 text-[10px] px-0.5" title="Entfernen">🗑</button>
+                    </div></li>`;
+            }).join('')
             : '<li class="text-slate-500 italic text-[10px]">Leer</li>';
         const inventoryHtml = `<div><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2">INVENTAR</h4><ul class="text-[10px] space-y-1.5">${invItemsHtml}</ul></div>`;
 
