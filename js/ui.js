@@ -1301,10 +1301,15 @@ export const UI = {
             if (url) {
                 this._generatorState.portrait = url;
                 this.updateGeneratorUI();
+            } else {
+                const msg = State.imageQuotaExceeded
+                    ? 'Bildgenerierung: Quota überschritten. Bitte morgen erneut versuchen.'
+                    : 'Portrait konnte nicht generiert werden. Bitte API-Key prüfen.';
+                this.showToast(msg);
             }
         } catch (e) {
             console.error("Portrait gen failed", e);
-            this.showToast("Generierung fehlgeschlagen.");
+            this.showToast("Generierung fehlgeschlagen. Bitte API-Key prüfen.");
         } finally {
             DOM.btnGenPortrait.disabled = false;
             DOM.btnGenPortrait.innerHTML = '<i class="fas fa-magic"></i> Portrait generieren';
@@ -1340,9 +1345,8 @@ export const UI = {
         // If we have an active game, add to party
         if (State.party) {
             dispatch({ type: 'ADD_PARTY_MEMBER', character: hero });
+            Engine._syncLocalProfile({ heroId: hero.id, heroName: hero.name, isReady: false });
         } else {
-            // Otherwise just save it to local storage for "Roster" (if that exists)
-            // For now, let's just toast
             console.log("Generated Hero:", hero);
         }
 
