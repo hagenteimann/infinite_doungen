@@ -1186,7 +1186,9 @@ getPregameStatus() {
 
     finalizeCharacter: function () {
         const localKey = this._getResolvedLocalPlayerName();
-        const name = DOM.newName.value.trim(); if (!name) { UI.showToast('Bitte gib einen Namen ein!'); return; } const cls = DOM.newClass.value;
+        const name = DOM.newName.value.trim();
+        if (!name) { UI.showToast('Bitte gib einen Namen ein!'); return; }
+        const cls = DOM.newClass.value;
         const preset = PRESETS[name]; const attrs = preset ? { ...preset.attributes } : { STR: 10, DEX: 10, INT: 10, CON: 10 };
         const tempChar = { id: Utils.generateId(), name, class: cls, level: 1, hp: 20, maxHp: 20, attributes: attrs, equipment: [] };
         const startHp = PartyManager.getEffectiveMaxHp(tempChar);
@@ -1576,7 +1578,14 @@ getPregameStatus() {
         UI.showDetails(cid);
         UI.updateAll();
     },
-    removeCharacter: function (id) { if (State.party.length <= 1) { UI.showToast('Du brauchst mindestens einen Helden!'); return; } const idx = State.party.findIndex(c => c.id === id); if (idx > -1) { State.party.splice(idx, 1); UI.hideDetails(); UI.updateAll(); } },
+    removeCharacter: function (id) {
+        if (State.party.length <= 1) { UI.showToast('Du brauchst mindestens einen Helden!'); return; }
+        const idx = State.party.findIndex(c => c.id === id);
+        if (idx > -1) {
+            dispatch({ type: 'REMOVE_PARTY_MEMBER', charId: id });
+            UI.hideDetails();
+        }
+    },
     exportHero: function (id) { const c = State.party.find(p => p.id === id); if (!c) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(c)], { type: 'application/json' })); a.download = `Hero_${c.name}.json`; document.body.appendChild(a); a.click(); },
     bulkExportHeroes: async function () {
         const heroes = State.party.filter(p => !p.isSummon);
