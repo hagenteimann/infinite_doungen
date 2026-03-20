@@ -1284,79 +1284,108 @@ export const UI = {
             document.body.appendChild(modal);
         }
 
-        const portraitHtml = hero.portrait
-            ? `<img src="${hero.portrait}" alt="${repairDisplayText(hero.name)}" class="w-24 h-24 rounded-2xl object-cover border-2 border-amber-500/50 shadow-lg mx-auto mb-3">`
-            : `<div class="w-24 h-24 rounded-2xl bg-slate-800 flex items-center justify-center border-2 border-amber-500/30 mx-auto mb-3"><i class="fas fa-shield-halved text-amber-500 text-3xl"></i></div>`;
-
         const statPoints = hero.statPoints || 0;
-        const statPointsBadge = statPoints > 0
-            ? `<div class="text-center mb-2"><span class="bg-green-600/80 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">${statPoints} Stat-Punkt${statPoints > 1 ? 'e' : ''} verfügbar!</span></div>`
+        const effAttrs = PartyManager.getEffectiveAttributes(hero);
+        const xpNeeded = Math.floor(XP_BASE * Math.pow(hero.level || 1, XP_SCALING_EXPONENT));
+
+        // Portrait header (selbe Struktur wie showDetails)
+        const portraitSrc = hero.portrait || '';
+        const headerHtml = `
+            <div class="hero-detail-header rounded-xl overflow-hidden border border-slate-600/60 shadow-[0_10px_30px_rgba(0,0,0,0.45)] mb-0 relative">
+                <button data-action="close-hero-details-modal" class="absolute top-2 right-2 z-50 p-1.5 text-slate-400 hover:text-white bg-black/40 backdrop-blur-sm rounded-lg border border-white/10 transition-colors"><i class="fas fa-times"></i></button>
+                <div class="hero-detail-header-media ${portraitSrc ? '' : 'hero-detail-header-fallback'}">
+                    ${portraitSrc ? `<img src="${portraitSrc}" class="hero-detail-header-bg" aria-hidden="true"><img src="${portraitSrc}" class="hero-detail-header-portrait">` : `<div class="hero-detail-fallback-icon"><i class="fas fa-user"></i></div>`}
+                    <div class="hero-detail-header-shade"></div>
+                </div>
+                <div class="hero-detail-header-meta relative">
+                    <h3 class="cinzel text-amber-300 text-sm tracking-wide">${repairDisplayText(hero.name)}</h3>
+                    <p class="text-[10px] text-slate-200/90">${repairDisplayText(hero.class || 'Held')} | Lvl ${hero.level || 1}</p>
+                    <div class="mt-1.5 w-full bg-black/40 h-1.5 rounded-full border border-white/10 overflow-hidden"><div class="bg-gradient-to-r from-purple-500 to-indigo-400 h-full" style="width: ${Math.min(100, ((hero.xp || 0) / xpNeeded) * 100)}%"></div></div>
+                    <p class="text-[9px] text-slate-300/80 mt-1">${hero.xp || 0}/${xpNeeded} XP</p>
+                </div>
+            </div>`;
+
+        // Fähigkeiten (read-only auf dem Startbildschirm)
+        const abilities = PartyManager.getAbilityEntries(hero).filter(e => e.type === 'ability');
+        const itemAbilities = PartyManager.getAbilityEntries(hero).filter(e => e.type === 'item');
+        const abilitiesHtml = abilities.length
+            ? `<div><h4 class="text-[9px] font-bold border-b border-amber-700/50 pb-1 mb-2 text-amber-400 uppercase tracking-wider"><i class="fas fa-fire mr-1"></i>Fähigkeiten</h4>${abilities.map(e => `<div class="mb-2 p-1.5 bg-amber-900/40 border border-amber-700/50 rounded text-center text-[9px] shadow-sm shadow-[0_0_10px_rgba(245,158,11,0.2)]"><span class="text-amber-500 font-bold block mb-0.5"><i class="fas fa-meteor"></i> Fähigkeit:</span>${repairDisplayText(e.name)}</div>`).join('')}</div>`
+            : '';
+        const itemAbilitiesHtml = itemAbilities.length
+            ? `<div><h4 class="text-[9px] font-bold border-b border-teal-700/50 pb-1 mb-2 text-teal-400 uppercase tracking-wider"><i class="fas fa-shield-alt mr-1"></i>Item-Fähigkeiten</h4>${itemAbilities.map(e => `<div class="mb-2 p-1.5 bg-teal-900/30 border border-teal-700/40 rounded text-center text-[9px] shadow-sm"><span class="text-teal-400 font-bold block mb-0.5"><i class="fas fa-gem"></i> ${repairDisplayText(e.source || 'Item')}:</span>${repairDisplayText(e.name)}</div>`).join('')}</div>`
             : '';
 
-        const attrs = hero.attributes || {};
-        const attrsHtml = Object.entries(attrs).map(([k, v]) => `
-            <div class="bg-black/30 rounded-lg p-2 text-center">
-                <div class="text-amber-400 font-bold text-xs">${repairDisplayText(k)}</div>
-                <div class="text-white text-sm font-bold">${repairDisplayText(String(v))}</div>
-                ${statPoints > 0 ? `<button data-action="hero-details-upgrade-stat" data-stat="${repairDisplayText(k)}" class="mt-1 bg-green-700 hover:bg-green-600 text-white w-5 h-5 rounded text-xs font-bold transition-colors">+</button>` : ''}
-            </div>`).join('');
+        // Talente
+        const talentsHtml = (hero.talents && hero.talents.length > 0)
+            ? `<div><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-emerald-400 uppercase">Spezialisierung</h4><div class="flex flex-wrap gap-1">${hero.talents.map(t => `<span class="bg-emerald-900/30 border border-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded text-[10px]"><i class="fas fa-leaf mr-1 opacity-70"></i>${repairDisplayText(t)}</span>`).join('')}</div></div>`
+            : '';
 
-        const inv = Array.isArray(hero.inventory) ? hero.inventory : [];
-        const invHtml = inv.length
-            ? inv.map((it, i) => `
-                <div class="flex items-center gap-1 bg-slate-700/60 border border-white/10 rounded px-2 py-1 text-[10px] text-slate-300 w-full">
-                    <span class="flex-1 truncate">${repairDisplayText(it)}</span>
-                    <button data-action="hero-details-item-up" data-source="inventory" data-index="${i}" class="text-slate-400 ${i === 0 ? '' : 'hover:text-white'} px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
-                    <button data-action="hero-details-item-down" data-source="inventory" data-index="${i}" class="text-slate-400 ${i === inv.length - 1 ? '' : 'hover:text-white'} px-0.5" ${i === inv.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
-                    <button data-action="hero-details-item-equip" data-index="${i}" class="text-amber-400 hover:text-amber-300 px-0.5" title="Ausrüsten">⚔</button>
-                    <button data-action="hero-details-item-remove" data-source="inventory" data-index="${i}" class="text-red-400 hover:text-red-300 px-0.5" title="Entfernen">🗑</button>
-                </div>`).join('')
-            : '<span class="text-slate-500 text-xs">Leer</span>';
+        // Attribute (Zeilen-Stil wie in showDetails)
+        const sBadge = statPoints > 0 ? `<span class="bg-green-600 px-1.5 py-0.5 rounded text-[8px] animate-pulse ml-2">${statPoints} Punkte!</span>` : '';
+        const aHtml = Object.entries(hero.attributes || {}).map(([k, v]) => {
+            const bonus = (effAttrs[k] || 0) - v;
+            const bonusHtml = bonus !== 0 ? `<span class="${bonus > 0 ? 'text-green-400' : 'text-red-400'} font-bold ml-1">${bonus > 0 ? '+' : ''}${bonus}</span>` : '';
+            return `<div class="flex justify-between items-center bg-slate-800/50 p-1.5 rounded mb-1 border border-slate-700/50"><span class="text-slate-400 font-bold text-[9px] w-8">${repairDisplayText(k)}</span><span class="text-amber-400 font-mono flex-1 text-center text-[11px]">${repairDisplayText(String(v))}${bonusHtml}</span>${statPoints > 0 ? `<button data-action="hero-details-upgrade-stat" data-stat="${repairDisplayText(k)}" class="bg-green-700 hover:bg-green-600 text-white w-5 h-5 rounded text-xs font-bold transition-colors">+</button>` : '<div class="w-5"></div>'}</div>`;
+        }).join('');
+        const attrsHtml = `<div><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2">ATTRIBUTE ${sBadge}</h4>${aHtml}</div>`;
 
-        const eq = Array.isArray(hero.equipment) ? hero.equipment : [];
-        const eqHtml = eq.length
-            ? eq.map((it, i) => `
-                <div class="flex items-center gap-1 bg-amber-900/40 border border-amber-500/20 rounded px-2 py-1 text-[10px] text-amber-300 w-full">
-                    <span class="flex-1 truncate">${repairDisplayText(it)}</span>
-                    <button data-action="hero-details-item-up" data-source="equipment" data-index="${i}" class="${i === 0 ? 'text-amber-400/30' : 'text-amber-400/60 hover:text-amber-300'} px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
-                    <button data-action="hero-details-item-down" data-source="equipment" data-index="${i}" class="${i === eq.length - 1 ? 'text-amber-400/30' : 'text-amber-400/60 hover:text-amber-300'} px-0.5" ${i === eq.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
-                    <button data-action="hero-details-item-unequip" data-index="${i}" class="text-slate-300 hover:text-white px-0.5" title="Ablegen">📦</button>
-                    <button data-action="hero-details-item-remove" data-source="equipment" data-index="${i}" class="text-red-400 hover:text-red-300 px-0.5" title="Entfernen">🗑</button>
-                </div>`).join('')
-            : '<span class="text-slate-500 text-xs">Keine</span>';
+        // Equipment (Set-Boni + verwaltbare Items)
+        const eqArr = Array.isArray(hero.equipment) ? hero.equipment : [];
+        let activeSetsHtml = '';
+        EQUIPMENT_SETS.forEach(set => {
+            const count = set.pieces.filter(p => eqArr.some(e => e.includes(p))).length;
+            if (count >= 2) {
+                const bonusDesc = Object.entries(set.bonus).map(([k, v]) => `+${v} ${k}`).join(', ');
+                activeSetsHtml += `<div class="bg-indigo-900/40 border border-indigo-500/50 rounded p-1.5 mb-2 shadow-inner"><span class="text-indigo-300 font-bold text-[9px] uppercase"><i class="fas fa-layer-group text-indigo-400 mr-1"></i> Set-Bonus: ${repairDisplayText(set.name)} (${count}/${set.pieces.length})</span><div class="text-indigo-200 text-[8px] mt-0.5">${bonusDesc}</div></div>`;
+            }
+        });
+        const eqItemsHtml = eqArr.length
+            ? eqArr.map((it, i) => `<li class="bg-indigo-900/30 p-1.5 rounded border border-indigo-700/50 flex items-center justify-between gap-1">
+                <span class="text-indigo-200 text-[10px] flex-1 truncate">${repairDisplayText(it)}</span>
+                <div class="flex gap-0.5 shrink-0">
+                    <button data-action="hero-details-item-up" data-source="equipment" data-index="${i}" class="${i === 0 ? 'text-indigo-400/30' : 'text-indigo-400/60 hover:text-indigo-200'} text-[10px] px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
+                    <button data-action="hero-details-item-down" data-source="equipment" data-index="${i}" class="${i === eqArr.length - 1 ? 'text-indigo-400/30' : 'text-indigo-400/60 hover:text-indigo-200'} text-[10px] px-0.5" ${i === eqArr.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
+                    <button data-action="hero-details-item-unequip" data-index="${i}" class="text-slate-400 hover:text-white text-[10px] px-0.5" title="Ablegen">📦</button>
+                    <button data-action="hero-details-item-remove" data-source="equipment" data-index="${i}" class="text-red-400/70 hover:text-red-300 text-[10px] px-0.5" title="Entfernen">🗑</button>
+                </div></li>`).join('')
+            : '<li class="text-slate-500 italic text-[10px]">Nichts ausgerüstet</li>';
+        const equipmentHtml = `<div><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2 text-indigo-300">AUSRÜSTUNG</h4>${activeSetsHtml}<ul class="text-[10px] space-y-1.5">${eqItemsHtml}</ul></div>`;
+
+        // Inventar
+        const invArr = Array.isArray(hero.inventory) ? hero.inventory : [];
+        const invItemsHtml = invArr.length
+            ? invArr.map((it, i) => `<li class="bg-slate-800/50 p-1.5 rounded border border-slate-700/50 flex items-center justify-between gap-1">
+                <span class="flex-1 text-[10px] truncate">${repairDisplayText(it)}</span>
+                <div class="flex gap-0.5 shrink-0">
+                    <button data-action="hero-details-item-up" data-source="inventory" data-index="${i}" class="${i === 0 ? 'text-slate-600' : 'text-slate-400 hover:text-white'} text-[10px] px-0.5" ${i === 0 ? 'disabled' : ''} title="Nach oben">↑</button>
+                    <button data-action="hero-details-item-down" data-source="inventory" data-index="${i}" class="${i === invArr.length - 1 ? 'text-slate-600' : 'text-slate-400 hover:text-white'} text-[10px] px-0.5" ${i === invArr.length - 1 ? 'disabled' : ''} title="Nach unten">↓</button>
+                    <button data-action="hero-details-item-equip" data-index="${i}" class="text-amber-400/70 hover:text-amber-300 text-[10px] px-0.5" title="Ausrüsten">⚔</button>
+                    <button data-action="hero-details-item-remove" data-source="inventory" data-index="${i}" class="text-red-400/70 hover:text-red-300 text-[10px] px-0.5" title="Entfernen">🗑</button>
+                </div></li>`).join('')
+            : '<li class="text-slate-500 italic text-[10px]">Leer</li>';
+        const inventoryHtml = `<div><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2">INVENTAR</h4><ul class="text-[10px] space-y-1.5">${invItemsHtml}</ul></div>`;
 
         modal.innerHTML = sanitize(`
-            <div class="bg-slate-900/95 border border-amber-500/30 rounded-2xl p-6 max-w-sm w-full shadow-[0_0_40px_rgba(245,158,11,0.15)] max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="cinzel text-amber-400 text-lg">Mein Held</h2>
-                    <button data-action="close-hero-details-modal" class="text-slate-500 hover:text-white transition-colors"><i class="fas fa-times text-lg"></i></button>
-                </div>
-                ${portraitHtml}
-                <div class="text-center mb-4">
-                    <div class="cinzel text-white font-bold text-xl">${repairDisplayText(hero.name)}</div>
-                    <div class="text-slate-400 text-sm">${repairDisplayText(hero.class || 'Held')} · Level ${hero.level || 1}</div>
-                    <div class="text-slate-300 text-sm mt-1">HP <span class="text-amber-400 font-bold">${hero.hp ?? hero.maxHp ?? '?'}</span>/<span class="text-amber-400 font-bold">${hero.maxHp ?? '?'}</span></div>
-                </div>
-                ${statPointsBadge}
-                <div class="grid grid-cols-4 gap-2 mb-4">${attrsHtml}</div>
-                <div class="mb-3">
-                    <div class="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Inventar</div>
-                    <div class="flex flex-col gap-1">${invHtml}</div>
-                </div>
-                <div class="mb-4">
-                    <div class="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Ausrüstung</div>
-                    <div class="flex flex-col gap-1">${eqHtml}</div>
-                </div>
-                <div class="flex gap-2">
-                    <button data-action="load-default-hero" class="flex-1 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-xl py-2.5 text-xs text-amber-300 transition-all">
-                        <i class="fas fa-play mr-1"></i> Laden
-                    </button>
-                    <button data-action="change-default-hero" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2.5 text-xs text-slate-200 transition-all">
-                        <i class="fas fa-edit mr-1"></i> Ändern
-                    </button>
-                    <button data-action="close-hero-details-modal" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2.5 text-xs text-slate-400 transition-all">
-                        <i class="fas fa-times mr-1"></i> Schließen
-                    </button>
+            <div class="bg-slate-950 border border-slate-700/50 rounded-2xl w-full max-w-sm shadow-[0_0_50px_rgba(0,0,0,0.8)] max-h-[90vh] overflow-y-auto custom-scrollbar">
+                ${headerHtml}
+                <div class="hero-details-stack px-3 pb-3 flex flex-col gap-2" style="margin-top:-1.1rem;padding-top:1.1rem;">
+                    ${abilitiesHtml}
+                    ${itemAbilitiesHtml}
+                    ${talentsHtml}
+                    ${attrsHtml}
+                    ${equipmentHtml}
+                    ${inventoryHtml}
+                    <div class="flex gap-2 pt-1">
+                        <button data-action="load-default-hero" class="flex-1 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-xl py-2.5 text-xs text-amber-300 transition-all">
+                            <i class="fas fa-play mr-1"></i> Laden
+                        </button>
+                        <button data-action="change-default-hero" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2.5 text-xs text-slate-200 transition-all">
+                            <i class="fas fa-edit mr-1"></i> Ändern
+                        </button>
+                        <button data-action="close-hero-details-modal" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2.5 text-xs text-slate-400 transition-all">
+                            <i class="fas fa-times mr-1"></i> Schließen
+                        </button>
+                    </div>
                 </div>
             </div>`);
         modal.classList.remove('hidden');
