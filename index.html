@@ -447,6 +447,78 @@
         </div>
     </div>
 
+    <!-- Charakter Creator Modal -->
+    <div id="creator-modal"
+        class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div
+            class="bg-slate-800/95 backdrop-blur-xl border border-purple-500/50 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-[0_0_40px_rgba(168,85,247,0.2)]">
+            <h2
+                class="cinzel text-2xl text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200 text-center drop-shadow-md">
+                Neuer Abenteurer</h2>
+            <div class="flex gap-2 overflow-x-auto pb-3 border-b border-white/10 custom-scrollbar">
+                <button data-action="apply-preset" data-preset="Gimli"
+                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Gimli</button>
+                <button data-action="apply-preset" data-preset="Legolas"
+                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Legolas</button>
+                <button data-action="apply-preset" data-preset="Gandalf"
+                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Gandalf</button>
+                <button data-action="apply-preset" data-preset="Hagen"
+                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Hagen</button>
+                <button data-action="apply-preset" data-preset="Ben der Starke"
+                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">Ben</button>
+                <button data-action="apply-preset" data-preset="José"
+                    class="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white hover:bg-white/10 hover:border-amber-500/50 transition-all whitespace-nowrap shadow-sm">José</button>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Name</label>
+                    <input type="text" id="new-name"
+                        class="w-full bg-black/50 p-2.5 rounded-lg border border-white/10 focus:border-amber-500/50 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Klasse</label>
+                    <select id="new-class"
+                        class="w-full bg-black/50 p-2.5 rounded-lg border border-white/10 focus:border-amber-500/50 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner cursor-pointer">
+                        <option class="bg-slate-900">Krieger</option>
+                        <option class="bg-slate-900">Magier</option>
+                        <option class="bg-slate-900">Schurke</option>
+                        <option class="bg-slate-900">Waldläufer</option>
+                        <option class="bg-slate-900">Kleriker</option>
+                    </select>
+                </div>
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Aussehen</label>
+                <textarea id="new-appearance" rows="2"
+                    class="w-full bg-black/50 p-2.5 rounded-lg border border-white/10 focus:border-amber-500/50 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner placeholder-slate-600"
+                    placeholder="Beschreibe deinen Helden..."></textarea>
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Start-Item</label>
+                <select id="start-item"
+                    class="w-full bg-black/50 p-2.5 rounded-lg border border-white/10 focus:border-amber-500/50 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner cursor-pointer">
+                    <option value="Heiltrank" class="bg-slate-900">Heiltrank</option>
+                    <option value="Schmuckstein" class="bg-slate-900">Schmuckstein</option>
+                    <option value="Dietrich" class="bg-slate-900">Dietrich</option>
+                </select>
+            </div>
+            <div id="portrait-preview" class="flex justify-center hidden mt-3">
+                <img id="generated-portrait" src=""
+                    class="w-32 h-32 object-cover rounded-xl border-2 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+            </div>
+            <div class="flex gap-3 mt-5 pt-2 border-t border-white/5">
+                <button id="gen-img-btn" data-action="gen-portrait"
+                    class="flex-1 bg-blue-600/80 hover:bg-blue-500 py-3 rounded-xl border border-blue-400/50 font-bold text-xs shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all duration-300 text-white flex items-center justify-center gap-2"><i
+                        class="fas fa-sparkles text-blue-200"></i> Porträt</button>
+                <button id="save-char-btn" data-action="finalize-char"
+                    class="flex-1 bg-amber-600/80 hover:bg-amber-500 py-3 rounded-xl border border-amber-500/50 font-bold text-xs shadow-[0_0_15px_rgba(217,119,6,0.4)] hover:shadow-[0_0_20px_rgba(245,158,11,0.6)] opacity-50 transition-all duration-300 disabled:shadow-none text-white flex items-center justify-center gap-2"
+                    disabled><i class="fas fa-check text-amber-200"></i> Speichern</button>
+            </div>
+            <button data-action="close-creator"
+                class="w-full text-slate-500 hover:text-slate-300 transition-colors text-xs py-2 mt-2 font-medium">Abbrechen</button>
+        </div>
+    </div>
+
     <!-- Animiertes Wuerfel-Modal -->
     <div id="dice-modal"
         class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
