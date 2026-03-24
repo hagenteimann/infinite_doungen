@@ -81,6 +81,7 @@ export function initEvents() {
             'gen-journal': () => Engine.generateJournalEntry(),
             'leave-merchant': () => Engine.leaveMerchant(),
             'gen-portrait': () => UI.genPortrait(),
+            'gen-creator-portrait': () => Engine.generatePortrait(),
             'finalize-char': () => Engine.finalizeCharacter(),
             'close-creator': () => UI.closeCreator(),
             'submit-dice': () => Engine.submitManualDiceRoll(),
