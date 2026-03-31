@@ -325,12 +325,48 @@ export function initEvents() {
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
         const el = e.target;
-        if (!el) return;
-        if (el.id === 'player-input') Engine.submitPlayerAction();
-        else if (el.id === 'pvp-player-input') Engine.processPvPAction('text-input', el.value);
-        else if (el.id === 'oracle-input') Engine.submitOracle();
+        const isInput = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA';
+
+        // Esc: Alle Modals und Panele schließen
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.fixed:not(.hidden), .absolute.z-\[100\], .absolute.z-\[200\]').forEach(m => {
+                if (m.id !== 'loading-spinner' && m.id !== 'topbar-thinking-status') m.classList.add('hidden');
+            });
+            document.getElementById('settings-panel')?.classList.add('hidden');
+            UI.closeEnemyLightbox();
+            return;
+        }
+
+        // Enter: Aktionen abschicken
+        if (e.key === 'Enter') {
+            if (el?.id === 'player-input') Engine.submitPlayerAction();
+            else if (el?.id === 'pvp-player-input') Engine.processPvPAction('text-input', el.value);
+            else if (el?.id === 'oracle-input') Engine.submitOracle();
+            return;
+        }
+
+        // Alt + 1-3: Quick-Actions auswählen
+        if (e.altKey && ['1', '2', '3'].includes(e.key)) {
+            e.preventDefault();
+            const idx = parseInt(e.key) - 1;
+            const btns = document.querySelectorAll('#quick-actions-container .quick-action-btn');
+            if (btns[idx]) btns[idx].click();
+            return;
+        }
+
+        // Ctrl Shortcuts (Journal, Musik)
+        if (e.ctrlKey) {
+            const key = e.key.toLowerCase();
+            if (key === 'j') {
+                e.preventDefault();
+                UI.switchTab('journal');
+            } else if (key === 'm') {
+                e.preventDefault();
+                Engine.toggleMusicPlayback();
+                UI.showToast('Musik umschalten...');
+            }
+        }
     });
 
     document.addEventListener('pointerover', (e) => {
@@ -395,9 +431,7 @@ export function initEvents() {
     }, { passive: true });
 }
 
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') UI.closeEnemyLightbox();
-});
+// Global high-priority shortcuts managed in initEvents document listener
 
 
 

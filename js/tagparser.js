@@ -91,6 +91,8 @@ export const TagParser = {
         else if (type === 'KAMPF_BEENDET') {
             State.activeEnemies = [];
             CombatManager.endCombat();
+            // Trigger auto-journal entry after a short delay for combat text to settle
+            setTimeout(() => { if (Engine.generateJournalEntry) Engine.generateJournalEntry(); }, 2000);
         }
         else if (type === 'XP') {
             if (evt.target && evt.target.toLowerCase() === 'alle') {
@@ -152,6 +154,10 @@ export const TagParser = {
                     UI.addChatLog("System", `?? **TODESRETTUNG � ${c.name}:** W20-Wurf: ${roll} vs DC ${dc} ? ? **Fehlgeschlagen!** Letzter Versuch zur Rettung!`);
                 }
             }
+        }
+        else if (type === 'ORT') {
+            State.currentLocation = evt.name;
+            UI.updateLocation(evt.name);
         }
         else if (type === 'PROBE') {
             this.handleProbe(evt);

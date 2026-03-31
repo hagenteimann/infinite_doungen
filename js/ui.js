@@ -141,6 +141,7 @@ export const initDOM = () => {
         'tab-content-party', 'tab-content-dice', 'tab-content-system', 'tab-content-journal', 'tab-content-stats',
         'tab-party', 'tab-dice', 'tab-system', 'tab-journal', 'tab-stats',
         'topbar-thinking-status', 'topbar-thinking-text',
+        'location-container', 'location-text',
         'enemy-lightbox', 'enemy-lightbox-image', 'enemy-lightbox-title',
         'hero-generator-modal', 'gen-api-key', 'gen-name', 'gen-class', 
         'gen-appearance', 'gen-points-left', 'val-STR', 'val-DEX', 
@@ -497,7 +498,35 @@ export const UI = {
         }
         this._updateAllTimeout = requestAnimationFrame(() => {
             this._updateAllInternal();
+            // Handle Active Turn Glow for Tabs
+            this.updateActiveTurnGlow();
         });
+    },
+
+    updateLocation: function (name) {
+        if (!name || name === 'Unbekannt') {
+            DOM.locationContainer?.classList.remove('location-visible');
+            return;
+        }
+        if (DOM.locationText && DOM.locationText.textContent === name && DOM.locationContainer.classList.contains('location-visible')) return;
+
+        if (DOM.locationContainer) {
+            DOM.locationContainer.classList.remove('location-visible');
+            setTimeout(() => {
+                if (DOM.locationText) DOM.locationText.textContent = name;
+                DOM.locationContainer.classList.add('location-visible');
+            }, 400);
+        }
+    },
+
+    updateActiveTurnGlow: function () {
+        const actingName = State.actingChar;
+        const partyTab = document.getElementById('tab-party');
+        if (!partyTab) return;
+
+        // If a specific character is acting (not the party/dm), highlight the party tab if they are in it.
+        const isPartyActive = actingName && State.party.some(p => p.name === actingName && p.hp > 0);
+        partyTab.classList.toggle('tab-active-glow', !!isPartyActive);
     },
 
     renderQuickActions: function() {
@@ -705,7 +734,12 @@ export const UI = {
             }
 
             if (diceAlertContent) diceAlertContent.innerHTML = sanitize(html);
-            if (diceAlert) diceAlert.classList.remove('hidden');
+            if (diceAlert) {
+                diceAlert.classList.remove('hidden');
+                // Apply pulse glow if there are unrolled dice
+                const hasUnrolled = State.pendingRolls.some(r => !r.rolled);
+                diceAlert.classList.toggle('pulse-glow-amber', hasUnrolled);
+            }
         } else if (State.routeChoices.length > 0) {
             if (diceAlert) diceAlert.classList.add('hidden');
             DOM.actionBoxContainer.classList.remove('hidden');
@@ -1398,9 +1432,11 @@ export const UI = {
         // Attribute (Zeilen-Stil wie in showDetails)
         const sBadge = statPoints > 0 ? `<span class="bg-green-600 px-1.5 py-0.5 rounded text-[8px] animate-pulse ml-2">${statPoints} Punkte!</span>` : '';
         const aHtml = Object.entries(hero.attributes || {}).map(([k, v]) => {
+            const isPending = State.pendingRolls?.some(pr => pr.charId === hero.id && pr.stat === k);
+            const highlightClass = isPending ? 'stat-highlight' : '';
             const bonus = (effAttrs[k] || 0) - v;
             const bonusHtml = bonus !== 0 ? `<span class="${bonus > 0 ? 'text-green-400' : 'text-red-400'} font-bold ml-1">${bonus > 0 ? '+' : ''}${bonus}</span>` : '';
-            return `<div class="flex justify-between items-center bg-slate-800/50 p-1.5 rounded mb-1 border border-slate-700/50"><span class="text-slate-400 font-bold text-[9px] w-8">${repairDisplayText(k)}</span><span class="text-amber-400 font-mono flex-1 text-center text-[11px]">${repairDisplayText(String(v))}${bonusHtml}</span>${statPoints > 0 ? `<button data-action="hero-details-upgrade-stat" data-stat="${repairDisplayText(k)}" class="bg-green-700 hover:bg-green-600 text-white w-5 h-5 rounded text-xs font-bold transition-colors">+</button>` : '<div class="w-5"></div>'}</div>`;
+            return `<div class="flex justify-between items-center bg-slate-800/50 p-1.5 rounded mb-1 border border-slate-700/50 ${highlightClass}"><span class="text-slate-400 font-bold text-[9px] w-8">${repairDisplayText(k)}</span><span class="text-amber-400 font-mono flex-1 text-center text-[11px]">${repairDisplayText(String(v))}${bonusHtml}</span>${statPoints > 0 ? `<button data-action="hero-details-upgrade-stat" data-stat="${repairDisplayText(k)}" class="bg-green-700 hover:bg-green-600 text-white w-5 h-5 rounded text-xs font-bold transition-colors">+</button>` : '<div class="w-5"></div>'}</div>`;
         }).join('');
         const attrsHtml = `<div><h4 class="text-[9px] font-bold border-b border-slate-700 pb-1 mb-2">ATTRIBUTE ${sBadge}</h4>${aHtml}</div>`;
 
@@ -1702,9 +1738,11 @@ export const UI = {
         const isPrivateInventory = State._mpRole === 'client' && State._mpMyCharId && c.id !== State._mpMyCharId;
 
         const aHtml = Object.entries(c.attributes).map(([k, v]) => {
+            const isPending = State.pendingRolls?.some(pr => pr.charId === c.id && pr.stat === k);
+            const highlightClass = isPending ? 'stat-highlight' : '';
             const bonus = effAttrs[k] - v;
             const bonusHtml = bonus !== 0 ? `<span class="${bonus > 0 ? 'text-green-400' : 'text-red-400'} font-bold ml-1">${bonus > 0 ? '+' : ''}${bonus}</span>` : '';
-            return `<div class="flex justify-between items-center bg-slate-800/50 p-1.5 rounded mb-1 border border-slate-700/50"><span class="text-slate-400 font-bold text-[9px] w-8">${k}</span><span class="text-amber-400 font-mono flex-1 text-center text-[11px]">${v}${bonusHtml}</span>${c.statPoints > 0 ? `<button data-action="upgrade-stat" data-char-id="${c.id}" data-stat="${k}" class="bg-green-700 text-white w-5 h-5 rounded">+</button>` : '<div class="w-5"></div>'}</div>`;
+            return `<div class="flex justify-between items-center bg-slate-800/50 p-1.5 rounded mb-1 border border-slate-700/50 ${highlightClass}"><span class="text-slate-400 font-bold text-[9px] w-8">${k}</span><span class="text-amber-400 font-mono flex-1 text-center text-[11px]">${v}${bonusHtml}</span>${c.statPoints > 0 ? `<button data-action="upgrade-stat" data-char-id="${c.id}" data-stat="${k}" class="bg-green-700 text-white w-5 h-5 rounded">+</button>` : '<div class="w-5"></div>'}</div>`;
         }).join('');
 
         const sumBadge = c.isSummon ? `<span class="text-purple-400 text-[8px] border border-purple-500 px-1 rounded ml-1">Kreatur</span>` : '';
