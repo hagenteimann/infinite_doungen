@@ -605,6 +605,7 @@ getPregameStatus() {
             State.combatEnded = false;
         }
 
+        dispatch({ type: 'SET_QUICK_OPTIONS', options: [] });
         State.isProcessing = true; UI.showLoader(true);
         State.sessionStats.turnsPlayed++;
         State.fate = (State.fate || 0) + 1;
@@ -690,33 +691,32 @@ getPregameStatus() {
             State.chatHistory.push(cleanStory.substring(0, CHAT_CONTEXT_CHAR_LIMIT));
             if (State.chatHistory.length > CHAT_HISTORY_MAX) State.chatHistory.shift();
 
-            // Optionen für das UI vorbereiten
-            const suggestionClass = 'mt-1.5 suggestion-option w-full text-left rounded-xl px-3 py-2.5 cursor-pointer transition-all text-xs';
-            let optionsHtml = '';
+            // Optionen für das UI vorbereiten (jetzt im State statt im Chat-Text)
+            let options = [];
             if (Array.isArray(parsedData.options) && parsedData.options.length > 0) {
-                optionsHtml = '<div class="mt-4">' + parsedData.options.map(opt => this._renderSuggestionOption(opt, suggestionClass)).join('') + '</div>';
+                options = parsedData.options;
             }
-
-            // Neues HTML für den Chat zusammensetzen
-            let cleanText = cleanStory + optionsHtml;
 
             // Events an den TagParser/EventProcessor übergeben
             if (Array.isArray(parsedData.events)) {
                 TagParser.process(parsedData.events);
             }
 
-            const hasSuggestions = cleanText.includes('suggestion-option');
             const hasPendingRolls = State.pendingRolls.some(r => !r.rolled);
-            if (!hasSuggestions && !hasPendingRolls) {
+            if (options.length === 0 && !hasPendingRolls) {
                 const inCombat = State.activeEnemies.some(e => e.hp > 0);
                 const hasLoot = State.lootDrops && State.lootDrops.length > 0;
-                const fallback = inCombat
+                options = inCombat
                     ? ['Angreifen', 'Verteidigen', 'Fliehen']
                     : hasLoot
                         ? ['Beute einsammeln', 'Umgebung untersuchen', 'Weiter erkunden']
                         : ['Umgebung untersuchen', 'Weiter erkunden', 'Lager aufschlagen'];
-                cleanText += '<div class="mt-3 border-t border-white/10 pt-3">' + fallback.map((text) => this._renderSuggestionOption(text, suggestionClass)).join('') + '</div>';
             }
+            
+            dispatch({ type: 'SET_QUICK_OPTIONS', options });
+
+            // Neues HTML für den Chat zusammensetzen (nur die Geschichte)
+            let cleanText = cleanStory;
 
             if (cleanText.length > 0) {
                 const dmContext = this._getActiveDmContext();

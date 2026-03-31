@@ -2,7 +2,7 @@ export const State = {
     party: [], activeEnemies: [], defeatedEnemies: [], lootDrops: [],
     lastStoryPart: "", gameStarted: false, isProcessing: false,
     tempPortraitData: "", tempImagePrompt: "",
-    pendingRolls: [], recentRolls: [], craftingIngredients: [], routeChoices: [],
+    pendingRolls: [], recentRolls: [], craftingIngredients: [], routeChoices: [], quickOptions: [],
     chatMessages: [], systemMessages: [], transientEvents: [],
 
     imageQuotaExceeded: false,
@@ -181,6 +181,10 @@ export function dispatch(action) {
                 char.attributes[action.stat]++;
                 char.statPoints--;
             }
+            break;
+        }
+        case 'SET_QUICK_OPTIONS': {
+            State.quickOptions = Array.isArray(action.options) ? action.options : [];
             break;
         }
         case 'BULK_UPDATE': {

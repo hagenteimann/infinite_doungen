@@ -28,7 +28,7 @@ const SYNC_KEYS = [
     'isBossFight', 'weather', 'momentum', 'chatHistory', 'isProcessing',
     'pendingRolls', 'recentRolls', 'pendingAbilityLearning', 'quickplayEnabled',
     'routeChoices', 'craftingIngredients', 'activeCrafterId',
-    'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'afkSince', 'pvp',
+    'chatMessages', 'systemMessages', 'transientEvents', 'sessionPhase', 'playerProfiles', 'playerControlMode', 'afkSince', 'pvp', 'quickOptions',
 ];
 
 export const Network = {

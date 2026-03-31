@@ -152,12 +152,11 @@ export const initDOM = () => {
         DOM[camelCaseId] = document.getElementById(id);
     });
 
-    // Event delegation for suggestion options (avoids inline onclick escaping issues)
-    if (DOM.storyLog) {
-        DOM.storyLog.addEventListener('click', (e) => {
-            const suggestion = e.target.closest('.suggestion-option');
-            if (suggestion) {
-                const prompt = suggestion.getAttribute('data-prompt');
+    if (DOM.quickActionsContainer) {
+        DOM.quickActionsContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('.quick-action-btn');
+            if (btn) {
+                const prompt = btn.getAttribute('data-prompt');
                 if (prompt) {
                     UI.selectOption(prompt);
                 }
@@ -469,6 +468,27 @@ export const UI = {
         });
     },
 
+    renderQuickActions: function() {
+        if (!DOM.quickActionsContainer) return;
+        const options = State.quickOptions || [];
+        if (options.length === 0) {
+            DOM.quickActionsContainer.innerHTML = '';
+            return;
+        }
+
+        const html = options.map(opt => {
+            const meta = Engine._getSuggestionMeta(opt);
+            if (!meta.prompt) return '';
+            const safeValue = meta.prompt.replace(/"/g, '&quot;');
+            return `<button class="quick-action-btn fade-in" data-prompt="${safeValue}">
+                <span class="quick-action-icon">${meta.icon}</span>
+                <span>${meta.title}</span>
+            </button>`;
+        }).join('');
+
+        this._setHtmlIfChanged(DOM.quickActionsContainer, sanitize(html));
+    },
+
     _updateAllInternal: function () {
         this.renderLobbyView();
 
@@ -568,6 +588,7 @@ export const UI = {
         Engine._syncQuickplayBtn?.();
 
         this.updateActionBox();
+        this.renderQuickActions();
         this.renderDiceFeed();
         this.renderSystemLog();
 
@@ -839,7 +860,11 @@ export const UI = {
                         <div class="dice-feed-reason">${roll.reason}</div>
                         <div class="dice-feed-meta">
                             <span class="dice-feed-die">${roll.diceType}</span>
-                            <span class="dice-feed-roll">Wurf ${roll.rawRoll ?? '-'} ${modifierText}</span>
+                            <span class="dice-feed-roll">
+                                <span class="opacity-70">${roll.rawRoll ?? '-'}</span>
+                                <span class="text-amber-500/80 mx-0.5">${modifierText}</span>
+                                <span class="font-bold border-l border-white/10 pl-1.5 ml-1 text-white">= ${roll.result ?? '-'}</span>
+                            </span>
                         </div>
                     </div>
                     <div class="dice-feed-outcome">
@@ -1003,7 +1028,20 @@ export const UI = {
                         <button type="button" data-action="entry-start-host" class="entry-secondary-btn"><i class="fas fa-house"></i> Coop Spiel Hosten</button>
                         <button type="button" data-action="open-pvp-arena" class="entry-secondary-btn pvp-entry-btn"><i class="fas fa-swords"></i> PvP</button>
                     </div>
-                    <div class="entry-join-card">
+                    
+                    <!-- Onboarding Section -->
+                    <div class="mt-6 p-4 bg-indigo-900/20 border border-indigo-500/30 rounded-xl">
+                        <h4 class="text-indigo-300 font-bold text-xs uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <i class="fas fa-book-open"></i> Erste Schritte
+                        </h4>
+                        <ul class="text-[10px] text-slate-300 space-y-2">
+                            <li class="flex gap-2"><i class="fas fa-check text-emerald-500 mt-0.5"></i> <span>Erstelle einen Helden oder lade einen bestehenden.</span></li>
+                            <li class="flex gap-2"><i class="fas fa-check text-emerald-500 mt-0.5"></i> <span>Beschreibe deine Aktionen frei im Chat oder nutze die <b>Quick-Actions</b>.</span></li>
+                            <li class="flex gap-2"><i class="fas fa-check text-emerald-500 mt-0.5"></i> <span>Der KI-Spielleiter reagiert dynamisch auf deine Entscheidungen.</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="entry-join-card mt-6">
                         <div class="entry-join-copy">oder einem Raum beitreten:</div>
                         <div class="entry-join-row">
                             <input id="entry-room-code" class="entry-input entry-room-input" type="text" maxlength="6" placeholder="RAUMCODE" value="${roomCode}">
@@ -1792,7 +1830,15 @@ export const UI = {
                 ? '<div class="notification-kicker"><i class="fas fa-gem"></i> Beute</div><div class="notification-title">' + repairDisplayText(event.sender || 'Held') + '</div><div class="notification-copy">' + repairDisplayText(payload.text || 'Neue Beute erhalten.') + '</div>'
                 : event.type === 'turn_notice'
                     ? '<div class="notification-kicker"><i class="fas fa-hourglass-half"></i> Zug</div><div class="notification-title">' + repairDisplayText(event.sender || 'Spieler') + '</div><div class="notification-copy">' + repairDisplayText(payload.text || '') + '</div>'
-                    : '<div class="notification-kicker"><i class="fas fa-dice-d20"></i> ' + (payload.result == null ? 'Wurf laeuft' : 'Wurf') + '</div><div class="notification-title">' + repairDisplayText(payload.name || event.sender || 'Unbekannt') + '</div><div class="notification-copy">' + repairDisplayText(payload.reason || 'Probe') + '</div><div class="notification-roll"><span>' + (payload.rawRoll ?? '?') + '</span><small>' + ((payload.modifier || 0) >= 0 ? '+' : '') + (payload.modifier || 0) + '</small><strong>' + (payload.result ?? '?') + '</strong></div><div class="notification-copy">' + repairDisplayText(payload.diceType || 'W20') + ' gegen DC ' + (payload.targetDC ?? '-') + '</div>';
+                    : `<div class="notification-kicker"><i class="fas fa-dice-d20"></i> ${payload.result == null ? 'Wurf laeuft' : 'Wurf'}</div>
+                       <div class="notification-title">${repairDisplayText(payload.name || event.sender || 'Unbekannt')}</div>
+                       <div class="notification-copy">${repairDisplayText(payload.reason || 'Probe')}</div>
+                       <div class="notification-roll">
+                           <span class="opacity-70">${payload.rawRoll ?? '?'}</span>
+                           <small class="text-amber-500/80 mx-1">${(payload.modifier || 0) >= 0 ? '+' : ''}${payload.modifier || 0}</small>
+                           <strong class="text-white border-l border-white/20 pl-2 ml-1">= ${payload.result ?? '?'}</strong>
+                       </div>
+                       <div class="notification-copy">${repairDisplayText(payload.diceType || 'W20')} gegen DC ${payload.targetDC ?? '-'}</div>`;
             let card = layer.querySelector('[data-event-id="' + event.id + '"]');
             if (!card) {
                 card = document.createElement('div');
@@ -1964,9 +2010,17 @@ export const UI = {
                 void DOM.diceContainer.offsetWidth;
                 DOM.diceContainer.classList.add('dice-container-shake');
 
-                let modStr = modifier !== 0 ? `<span class="text-4xl text-slate-400 mx-2">${modifier >= 0 ? '+' : ''}${modifier}</span><span class="text-7xl">=${totalResult}</span>` : '';
-                DOM.diceResult.innerHTML = `<span class="text-7xl">${finalRawRoll}</span>${modStr}`;
-                DOM.diceResult.className = `font-bold cinzel mb-6 mt-4 transition-all duration-300 scale-110 drop-shadow-[0_0_20px_rgba(255,255,255,0.5)] ${success ? 'text-green-300' : 'text-red-400'} ${isCritical && success ? 'dice-crit-glow' : ''} ${isBotch ? 'dice-botch-glow' : ''}`;
+                let modStr = modifier !== 0 
+                    ? `<span class="text-4xl text-slate-500 mx-2">${modifier >= 0 ? '+' : ''}${modifier}</span><span class="text-slate-400 mx-2 text-3xl">=</span><span class="text-7xl font-black">${totalResult}</span>` 
+                    : '';
+                
+                DOM.diceResult.innerHTML = `
+                    <div class="flex items-center justify-center gap-1">
+                        <span class="text-7xl opacity-80">${finalRawRoll}</span>
+                        ${modStr}
+                    </div>`;
+                
+                DOM.diceResult.className = `font-bold cinzel mb-6 mt-4 transition-all duration-300 scale-100 drop-shadow-[0_0_25px_rgba(255,255,255,0.3)] ${success ? 'text-emerald-300' : 'text-rose-400'} ${isCritical && success ? 'dice-crit-glow' : ''} ${isBotch ? 'dice-botch-glow' : ''}`;
 
                 // Particles
                 if (success || isCritical) {
