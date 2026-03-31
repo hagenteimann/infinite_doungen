@@ -1,4 +1,4 @@
-﻿import { State, dispatch } from './state.js';
+import { State, dispatch } from './state.js';
 import { Sound } from './sound.js';
 import { UI } from './ui.js';
 import { Utils } from './utils.js';
@@ -15,7 +15,13 @@ export const CombatManager = {
         State.sessionStats.totalDamageDealt += amount;
         enemy.hp = Math.max(0, enemy.hp - amount);
         Sound.play('sword');
-        Sound.play('hit');
+        
+        let hitSound = 'hit';
+        if (amount >= 10) hitSound = 'hit_heavy';
+        else if (amount <= 2) hitSound = 'hit_shield';
+        Sound.play(hitSound);
+        
+        UI.showDamageFeedback(enemy.id, amount, 'damage');
         if (enemy.hp === 0 && !enemy.loggedDefeat) { enemy.loggedDefeat = true; UI.addChatLog("System", `⚔️ ${enemy.name} wurde besiegt!`); }
     },
     spawn: async function (name, hp, desc) {

@@ -211,6 +211,41 @@ export const Sound = {
                     o.start(t); o.stop(t + 0.15);
                     break;
                 }
+                case 'hit_heavy': {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = 'sine';
+                    o.frequency.setValueAtTime(60, t);
+                    o.frequency.exponentialRampToValueAtTime(20, t + 0.25);
+                    g.gain.setValueAtTime(0.4, t);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+                    o.start(t); o.stop(t + 0.25);
+                    
+                    const noise = ctx.createBufferSource();
+                    const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for(let i=0; i<data.length; i++) data[i] = Math.random() * 2 - 1;
+                    noise.buffer = buffer;
+                    const ng = ctx.createGain();
+                    ng.gain.setValueAtTime(0.05, t);
+                    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+                    noise.connect(ng); ng.connect(ctx.destination);
+                    noise.start(t);
+                    break;
+                }
+                case 'hit_shield': {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = 'square';
+                    o.frequency.setValueAtTime(1200, t);
+                    o.frequency.exponentialRampToValueAtTime(400, t + 0.08);
+                    g.gain.setValueAtTime(0.04, t);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+                    o.start(t); o.stop(t + 0.08);
+                    break;
+                }
                 case 'heal': {
                     [523, 659, 784, 1047].forEach((freq, i) => {
                         const o = ctx.createOscillator();

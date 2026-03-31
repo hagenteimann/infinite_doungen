@@ -224,8 +224,14 @@ export const UIBuilders = {
         e = { ...e, name: repairDisplayText(e.name || ''), description: repairDisplayText(e.description || ''), appearance: repairDisplayText(e.appearance || ''), loot: repairDisplayText(e.loot || '') };
         const isDead = isDeadFlag || e.hp <= 0;
         const hpDisplay = isDead ? 0 : e.hp;
-        const hpBarWidth = isDead ? 0 : (e.hp / e.maxHp) * 100;
+        const hpPercent = (e.hp / (e.maxHp || 1)) * 100;
+        const hpBarWidth = isDead ? 0 : hpPercent;
+        const isLowHp = !isDead && hpPercent < 30;
+        
+        const lootIcon = e.loot ? `<div class="absolute -top-1 -left-1 bg-amber-500 text-black w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-lg border border-amber-300 z-10" data-tooltip="Beute: ${e.loot.replace(/"/g, '&quot;')}"><i class="fas fa-gem"></i></div>` : '';
+        const pulseClass = isLowHp ? 'hp-glow-pulse' : '';
         const hoverClass = isDead ? '' : 'cursor-pointer hover:border-red-400/80 transition-all hover:shadow-[0_0_15px_rgba(248,113,113,0.3)] hover:bg-red-950/20';
+        
         const bannerPortrait = e.portrait ? `<img src="${e.portrait}" class="entity-banner-img" alt="">` : `<div class="entity-banner-fallback"><i class="fas fa-skull"></i></div>`;
         const expandedHtml = `
             <div class="entity-card-expanded">
@@ -242,7 +248,8 @@ export const UIBuilders = {
                     </div>
                 </div>
             </div>`;
-        return `<div class="bg-black/30 backdrop-blur-sm p-2 rounded-xl border entity-card entity-card-enemy ${isDead ? 'border-slate-800' : 'border-red-900/50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]'} fade-in btn-premium ${isDead ? 'defeated-enemy' : ''} ${hoverClass}" ${!isDead ? `data-action="entity-click" data-name="${e.name.replace(/\"/g, '&quot;')}" data-entity-type="enemy" data-entity-id="${e.id}"` : ''}>
+        return `<div id="entity-${e.id}" class="bg-black/30 backdrop-blur-sm p-2 rounded-xl border entity-card entity-card-enemy ${isDead ? 'border-slate-800' : 'border-red-900/50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]'} fade-in btn-premium ${isDead ? 'defeated-enemy' : ''} ${hoverClass} ${pulseClass} relative" ${!isDead ? `data-action="entity-click" data-name="${e.name.replace(/\"/g, '&quot;')}" data-entity-type="enemy" data-entity-id="${e.id}"` : ''}>
+            ${lootIcon}
             <div class="entity-card-collapsed flex gap-2.5 items-center">
                 ${e.portrait ? `<img src="${e.portrait}" class="w-10 h-10 rounded-lg object-cover btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'}">` : `<div class="w-10 h-10 rounded-lg bg-black/60 btn-premium ${isDead ? '' : 'border border-red-900/50 shadow-[0_0_10px_rgba(127,29,29,0.5)]'} flex items-center justify-center text-red-500/50"><i class="fas fa-skull"></i></div>`}
                 <div class="flex-1 min-w-0">
@@ -324,6 +331,31 @@ export const UI = {
             toast.style.animation = `toastOut 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards`;
             setTimeout(() => toast.remove(), 300);
         }, duration);
+    },
+    showDamageFeedback: function (entityId, amount, type = 'damage') {
+        const el = document.getElementById(`entity-${entityId}`);
+        if (!el) return;
+
+        // Shake effect
+        el.classList.remove('hit-shake');
+        void el.offsetWidth; // force reflow
+        el.classList.add('hit-shake');
+        setTimeout(() => el.classList.remove('hit-shake'), 400);
+
+        // Floating numbers
+        const rect = el.getBoundingClientRect();
+        const float = document.createElement('div');
+        float.className = `damage-float ${type}`;
+        float.textContent = (type === 'damage' ? '-' : (type === 'heal' ? '+' : '')) + amount + (type === 'xp' ? ' XP' : ' HP');
+        
+        // Randomize horizontal offset slightly
+        const offsetX = (Math.random() - 0.5) * 40;
+        float.style.left = (rect.left + rect.width / 2 + offsetX) + 'px';
+        float.style.top = (rect.top + 20) + 'px';
+        document.body.appendChild(float);
+        
+        // Auto cleanup
+        setTimeout(() => float.remove(), 1200);
     },
     selectOption: function (t) {
         this.clearSuggestions();
@@ -971,7 +1003,12 @@ export const UI = {
 
         const row = document.createElement('article');
         row.dataset.chatId = entry.id;
-        row.className = 'tts-msg chat-message-glide chat-row ' + ((entry.senderType === 'dm' || entry.senderType === 'loot') ? 'chat-row-dm' : 'chat-row-player');
+        
+        const isCombat = textValue.includes('⚔️') || textValue.includes('🛡️') || textValue.includes('💀') || textValue.includes('💥');
+        const combatSubtype = textValue.includes('💥') ? 'combat-crit' : (textValue.includes('⚔️') ? 'combat-hit' : (textValue.includes('🛡️') ? 'combat-miss' : (textValue.includes('💀') ? 'combat-death' : '')));
+        const combatClass = isCombat ? ` chat-row-combat ${combatSubtype}` : '';
+        
+        row.className = 'tts-msg chat-message-glide chat-row ' + ((entry.senderType === 'dm' || entry.senderType === 'loot') ? 'chat-row-dm' : 'chat-row-player') + combatClass;
         row.dataset.createdAt = String(entry.createdAt || Date.now());
         const speaker = entry.isAiControlled ? entry.sender + ' <span class="chat-ai-badge">AI</span>' : entry.sender;
         if (entry.senderType === 'dm') {

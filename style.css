@@ -322,6 +322,28 @@ body {
             40%, 60% { transform: translate3d(4px, 0, 0); }
         }
 
+        .hit-shake {
+            animation: hitShake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes hitShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(2px); }
+        }
+
+        .hp-glow-pulse {
+            animation: hpPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes hpPulse {
+            0% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.3); }
+            100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.4); }
+        }
+
         @keyframes critPulse {
             from { transform: scale(1.1); text-shadow: 0 0 20px rgba(251, 191, 36, 0.8); }
             to { transform: scale(1.15); text-shadow: 0 0 40px rgba(251, 191, 36, 1), 0 0 60px rgba(251, 191, 36, 0.5); }
@@ -797,7 +819,54 @@ body {
         }
 
         @keyframes lowHpPulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
 
+        /* Combat Log Styling */
+        .chat-row-combat {
+            background: rgba(127, 29, 29, 0.05);
+            border-left: 3px solid rgba(239, 68, 68, 0.4);
+            margin: 4px 12px;
+            padding: 8px 12px;
+            border-radius: 4px 12px 12px 4px;
+            box-shadow: inset 4px 0 10px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .chat-row-combat::before {
+            content: ' ';
+            position: absolute;
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background: #111;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #ef4444;
+            z-index: 5;
+        }
+
+        .chat-row-combat.combat-hit::before { content: '⚔️'; }
+        .chat-row-combat.combat-miss::before { content: '🛡️'; }
+        .chat-row-combat.combat-death::before { content: '💀'; }
+        .chat-row-combat.combat-crit::before { content: '💥'; }
+
+        .chat-row-combat .chat-copy {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            color: #fca5a5;
+            font-style: italic;
+        }
+
+        @keyframes lowHpPulse {
             0%,
             100% {
                 box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);

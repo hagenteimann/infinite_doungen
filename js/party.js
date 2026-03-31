@@ -20,22 +20,8 @@ function findEntityCard(targetName) {
         || null;
 }
 
-function showFloatingNumber(targetName, amount, type) {
-    const targetCard = findEntityCard(targetName);
-    if (!targetCard) return;
-
-    const float = document.createElement('div');
-    float.className = 'damage-float ' + type;
-    float.textContent = type === 'heal' ? '+' + amount : (type === 'xp' ? '+' + amount + ' XP' : '-' + amount);
-
-    const rect = targetCard.getBoundingClientRect();
-    float.style.position = 'fixed';
-    float.style.left = (rect.left + rect.width / 2 - 15) + 'px';
-    float.style.top = rect.top + 'px';
-    float.style.zIndex = '1000';
-
-    document.body.appendChild(float);
-    setTimeout(() => float.remove(), 1300);
+function showFloatingNumber(char, amount, type) {
+    UI.showDamageFeedback(char.id, amount, type);
 }
 
 function showLevelUpAnimation(char) {
@@ -169,7 +155,7 @@ export const PartyManager = {
         char.hp = Math.max(0, char.hp - amount);
         Sound.play('sword');
         Sound.play('hit');
-        showFloatingNumber(char.name, amount, 'damage');
+        showFloatingNumber(char, amount, 'damage');
         if (char.hp === 0) {
             UI.addChatLog("System", `💀 **${char.name}** ist bewusstlos zu Boden gegangen! Ihr habt **GENAU EINEN VERSUCH**, ihn/sie zu retten (Medizin, Magie etc.).`);
         }
@@ -181,7 +167,7 @@ export const PartyManager = {
         if (actualHeal > 0) {
             State.sessionStats.totalHealed += actualHeal;
             Sound.play('heal');
-            showFloatingNumber(char.name, actualHeal, 'heal');
+            showFloatingNumber(char, actualHeal, 'heal');
         }
     },
     addXP: function (char, amount) {
@@ -189,7 +175,7 @@ export const PartyManager = {
         char.xp += amount;
         State.sessionStats.totalXPEarned += amount;
 
-        showFloatingNumber(char.name, amount, 'xp');
+        showFloatingNumber(char, amount, 'xp');
         let needed = Math.floor(XP_BASE * Math.pow(char.level, XP_SCALING_EXPONENT)); let leveledUp = false; let levelUpsThisChar = 0;
         let bonusStat;
         while (char.xp >= needed) {
