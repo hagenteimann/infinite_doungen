@@ -36,7 +36,7 @@ User interaction
 | `js/ui.js` | DOM builders, chat rendering, card components, modals |
 | `js/events.js` | All user input via `data-action` delegation — no inline handlers |
 | `js/api.js` | Multi-provider LLM adapter (Gemini, OpenAI, Anthropic, OpenRouter) |
-| `js/tagparser.js` | Parses LLM output tags (`[Schaden]`, `[Gegner]`, etc.) into state mutations |
+| `js/tagparser.js` | Parses LLM output events into state mutations. Supported event types: `SCHADEN`, `HEILUNG`, `GEGNER`, `GEGNER_TOT`, `GEGNER_FLUCHT`, `BEUTE`, `ROUTE`, `XP`, `GOLD`, `ORT`, `PROBE`, `DEATH_SAVE`. |
 | `js/network.js` | PeerJS/WebRTC host/client logic, state sync |
 | `js/party.js` | Character stats, damage, heal, XP, leveling |
 | `js/combat.js` | Combat lifecycle: spawn, damage, end |

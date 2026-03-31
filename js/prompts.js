@@ -35,6 +35,7 @@ Das JSON muss genau diese Struktur haben:
     { "type": "HAENDLER", "name": "Händler Bob", "items": ["Heiltrank (50g)"] },
     { "type": "TAUSCH", "char": "Gimli", "given": "Heiltrank", "received": "Eisenschwert" },
     { "type": "COOLDOWN", "char": "Gimli", "ability": "Schildwall", "rounds": 3 },
+    { "type": "ORT", "name": "Dunkelwald" },
     { "type": "FLUCHT_ERFOLG" }
   ],
   "options": [
@@ -63,7 +64,7 @@ SEMANTISCHE HERVORHEBUNGEN (visuell im Text):
 
 MECHANISCHE TAGS WURDEN DURCH JSON-EVENTS ERSETZT:
 5. Generiere Mechaniken NUR noch im "events"-Array. Setze KEINE Tags wie [Schaden: ...] mehr in den Text.
-   Beispiele für Event-Types: SCHADEN, HEILUNG, GEGNER_SCHADEN, GEGNER (nur neue Gegner!), GEGNER_TOT, GEGNER_FLUCHT, KAMPF_BEENDET, GOLD, ROUTE, NEUER_NPC, FAEHIGKEIT, XP, ENDGUELTIG_TOT, DEATH_SAVE.
+   Beispiele für Event-Types: SCHADEN, HEILUNG, GEGNER_SCHADEN, GEGNER (nur neue Gegner!), GEGNER_TOT, GEGNER_FLUCHT, KAMPF_BEENDET, GOLD, ROUTE, NEUER_NPC, FAEHIGKEIT, XP, ENDGUELTIG_TOT, DEATH_SAVE, ORT.
 
 KAMPFREGELN:
 6. Kämpfe sind rundenbasiert.
@@ -120,7 +121,10 @@ SPEZIALISIERUNGEN:
 
 FLUCHT & TELEPORT:
 16. Bei Fluchtversuchen: Probe DEX. Bei Erfolg Event "FLUCHT_ERFOLG".
-    BOSSE (Schicksal=100): Flucht UNMÖGLICH! Generiere KEIN FLUCHT_ERFOLG Event bei Bossen!`
+    BOSSE (Schicksal=100): Flucht UNMÖGLICH! Generiere KEIN FLUCHT_ERFOLG Event bei Bossen!
+17. UMGEBUNG & STANDORT: Wenn die Gruppe einen neuen markanten Ort betritt oder sich der Schauplatz ändert:
+    Nutze Event ORT: { "type": "ORT", "name": "Name des Ortes" }.
+    Beispiele: "Dunkelwald", "Gasthaus 'Zum tanzenden Pony'", "Tiefe Krypta".`
 };
 
 export const PRESETS = {
