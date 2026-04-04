@@ -3199,6 +3199,34 @@ body.session-startscreen #story-log {
     background: transparent;
     border: 0;
     box-shadow: none;
+    overflow: visible !important;
+    flex: none;
+}
+
+/* On the start screen, let the page scroll naturally instead of the fixed app-shell.
+   The inline style on <body> sets height:100dvh; overflow:hidden — override with !important. */
+body.session-startscreen {
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+body.session-startscreen main {
+    overflow: visible !important;
+    flex: none;
+    display: block;
+    min-height: 0;
+}
+
+body.session-startscreen main > section {
+    flex: none;
+    display: block;
+    min-height: 0;
+}
+
+body.session-startscreen #lobby-view {
+    min-height: unset;
+    height: auto;
 }
 
 
