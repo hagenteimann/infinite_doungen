@@ -127,6 +127,35 @@ FLUCHT & TELEPORT:
     Beispiele: "Dunkelwald", "Gasthaus 'Zum tanzenden Pony'", "Tiefe Krypta".`
 };
 
+// Returns CONFIG.systemPrompt enriched with the active world config, if set.
+export function buildWorldSystemPrompt(worldConfig) {
+    if (!worldConfig) return CONFIG.systemPrompt;
+
+    let ctx = `\n\nWELT-KONTEXT (vom Spielleiter definiert — höchste Priorität):\n`;
+    ctx += `WELTNAME: ${worldConfig.name}\n`;
+    if (worldConfig.description) ctx += `WELTBESCHREIBUNG: ${worldConfig.description}\n`;
+
+    if (worldConfig.enemies && worldConfig.enemies.length > 0) {
+        ctx += `\nDEFINIERTE GEGNER (bevorzuge diese bei Begegnungen):\n`;
+        worldConfig.enemies.forEach(e => {
+            ctx += `- ${e.name}: ${e.hpMin}–${e.hpMax} HP${e.description ? ', ' + e.description : ''}\n`;
+        });
+    }
+
+    if (worldConfig.locations && worldConfig.locations.length > 0) {
+        ctx += `\nORTE DER WELT:\n`;
+        worldConfig.locations.forEach(l => ctx += `- ${l.name} (${l.type})\n`);
+        ctx += `Beziehe diese Orte in das Abenteuer ein.\n`;
+    }
+
+    if (worldConfig.difficulty) {
+        const d = worldConfig.difficulty;
+        ctx += `\nSCHWIERIGKEIT: Nutze W${d.diceSize} als Standard-Würfel. Gegner-HP mit Faktor ${d.hpMult}x skalieren. XP mit Faktor ${d.xpMult}x skalieren.\n`;
+    }
+
+    return CONFIG.systemPrompt + ctx;
+}
+
 export const PRESETS = {
     'Gimli': { class: 'Krieger', appearance: 'Stämmiger Zwerg, roter Bart, schwere Axt, Plattenrüstung.', attributes: { STR: 16, DEX: 8, INT: 8, CON: 16 } },
     'Legolas': { class: 'Waldläufer', appearance: 'Eleganter Elf, blondes Haar, Bogen aus Mallornholz.', attributes: { STR: 10, DEX: 16, INT: 10, CON: 10 } },

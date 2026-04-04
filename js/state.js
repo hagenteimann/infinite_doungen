@@ -52,7 +52,8 @@ export const State = {
         cooldowns: {},       // { "player1_Feuerball": 2, "player2_Schlag": 1 }
         player1Summons: [],  // [{ id, name, hp, maxHp, str, con }]
         player2Summons: []
-    }
+    },
+    worldConfig: null // null = standard world; object = DM-configured world
 };
 
 const listeners = new Set();
@@ -221,6 +222,30 @@ export function dispatch(action) {
         case 'ADD_PVP_LOG': {
             State.pvp.combatLog.unshift(action.entry);
             if (State.pvp.combatLog.length > 50) State.pvp.combatLog.pop();
+            break;
+        }
+        case 'SET_WORLD_CONFIG': {
+            State.worldConfig = action.config;
+            break;
+        }
+        case 'ADD_WORLD_LOCATION': {
+            if (!State.worldConfig) break;
+            State.worldConfig.locations = [...(State.worldConfig.locations || []), action.location];
+            break;
+        }
+        case 'REMOVE_WORLD_LOCATION': {
+            if (!State.worldConfig) break;
+            State.worldConfig.locations = (State.worldConfig.locations || []).filter(l => l.id !== action.id);
+            break;
+        }
+        case 'ADD_WORLD_ENEMY': {
+            if (!State.worldConfig) break;
+            State.worldConfig.enemies = [...(State.worldConfig.enemies || []), action.enemy];
+            break;
+        }
+        case 'REMOVE_WORLD_ENEMY': {
+            if (!State.worldConfig) break;
+            State.worldConfig.enemies = (State.worldConfig.enemies || []).filter(e => e.id !== action.id);
             break;
         }
         default:

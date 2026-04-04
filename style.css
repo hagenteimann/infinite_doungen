@@ -4053,3 +4053,545 @@ body {
     background: rgba(245, 158, 11, 0.1) !important;
     box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
 }
+
+/* ==========================================
+   DM WELTBAUER WIZARD
+   ========================================== */
+
+.dm-wizard-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    background: rgba(2, 4, 14, 0.85);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.dm-wizard-modal {
+    width: min(100%, 42rem);
+    background: linear-gradient(160deg, rgba(15, 23, 42, 0.97), rgba(10, 15, 35, 0.97));
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 1.25rem;
+    box-shadow: 0 40px 120px rgba(0, 0, 0, 0.7), 0 0 60px rgba(88, 28, 135, 0.15);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 2rem);
+    overflow: hidden;
+}
+
+.dm-wizard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+    flex-shrink: 0;
+}
+
+.dm-wizard-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #c4b5fd;
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dm-wizard-close {
+    width: 2rem;
+    height: 2rem;
+    display: grid;
+    place-items: center;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.dm-wizard-close:hover { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+/* Step indicator */
+.dm-step-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.dm-step-dot {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 2px solid rgba(148, 163, 184, 0.3);
+    color: #64748b;
+    transition: all 0.25s;
+    flex-shrink: 0;
+}
+.dm-step-dot.active {
+    border-color: #a855f7;
+    background: rgba(168, 85, 247, 0.2);
+    color: #d8b4fe;
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+}
+.dm-step-dot.done {
+    border-color: #22c55e;
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+}
+
+.dm-step-line {
+    flex: 1;
+    height: 2px;
+    background: rgba(148, 163, 184, 0.15);
+    max-width: 3rem;
+}
+
+/* Wizard body */
+.dm-wizard-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.dm-step-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.875rem;
+    color: #e2e8f0;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.dm-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dm-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    color: #e2e8f0;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.dm-input:focus { border-color: rgba(168, 85, 247, 0.5); }
+.dm-input::placeholder { color: #475569; }
+
+.dm-textarea {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    color: #e2e8f0;
+    font-size: 0.85rem;
+    outline: none;
+    resize: vertical;
+    min-height: 5rem;
+    transition: border-color 0.15s;
+}
+.dm-textarea:focus { border-color: rgba(168, 85, 247, 0.5); }
+
+.dm-select {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 0.6rem;
+    padding: 0.5rem 0.65rem;
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    outline: none;
+}
+
+.dm-hint {
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+.dm-hint-empty { text-align: center; padding: 1rem; }
+.dm-hint-inline { font-size: 0.75rem; color: #64748b; }
+
+.dm-step-msg {
+    font-size: 0.8rem;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.dm-generating {
+    text-align: center;
+    font-size: 0.82rem;
+    color: #a78bfa;
+    padding: 0.5rem;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Buttons */
+.dm-btn-primary {
+    background: linear-gradient(135deg, rgba(109, 40, 217, 0.7), rgba(79, 70, 229, 0.7));
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    color: #e2e8f0;
+    padding: 0.55rem 1.1rem;
+    border-radius: 0.6rem;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.dm-btn-primary:hover { background: linear-gradient(135deg, rgba(124, 58, 237, 0.85), rgba(99, 102, 241, 0.85)); }
+
+.dm-btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    padding: 0.55rem 1.1rem;
+    border-radius: 0.6rem;
+    font-size: 0.83rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.dm-btn-secondary:hover { background: rgba(255, 255, 255, 0.1); color: #e2e8f0; }
+
+.dm-btn-ai {
+    background: rgba(88, 28, 135, 0.25);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: #c4b5fd;
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    align-self: flex-start;
+}
+.dm-btn-ai:hover { background: rgba(88, 28, 135, 0.4); }
+.dm-btn-ai:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.dm-btn-finalize {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.7), rgba(234, 88, 12, 0.7));
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    color: #fef3c7;
+    padding: 0.6rem 1.3rem;
+    border-radius: 0.6rem;
+    font-size: 0.87rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.04em;
+}
+.dm-btn-finalize:hover { box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+
+/* Wizard footer */
+.dm-wizard-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+/* Step 2 – class table */
+.dm-class-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.dm-class-table th {
+    text-align: left;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.dm-class-row td { padding: 0.45rem 0.5rem; }
+.dm-class-name { color: #c4b5fd; font-weight: 500; }
+.dm-num-input {
+    width: 5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    text-align: center;
+    outline: none;
+}
+.dm-num-input:focus { border-color: rgba(168, 85, 247, 0.4); }
+
+/* Step 3 – enemy cards */
+.dm-enemy-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.dm-enemy-card {
+    display: grid;
+    grid-template-columns: 4rem 1fr auto;
+    gap: 0.75rem;
+    align-items: start;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+}
+
+.dm-enemy-portrait-wrap { position: relative; }
+.dm-enemy-portrait {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 0.5rem;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.dm-enemy-portrait-placeholder {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 0.5rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    display: grid;
+    place-items: center;
+    color: #475569;
+    font-size: 1.25rem;
+}
+.dm-btn-portrait {
+    position: absolute;
+    bottom: -0.25rem;
+    right: -0.25rem;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.65rem;
+    border-radius: 0.35rem;
+}
+
+.dm-enemy-fields { display: flex; flex-direction: column; gap: 0.4rem; }
+.dm-enemy-hp-row { display: flex; align-items: center; gap: 0.35rem; }
+.dm-hp-sep { color: #475569; font-size: 0.8rem; }
+
+.dm-enemy-remove {
+    background: none;
+    border: none;
+    color: #475569;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.35rem;
+    transition: color 0.15s;
+    align-self: flex-start;
+}
+.dm-enemy-remove:hover { color: #f87171; }
+
+.dm-btn-add-enemy { align-self: flex-start; margin-top: 0.25rem; }
+
+/* Step 4 – difficulty */
+.dm-dice-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.dm-dice-btn {
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(0, 0, 0, 0.25);
+    color: #94a3b8;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.dm-dice-btn.active {
+    border-color: rgba(168, 85, 247, 0.6);
+    background: rgba(88, 28, 135, 0.3);
+    color: #d8b4fe;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+}
+.dm-dice-btn:hover:not(.active) { border-color: rgba(148, 163, 184, 0.4); color: #e2e8f0; }
+
+.dm-range {
+    width: 100%;
+    accent-color: #a855f7;
+    cursor: pointer;
+}
+.dm-value-badge {
+    background: rgba(88, 28, 135, 0.3);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 0.35rem;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #c4b5fd;
+    font-family: monospace;
+}
+
+/* Step 5 – map */
+.dm-map-wrap {
+    position: relative;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: crosshair;
+}
+.dm-map-img {
+    width: 100%;
+    display: block;
+    border-radius: 0.75rem;
+}
+#wb-map-pins { position: absolute; inset: 0; pointer-events: none; }
+
+.dm-map-pin {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: all;
+    cursor: default;
+}
+.dm-map-pin > i { color: #f59e0b; font-size: 1.1rem; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.8)); }
+.dm-pin-label {
+    background: rgba(0, 0, 0, 0.75);
+    color: #fef3c7;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    margin-top: 0.1rem;
+}
+.dm-pin-remove {
+    background: rgba(239, 68, 68, 0.8);
+    border: none;
+    color: white;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 50%;
+    font-size: 0.55rem;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    margin-top: 0.1rem;
+}
+
+.dm-pin-form {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 0.75rem;
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: #e2e8f0;
+}
+.dm-pin-form-btns { display: flex; gap: 0.5rem; }
+
+.dm-location-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.dm-location-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    background: rgba(0,0,0,0.2);
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.6rem;
+}
+.dm-location-type {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-left: auto;
+}
+.dm-pin-remove-btn {
+    background: none;
+    border: none;
+    color: #475569;
+    cursor: pointer;
+    padding: 0.15rem;
+    border-radius: 0.25rem;
+    transition: color 0.15s;
+    font-size: 0.75rem;
+}
+.dm-pin-remove-btn:hover { color: #f87171; }
+
+/* Entry screen DM button */
+.dm-entry-btn {
+    border-color: rgba(168, 85, 247, 0.3) !important;
+    color: #c4b5fd !important;
+}
+.dm-entry-btn:hover {
+    background: rgba(88, 28, 135, 0.2) !important;
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.2) !important;
+}
+
+/* Active world banner */
+.dm-world-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 0.75rem;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.8rem;
+    color: #fde68a;
+}
+.dm-world-banner strong { color: #fbbf24; }
+.dm-world-banner-del {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #92400e;
+    cursor: pointer;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+    transition: color 0.15s;
+}
+.dm-world-banner-del:hover { color: #f87171; }
+
+@media (max-width: 600px) {
+    .dm-wizard-modal { border-radius: 0.75rem; }
+    .dm-enemy-card { grid-template-columns: 3.5rem 1fr auto; }
+    .dm-enemy-portrait, .dm-enemy-portrait-placeholder { width: 3.5rem; height: 3.5rem; }
+}

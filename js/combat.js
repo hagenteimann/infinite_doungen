@@ -31,7 +31,13 @@ export const CombatManager = {
         if (State.activeEnemies.some(e => e.name.toLowerCase() === lowerName)) return;
 
         const wasEmpty = State.activeEnemies.length === 0;
-        const e = { id: Utils.generateId(), name, hp, maxHp: hp, desc, loggedDefeat: false, portrait: "" };
+        // Apply worldConfig HP multiplier and pre-load portrait from template if available
+        const wc = State.worldConfig;
+        const template = wc?.enemies?.find(t => t.name.toLowerCase() === lowerName);
+        const scaledHp = wc?.difficulty?.hpMult
+            ? Math.max(1, Math.round(hp * wc.difficulty.hpMult))
+            : hp;
+        const e = { id: Utils.generateId(), name, hp: scaledHp, maxHp: scaledHp, desc, loggedDefeat: false, portrait: template?.portrait || "" };
         State.activeEnemies.push(e); UI.updateAll();
 
         if (wasEmpty && State.activeEnemies.length > 0) {
@@ -89,19 +95,18 @@ export const CombatManager = {
             }
             UI.updateAll();
         }
-        const descStr = desc ? `, ${desc}` : '';
-        let pUrl = "";
-        try {
-            let imgPrompt = `Fantasy portrait, American shot, waist-up, highly detailed, ${name}${descStr}`.replace(/\n/g, ' ').trim();
-            pUrl = await API.generateImageWithFallbacks([
-                imgPrompt,
-                `Fantasy portrait, ${name}`,
-                `Monster: ${name}, ${desc}`
-            ]);
-        } catch (e) { console.error("Enemy Image Gen Error:", e); }
-
-        e.portrait = pUrl;
-        UI.updateAll();
+        if (!e.portrait) {
+            const descStr = desc ? `, ${desc}` : '';
+            try {
+                let imgPrompt = `Fantasy portrait, American shot, waist-up, highly detailed, ${name}${descStr}`.replace(/\n/g, ' ').trim();
+                e.portrait = await API.generateImageWithFallbacks([
+                    imgPrompt,
+                    `Fantasy portrait, ${name}`,
+                    `Monster: ${name}, ${desc}`
+                ]);
+            } catch (err) { console.error("Enemy Image Gen Error:", err); }
+            UI.updateAll();
+        }
     },
     cleanupDead: function () {
         State.activeEnemies.forEach(e => { if (e.hp <= 0 && !State.defeatedEnemies.some(d => d.id === e.id)) State.defeatedEnemies.unshift({ ...e }); });

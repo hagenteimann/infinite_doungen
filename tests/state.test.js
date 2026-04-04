@@ -18,6 +18,7 @@ function resetState() {
     State.gameStarted = false;
     State.lastStoryPart = '';
     State.journal = [];
+    State.worldConfig = null;
     State.weather = { current: 'sunny', name: 'Sonnig', icon: '☀️', dcMod: 0 };
     State.sessionStats = {
         totalDamageDealt: 0, totalDamageTaken: 0,
@@ -385,5 +386,69 @@ describe('subscribe', () => {
         errSpy.mockRestore();
         un1();
         un2();
+    });
+});
+
+describe('dispatch: SET_WORLD_CONFIG', () => {
+    it('stores a world config object', () => {
+        const config = { name: 'Testreich', description: 'Ein dunkles Land.', enemies: [], locations: [], difficulty: { diceSize: 12, hpMult: 1.5, xpMult: 1.0 } };
+        dispatch({ type: 'SET_WORLD_CONFIG', config });
+        expect(State.worldConfig).toEqual(config);
+    });
+
+    it('can be set to null to clear the world', () => {
+        dispatch({ type: 'SET_WORLD_CONFIG', config: { name: 'X' } });
+        dispatch({ type: 'SET_WORLD_CONFIG', config: null });
+        expect(State.worldConfig).toBeNull();
+    });
+});
+
+describe('dispatch: ADD_WORLD_LOCATION / REMOVE_WORLD_LOCATION', () => {
+    beforeEach(() => {
+        State.worldConfig = { name: 'Welt', locations: [], enemies: [] };
+    });
+
+    it('adds a location to worldConfig', () => {
+        dispatch({ type: 'ADD_WORLD_LOCATION', location: { id: 'loc-1', name: 'Eisenstadt', type: 'Stadt', x: 50, y: 30 } });
+        expect(State.worldConfig.locations).toHaveLength(1);
+        expect(State.worldConfig.locations[0].name).toBe('Eisenstadt');
+    });
+
+    it('removes a location by id', () => {
+        State.worldConfig.locations = [{ id: 'loc-1', name: 'A' }, { id: 'loc-2', name: 'B' }];
+        dispatch({ type: 'REMOVE_WORLD_LOCATION', id: 'loc-1' });
+        expect(State.worldConfig.locations).toHaveLength(1);
+        expect(State.worldConfig.locations[0].id).toBe('loc-2');
+    });
+
+    it('does nothing when worldConfig is null', () => {
+        State.worldConfig = null;
+        dispatch({ type: 'ADD_WORLD_LOCATION', location: { id: 'x' } });
+        expect(State.worldConfig).toBeNull();
+    });
+});
+
+describe('dispatch: ADD_WORLD_ENEMY / REMOVE_WORLD_ENEMY', () => {
+    beforeEach(() => {
+        State.worldConfig = { name: 'Welt', locations: [], enemies: [] };
+    });
+
+    it('adds an enemy template', () => {
+        dispatch({ type: 'ADD_WORLD_ENEMY', enemy: { id: 'e-1', name: 'Drache', hpMin: 80, hpMax: 120 } });
+        expect(State.worldConfig.enemies).toHaveLength(1);
+        expect(State.worldConfig.enemies[0].name).toBe('Drache');
+    });
+
+    it('removes an enemy template by id', () => {
+        State.worldConfig.enemies = [{ id: 'e-1', name: 'A' }, { id: 'e-2', name: 'B' }];
+        dispatch({ type: 'REMOVE_WORLD_ENEMY', id: 'e-1' });
+        expect(State.worldConfig.enemies).toHaveLength(1);
+        expect(State.worldConfig.enemies[0].id).toBe('e-2');
+    });
+
+    it('does nothing when worldConfig is null', () => {
+        State.worldConfig = null;
+        dispatch({ type: 'REMOVE_WORLD_ENEMY', id: 'x' });
+        expect(State.worldConfig).toBeNull();
     });
 });

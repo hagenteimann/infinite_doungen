@@ -1,4 +1,4 @@
-import { CONFIG, PRESETS, TALENT_TREES, PVP_SYSTEM_PROMPT } from './prompts.js';
+import { CONFIG, PRESETS, TALENT_TREES, PVP_SYSTEM_PROMPT, buildWorldSystemPrompt } from './prompts.js';
 import { State, dispatch } from './state.js';
 import { TTS, DOM, UIBuilders, UI } from './ui.js';
 import { Weather } from './features.js';
@@ -674,7 +674,7 @@ getPregameStatus() {
         const context = `Party: ${partyCtx}. Feinde: ${enemyCtx}. Vorherige Szenen: [${historyCtx}]. Aktuelle Szene: ${State.lastStoryPart}. Aktion (${acting}): ${actionMsg}. [Regeln: Diff=${diff} (${dInstr}), Rate=${rate}]${qpAddendum}${verboseAddendum}${dungeonContext}${weatherCtx}${rollsAddendum}${momentumCtx}${goldCtx}`;
 
         try {
-            const aiResponseJSON = await API.generateText(context);
+            const aiResponseJSON = await API.generateText(context, buildWorldSystemPrompt(State.worldConfig));
 
             // JSON parsen
             let parsedData;

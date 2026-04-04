@@ -1098,7 +1098,14 @@ export const UI = {
                         <button type="button" data-action="entry-start-solo" class="entry-primary-btn"><i class="fas fa-gamepad"></i> Solo spielen</button>
                         <button type="button" data-action="entry-start-host" class="entry-secondary-btn"><i class="fas fa-house"></i> Coop Spiel Hosten</button>
                         <button type="button" data-action="open-pvp-arena" class="entry-secondary-btn pvp-entry-btn"><i class="fas fa-swords"></i> PvP</button>
+                        <button type="button" data-action="open-dm-wizard" class="entry-secondary-btn dm-entry-btn"><i class="fas fa-scroll"></i> DM Modus</button>
                     </div>
+                    ${State.worldConfig ? `
+                    <div class="dm-world-banner">
+                        <i class="fas fa-globe text-amber-400"></i>
+                        <span>Aktive Welt: <strong>${repairDisplayText(State.worldConfig.name)}</strong></span>
+                        <button type="button" data-action="dm-delete-world" class="dm-world-banner-del" title="Welt entfernen"><i class="fas fa-times"></i></button>
+                    </div>` : ''}
                     
                     <!-- Onboarding Section -->
                     <div class="mt-6 p-4 bg-indigo-900/20 border border-indigo-500/30 rounded-xl">

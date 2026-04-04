@@ -4,6 +4,7 @@ import { Network } from './network.js';
 import { State } from './state.js';
 import { PartyManager } from './party.js';
 import { EQUIPMENT_LIMIT } from './constants.js';
+import { WorldBuilder } from './worldbuilder.js';
 
 export function initEvents() {
     document.addEventListener('click', (e) => {
@@ -288,6 +289,24 @@ export function initEvents() {
                 Engine.saveDefaultHero(hero);
                 UI.showDefaultHeroDetails();
             },
+
+            // DM Weltbauer
+            'open-dm-wizard': () => WorldBuilder.open(),
+            'dm-close': () => WorldBuilder.close(),
+            'dm-next-step': () => WorldBuilder.nextStep(),
+            'dm-prev-step': () => WorldBuilder.prevStep(),
+            'dm-expand-desc': () => WorldBuilder.expandDescription(),
+            'dm-add-enemy': () => WorldBuilder.addEnemy(),
+            'dm-remove-enemy': () => WorldBuilder.removeEnemy(actionEl.dataset.id),
+            'dm-gen-enemy-portrait': () => WorldBuilder.generateEnemyPortrait(actionEl.dataset.id),
+            'dm-set-dice': () => WorldBuilder.setDice(actionEl.dataset.size),
+            'dm-gen-map': () => WorldBuilder.generateMap(),
+            'dm-confirm-location': () => WorldBuilder.confirmLocation(),
+            'dm-cancel-pin': () => WorldBuilder.cancelPin(),
+            'dm-remove-location': () => WorldBuilder.removeLocation(actionEl.dataset.id),
+            'dm-finalize': () => WorldBuilder.finalize(),
+            'dm-load-world': () => WorldBuilder.loadSavedWorld(),
+            'dm-delete-world': () => WorldBuilder.deleteSavedWorld(),
 
             // PvP Arena
             'open-pvp-arena': () => Engine.showPvPScreen(),
