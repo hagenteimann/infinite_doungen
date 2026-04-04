@@ -2099,7 +2099,6 @@ body.session-startscreen .thinking-status-chip {
 
 .entry-shell {
     position: relative;
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
